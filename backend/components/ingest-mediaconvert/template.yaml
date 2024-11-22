@@ -92,7 +92,7 @@ Resources:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:4
       Environment:
         Variables:
-          MEDIACONVERT_QUEUE: !Ref MediaConvertQueue
+          MEDIACONVERT_QUEUE: Default
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -166,15 +166,12 @@ Resources:
                 Resource:
                   - !Sub ${MediaConvertBucket.Arn}/jobs/*
 
-  MediaConvertQueue:
-    Type: AWS::MediaConvert::Queue
-
   MediaConvertIngestion:
     Type: AWS::Serverless::StateMachine
     Properties:
       DefinitionUri: statemachines/mediaconvert.yaml
       DefinitionSubstitutions:
-        MediaConvertQueueArn: !GetAtt MediaConvertQueue.Arn
+        MediaConvertQueueArn: !Sub arn:${AWS::Partition}:mediaconvert:${AWS::Region}:${AWS::AccountId}:queues/Default
         MediaConvertRoleArn: !GetAtt MediaConvertRole.Arn
         FlowsFunctionArn: !Ref SfnFlowsFunctionArn
         IngestionFunctionArn: !Ref S3IngestionFunctionArn
