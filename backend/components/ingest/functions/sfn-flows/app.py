@@ -89,7 +89,9 @@ def lambda_handler(event, context):
         channel = Channel(event["ChannelId"])
         if not channel.dict:
             return
-        flows, source_descriptions, parameters = channel.tams(event["Label"], event["Id"])
+        flows, source_descriptions, parameters = channel.tams(
+            event["Label"], event["Id"]
+        )
         for flow in flows:
             put_flow(flow)
         for source_id, description in source_descriptions.items():

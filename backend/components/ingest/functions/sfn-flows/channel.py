@@ -1,7 +1,8 @@
-import uuid
 import json
+import uuid
 from collections import Counter
 from copy import deepcopy
+
 import boto3
 
 
