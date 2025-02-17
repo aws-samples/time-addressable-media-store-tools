@@ -14,6 +14,7 @@
     "@aws-sdk/client-medialive": "^3.631.0",
     "@aws-sdk/client-sfn": "^3.631.0",
     "@aws-sdk/client-ssm": "^3.632.0",
+    "@byomakase/omakase-player": "^0.14.0",
     "@cloudscape-design/collection-hooks": "^1.0.50",
     "@cloudscape-design/components": "^3.0.714",
     "@cloudscape-design/global-styles": "^1.0.32",
@@ -28,8 +29,6 @@
     "react-router-dom": "^6.26.0",
     "remark-gfm": "^4.0.0",
     "swr": "^2.2.5",
-    "video.js": "^8.17.3",
-    "videojs-quality-selector-hls": "^1.1.1",
     "zustand": "^5.0.1"
   },
   "devDependencies": {
