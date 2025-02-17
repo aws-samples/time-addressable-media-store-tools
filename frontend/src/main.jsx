@@ -1,6 +1,6 @@
 import "@cloudscape-design/global-styles/index.css";
 import "@aws-amplify/ui-react/styles.css";
-import "video.js/dist/video-js.css";
+import "@byomakase/omakase-player/dist/style.css";
 
 import App from "@/App";
 import React from "react";
