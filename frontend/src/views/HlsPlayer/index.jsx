@@ -1,41 +1,21 @@
 import { AWS_HLS_ENDPOINT } from "@/constants";
-import VideoJS from "./components/VideoJS";
+import { OmakasePlayer } from "@byomakase/omakase-player";
+import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useRef } from "react";
 
 export const HlsPlayer = () => {
   const { type, id } = useParams();
   const url = `${AWS_HLS_ENDPOINT}/hls/${type}/${id}/output.m3u8`;
-  console.log(url);
 
-  const playerRef = useRef(null);
-
-  const videoJsOptions = {
-    liveui: true,
-    liveTracker: true,
-    autoplay: true,
-    controls: true,
-    responsive: true,
-    fluid: true,
-    sources: [
-      {
-        src: url,
-        type: "application/x-mpegURL",
-      },
-    ],
-  };
-
-  const playerReady = (player) => {
-    playerRef.current = player;
-    player.on("waiting", () => {
-      console.log("player is waiting");
+  useEffect(() => {
+    let omakasePlayer = new OmakasePlayer({
+      playerHTMLElementId: "omakase-player",
+      mediaChrome: "enabled",
     });
-    player.on("dispose", () => {
-      console.log("player will dispose");
-    });
-  };
+    omakasePlayer.loadVideo(url, 24);
+  });
 
-  return <VideoJS options={videoJsOptions} onReady={playerReady} />;
+  return <div id="omakase-player"></div>;
 };
 
 export default HlsPlayer;
