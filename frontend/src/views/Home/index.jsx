@@ -43,7 +43,13 @@ const Home = () => {
   | ------------------------ | -------- | ----- |
   | ***flow_status***        | _string_ | Used to control whether the **ENDLIST** line is present in the HLS manifest. Set this tag value to **ingesting** to exclude the line. |
   | ***hls_segments***       | _number_ | Used to limit the number of segments presented in the HLS manifest. Defaults to **150** if tag not set. Use the value **inf** to list all segments. However,listing all segments may result in the generation of the HLS manifest timing out. |
-  | ***hls_segment_length*** | _number_ | Used to calculate the **MEDIA-SEQUENCE** value in the HLS manifest. This tag is only used if the **flow_status** tag value is **ingesting". The value of this tag should be set to the duration of each segment in the flow (in seconds.). Flows using this feature must therefore have segments of consistant length.
+  | ***hls_exclude***        | _bool_   | Used to indicate the flow should be excluded from HLS manifest generation. |
+
+  ### TAMS Source Tags
+
+  | Tag Key                  | Type     | Notes |
+  | ------------------------ | -------- | ----- |
+  | ***hls_exclude***        | _bool_   | Used to indicate the source should be excluded from HLS manifest generation.
   `;
 
   return <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>;
