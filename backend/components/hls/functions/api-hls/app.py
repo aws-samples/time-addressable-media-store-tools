@@ -1,8 +1,10 @@
+import json
 import os
 from collections import deque
 from datetime import datetime
 from http import HTTPStatus
 
+import boto3
 import requests
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import (
@@ -23,6 +25,7 @@ tracer = Tracer()
 logger = Logger()
 app = APIGatewayHttpResolver(cors=CORSConfig())
 
+ssm = boto3.client("ssm")
 endpoint = os.environ["TAMS_ENDPOINT"]
 creds = Credentials(
     token_url=os.environ["TOKEN_URL"],
@@ -31,6 +34,50 @@ creds = Credentials(
     scopes=["tams-api/read"],
 )
 default_hls_segments = os.environ["DEFAULT_HLS_SEGMENTS"]
+codec_parameter = os.environ["CODEC_PARAMETER"]
+
+
+@tracer.capture_method(capture_response=False)
+def map_codec(codec):
+    get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
+    codecs = json.loads(get_parameter["Value"])
+    for c in codecs:
+        if codec == c["tams"]:
+            return c["hls"]
+        if codec == c["hls"]:
+            return c["tams"]
+    # If TAMS codec supplied parse the mime type and return the second section
+    if "/" in codec:
+        return codec.split("/")[-1]
+    # If no match found return input value
+    return codec
+
+
+@tracer.capture_method(capture_response=False)
+def get_avc_codec_string(width, height, fps):
+    try:
+        # Resolution breakpoints with their corresponding levels
+        RESOLUTION_LEVELS = [
+            ((3840, 2160), lambda fps: "32"),  # 4K - Level 5.0
+            (
+                (1920, 1080),
+                lambda fps: "2c" if fps > 30 else "28",
+            ),  # 1080p - Level 4.4 or 4.0
+            ((1280, 720), lambda fps: "1f"),  # 720p - Level 3.1
+            ((720, 576), lambda fps: "1f"),  # SD - Level 3.1
+            ((352, 288), lambda fps: "1f"),  # CIF - Level 3.1
+            ((0, 0), lambda fps: "1f"),  # Fallback - Level 3.1
+        ]
+        # Find the first resolution breakpoint that matches
+        level = next(
+            level_func(fps)
+            for (max_width, max_height), level_func in RESOLUTION_LEVELS
+            if width >= max_width or height >= max_height
+        )
+        return f".6400{level}"
+    # pylint: disable=broad-exception-caught
+    except Exception:
+        return ".64001f"  # Level 3.1 as minimum default
 
 
 @tracer.capture_method(capture_response=False)
@@ -98,12 +145,22 @@ def get_collection_hls(flows):
     m3u8_content = "#EXTM3U\n"
     m3u8_content += "#EXT-X-VERSION:3\n"
     m3u8_content += "#EXT-X-INDEPENDENT-SEGMENTS\n"
+    audio_codec = map_codec(audio_flows[0]["codec"]) if audio_flows else None
     for flow in video_flows:
-        frame_rate = (
-            flow["essence_parameters"]["frame_rate"]["numerator"]
-            / flow["essence_parameters"]["frame_rate"]["denominator"]
-        )
-        m3u8_content += f'#EXT-X-STREAM-INF:BANDWIDTH={flow["max_bit_rate"]},AVERAGE-BANDWIDTH={flow["avg_bit_rate"]},RESOLUTION={flow["essence_parameters"]["frame_width"]}x{flow["essence_parameters"]["frame_height"]},FRAME-RATE={frame_rate:.3f}\n'
+        width = flow["essence_parameters"]["frame_width"]
+        height = flow["essence_parameters"]["frame_height"]
+        frame_rate = flow["essence_parameters"]["frame_rate"]["numerator"] / flow[
+            "essence_parameters"
+        ]["frame_rate"].get("denominator", 1)
+        codecs = map_codec(flow["codec"])
+        if codecs.startswith("avc1"):
+            codecs += get_avc_codec_string(width, height, frame_rate)
+        if audio_codec:
+            codecs += ",{audio_codec}"
+        m3u8_content += f'#EXT-X-STREAM-INF:BANDWIDTH={flow["max_bit_rate"]},AVERAGE-BANDWIDTH={flow["avg_bit_rate"]},CODECS="{codecs}",RESOLUTION={flow["essence_parameters"]["frame_width"]}x{flow["essence_parameters"]["frame_height"]},FRAME-RATE={frame_rate:.3f}'
+        if audio_codec:
+            m3u8_content += ',AUDIO="audio"'
+        m3u8_content += "\n"
         m3u8_content += f'/flows/{flow["id"]}/output.m3u8\n'
     for i, flow in enumerate(audio_flows):
         m3u8_content += f'#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="{flow["description"]}",DEFAULT={"YES" if i == 0 else "NO"},AUTOSELECT=YES,CHANNELS="{flow["essence_parameters"]["channels"]}",URI="/flows/{flow["id"]}/output.m3u8"\n'

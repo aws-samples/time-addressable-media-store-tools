@@ -51,6 +51,25 @@ Resources:
             Resource:
               - !GetAtt ApiHlsFunction.Arn
 
+  CodecsParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-codecs
+      Type: String
+      DataType: text
+      Description: Codec mappings for HLS
+      Value: |
+        [
+          {
+            "tams": "audio/aac",
+            "hls": "mp4a.40.2"
+          },
+          {
+            "tams": "video/h264",
+            "hls": "avc1"
+          }
+        ]
+
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
@@ -98,6 +117,7 @@ Resources:
           USER_POOL_ID: !Ref UserPoolId
           CLIENT_ID: !Ref UserPoolClientId
           DEFAULT_HLS_SEGMENTS: 150
+          CODEC_PARAMETER: !Ref CodecsParameter
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -105,6 +125,11 @@ Resources:
               Action:
                 - cognito-idp:DescribeUserPoolClient
               Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameter}
       Events:
         getSourceHls:
           Type: HttpApi
