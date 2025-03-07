@@ -31,15 +31,10 @@ Globals:
     Architectures:
       - arm64
 
-  Api:
-    EndpointConfiguration:
-      Type: REGIONAL
-    TracingEnabled: true
-    MethodSettings:
-      - ResourcePath: /*
-        HttpMethod: '*'
-        DataTraceEnabled: True
-        LoggingLevel: INFO
+  HttpApi:
+    AccessLogSettings:
+      DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiLogGroup}
+      Format: $context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId $context.extendedRequestId
 
 Resources:
   AuthRolePolicyHls:
@@ -56,21 +51,31 @@ Resources:
             Resource:
               - !GetAtt ApiHlsFunction.Arn
 
-  Api:
-    Type: AWS::Serverless::Api
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
     Metadata:
-      cfn-lint:
-        config:
-          ignore_checks:
-            - W1028
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: Encryption not required
     Properties:
-      OpenApiVersion: 3.0.1
-      StageName: Prod
-      Cors:
-        AllowMethods: '''*'''
-        AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
-        AllowOrigin: '''*'''
-      AlwaysDeploy: True
+      LogGroupName: !Sub /aws/vendedlogs/api/${AWS::StackName}
+      RetentionInDays: 30
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - '*'
 
   ApiHlsFunction:
     Type: AWS::Serverless::Function
@@ -102,18 +107,18 @@ Resources:
               Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}
       Events:
         getSourceHls:
-          Type: Api
+          Type: HttpApi
           Properties:
-            RestApiId: !Ref Api
-            Path: /hls/sources/{sourceId}/output.m3u8
+            ApiId: !Ref Api
+            Path: /sources/{sourceId}/output.m3u8
             Method: get
         getFlowHls:
-          Type: Api
+          Type: HttpApi
           Properties:
-            RestApiId: !Ref Api
-            Path: /hls/flows/{flowId}/output.m3u8
+            ApiId: !Ref Api
+            Path: /flows/{flowId}/output.m3u8
             Method: get
 
 Outputs:
   ApiEndpoint:
-    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com

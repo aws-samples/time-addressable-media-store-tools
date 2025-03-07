@@ -6,7 +6,7 @@ from http import HTTPStatus
 import requests
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import (
-    APIGatewayRestResolver,
+    APIGatewayHttpResolver,
     CORSConfig,
     Response,
 )
@@ -21,7 +21,7 @@ from openid_auth import Credentials
 
 tracer = Tracer()
 logger = Logger()
-app = APIGatewayRestResolver(cors=CORSConfig())
+app = APIGatewayHttpResolver(cors=CORSConfig())
 
 endpoint = os.environ["TAMS_ENDPOINT"]
 creds = Credentials(
@@ -93,7 +93,6 @@ def get_collected_flows(flows):
 
 @tracer.capture_method(capture_response=False)
 def get_collection_hls(flows):
-    stage = app.current_event.request_context.stage
     video_flows, audio_flows = get_collected_flows(flows)
     video_flows.sort(key=lambda k: k["max_bit_rate"], reverse=True)
     m3u8_content = "#EXTM3U\n"
@@ -105,13 +104,13 @@ def get_collection_hls(flows):
             / flow["essence_parameters"]["frame_rate"]["denominator"]
         )
         m3u8_content += f'#EXT-X-STREAM-INF:BANDWIDTH={flow["max_bit_rate"]},AVERAGE-BANDWIDTH={flow["avg_bit_rate"]},RESOLUTION={flow["essence_parameters"]["frame_width"]}x{flow["essence_parameters"]["frame_height"]},FRAME-RATE={frame_rate:.3f}\n'
-        m3u8_content += f'/{stage}/hls/flows/{flow["id"]}/output.m3u8\n'
+        m3u8_content += f'/flows/{flow["id"]}/output.m3u8\n'
     for i, flow in enumerate(audio_flows):
-        m3u8_content += f'#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="{flow["description"]}",DEFAULT={"YES" if i == 0 else "NO"},AUTOSELECT=YES,CHANNELS="{flow["essence_parameters"]["channels"]}",URI="/{stage}/hls/flows/{flow["id"]}/output.m3u8"\n'
+        m3u8_content += f'#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="{flow["description"]}",DEFAULT={"YES" if i == 0 else "NO"},AUTOSELECT=YES,CHANNELS="{flow["essence_parameters"]["channels"]}",URI="/flows/{flow["id"]}/output.m3u8"\n'
     return m3u8_content
 
 
-@app.get("/hls/sources/<sourceId>/output.m3u8")
+@app.get("/sources/<sourceId>/output.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_source_hls(sourceId: str):
     source = get_source(sourceId)
@@ -134,7 +133,7 @@ def get_source_hls(sourceId: str):
         ) from e  # HTTP 500
 
 
-@app.get("/hls/flows/<flowId>/output.m3u8")
+@app.get("/flows/<flowId>/output.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_flow_hls(flowId: str):
     flow = get_flow(flowId)
@@ -247,7 +246,7 @@ def get_flow_hls(flowId: str):
 
 
 @logger.inject_lambda_context(
-    log_event=True, correlation_id_path=correlation_paths.API_GATEWAY_REST
+    log_event=True, correlation_id_path=correlation_paths.API_GATEWAY_HTTP
 )
 @tracer.capture_lambda_handler(capture_response=False)
 def lambda_handler(event: dict, context: LambdaContext) -> dict:
