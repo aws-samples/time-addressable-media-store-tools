@@ -184,7 +184,7 @@ def get_collection_hls(video_flows, audio_flows):
                         "average_bandwidth": flow["avg_bit_rate"],
                         "codecs": map_codec(flow),
                     },
-                    uri=f'/flows/{flow["id"]}/segments/output.m3u8',
+                    uri=f'/flows/{flow["id"]}/segments/manifest.m3u8',
                     media=m3u8.MediaList([]),
                     base_uri=None,
                 )
@@ -199,7 +199,7 @@ def get_collection_hls(video_flows, audio_flows):
             default="YES" if i == 0 else "NO",
             autoselect="YES",
             channels=flow["essence_parameters"]["channels"],
-            uri=f'/flows/{flow["id"]}/segments/output.m3u8',
+            uri=f'/flows/{flow["id"]}/segments/manifest.m3u8',
             codecs=map_codec(flow),
         )
         if i == 0:
@@ -224,7 +224,7 @@ def get_collection_hls(video_flows, audio_flows):
                     "frame_rate": frame_rate,
                     "audio": first_audio.group_id if first_audio else None,
                 },
-                uri=f'/flows/{flow["id"]}/segments/output.m3u8',
+                uri=f'/flows/{flow["id"]}/segments/manifest.m3u8',
                 media=m3u8.MediaList([first_audio] if first_audio else []),
                 base_uri=None,
             )
@@ -232,7 +232,7 @@ def get_collection_hls(video_flows, audio_flows):
     return manifest.dumps()
 
 
-@app.get("/sources/<sourceId>/output.m3u8")
+@app.get("/sources/<sourceId>/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_source_hls(sourceId: str):
     manifest = m3u8.M3U8()
@@ -256,7 +256,7 @@ def get_source_hls(sourceId: str):
     )
 
 
-@app.get("/flows/<flowId>/output.m3u8")
+@app.get("/flows/<flowId>/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_flow_hls(flowId: str):
     manifest = m3u8.M3U8()
@@ -287,7 +287,7 @@ def get_flow_hls(flowId: str):
     )
 
 
-@app.get("/flows/<flowId>/segments/output.m3u8")
+@app.get("/flows/<flowId>/segments/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_segments_hls(flowId: str):
     manifest = m3u8.M3U8()

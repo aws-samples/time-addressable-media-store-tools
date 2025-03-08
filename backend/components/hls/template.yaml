@@ -135,19 +135,19 @@ Resources:
           Type: HttpApi
           Properties:
             ApiId: !Ref Api
-            Path: /sources/{sourceId}/output.m3u8
+            Path: /sources/{sourceId}/manifest.m3u8
             Method: get
         getFlowHls:
           Type: HttpApi
           Properties:
             ApiId: !Ref Api
-            Path: /flows/{flowId}/output.m3u8
+            Path: /flows/{flowId}/manifest.m3u8
             Method: get
         getSegmentsHls:
           Type: HttpApi
           Properties:
             ApiId: !Ref Api
-            Path: /flows/{flowId}/segments/output.m3u8
+            Path: /flows/{flowId}/segments/manifest.m3u8
             Method: get
 
 Outputs:
