@@ -62,7 +62,7 @@ Resources:
         [
           {
             "tams": "audio/aac",
-            "hls": "mp4a.40.2"
+            "hls": "mp4a"
           },
           {
             "tams": "video/h264",

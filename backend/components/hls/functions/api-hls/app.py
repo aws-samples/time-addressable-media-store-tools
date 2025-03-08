@@ -35,46 +35,41 @@ codec_parameter = os.environ["CODEC_PARAMETER"]
 
 
 @tracer.capture_method(capture_response=False)
-def map_codec(codec):
+def map_codec(flow):
+    codec = flow["codec"]
+    essence_parameters = flow.get("essence_parameters", {})
+    mapped_codec = codec
     get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
     codecs = json.loads(get_parameter["Value"])
-    for c in codecs:
-        if codec == c["tams"]:
-            return c["hls"]
-        if codec == c["hls"]:
-            return c["tams"]
-    # If TAMS codec supplied parse the mime type and return the second section
-    if "/" in codec:
-        return codec.split("/")[-1]
-    # If no match found return input value
-    return codec
+    print("codec", codec)
+    mapped_codecs = [c["hls"] for c in codecs if codec == c["tams"]]
+    if len(mapped_codecs) == 0:
+        mapped_codec = codec.split("/")[-1]
+    else:
+        mapped_codec = mapped_codecs[0]
+    match mapped_codec:
+        case "avc1":
+            return get_avc1_codec_string(essence_parameters)
+        case "mp4a":
+            return get_mp4a_codec_string(essence_parameters)
+        case _:
+            return mapped_codec
 
 
 @tracer.capture_method(capture_response=False)
-def get_avc_codec_string(width, height, fps):
-    try:
-        # Resolution breakpoints with their corresponding levels
-        RESOLUTION_LEVELS = [
-            ((3840, 2160), lambda fps: "32"),  # 4K - Level 5.0
-            (
-                (1920, 1080),
-                lambda fps: "2c" if fps > 30 else "28",
-            ),  # 1080p - Level 4.4 or 4.0
-            ((1280, 720), lambda fps: "1f"),  # 720p - Level 3.1
-            ((720, 576), lambda fps: "1f"),  # SD - Level 3.1
-            ((352, 288), lambda fps: "1f"),  # CIF - Level 3.1
-            ((0, 0), lambda fps: "1f"),  # Fallback - Level 3.1
-        ]
-        # Find the first resolution breakpoint that matches
-        level = next(
-            level_func(fps)
-            for (max_width, max_height), level_func in RESOLUTION_LEVELS
-            if width >= max_width or height >= max_height
-        )
-        return f".6400{level}"
-    # pylint: disable=broad-exception-caught
-    except Exception:
-        return ".64001f"  # Level 3.1 as minimum default
+def get_avc1_codec_string(essence_parameters):
+    avc_parameters = essence_parameters.get("avc_parameters", {})
+    profile = f'{avc_parameters.get("profile", 100):02x}'
+    flags = f'{avc_parameters.get("flags", 00):02x}'
+    level = f'{avc_parameters.get("level", 31):02x}'
+    return f"avc1.{profile}{flags}{level}"
+
+
+@tracer.capture_method(capture_response=False)
+def get_mp4a_codec_string(essence_parameters):
+    codec_parameters = essence_parameters.get("avc_parameters", {})
+    oti = hex(codec_parameters.get("mp4_oti", 64))[2:]
+    return f"mp4a.{oti}.2"
 
 
 @tracer.capture_method(capture_response=False)
@@ -187,7 +182,7 @@ def get_collection_hls(video_flows, audio_flows):
                     stream_info={
                         "bandwidth": flow["max_bit_rate"],
                         "average_bandwidth": flow["avg_bit_rate"],
-                        "codecs": map_codec(flow["codec"]),
+                        "codecs": map_codec(flow),
                     },
                     uri=f'/flows/{flow["id"]}/segments/output.m3u8',
                     media=m3u8.MediaList([]),
@@ -205,7 +200,7 @@ def get_collection_hls(video_flows, audio_flows):
             autoselect="YES",
             channels=flow["essence_parameters"]["channels"],
             uri=f'/flows/{flow["id"]}/segments/output.m3u8',
-            codecs=map_codec(flow["codec"]),
+            codecs=map_codec(flow),
         )
         if i == 0:
             first_audio = media
@@ -216,9 +211,7 @@ def get_collection_hls(video_flows, audio_flows):
         frame_rate = flow["essence_parameters"]["frame_rate"]["numerator"] / flow[
             "essence_parameters"
         ]["frame_rate"].get("denominator", 1)
-        codecs = map_codec(flow["codec"])
-        if codecs == "avc1":
-            codecs += get_avc_codec_string(width, height, frame_rate)
+        codecs = map_codec(flow)
         if first_audio:
             codecs += f",{first_audio.extras["codecs"]}"
         manifest.add_playlist(
