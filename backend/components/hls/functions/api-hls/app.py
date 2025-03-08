@@ -1,6 +1,6 @@
 import json
 import os
-from collections import deque
+from collections import defaultdict, deque
 from datetime import datetime
 from http import HTTPStatus
 
@@ -154,25 +154,26 @@ def get_segments(flow_id, segment_count):
 @tracer.capture_method(capture_response=False)
 def get_collected_flows(flows):
     flows_queue = deque(flows)
-    flows = {"video_flows": [], "audio_flows": []}
+    flows_dict = defaultdict(list)
     while flows_queue:
         flow = flows_queue.pop()
         # Check if flow is marked as exclude
         if flow.get("tags", {}).get("hls_exclude", "false").lower() == "true":
             continue
-        elif "flow_collection" in flow:
+        elif flow.get("flow_collection"):
             for collected in flow["flow_collection"]:
-                flows_queue.append(get_flow(collected["id"]))
-        elif flow["format"] == "urn:x-nmos:format:video":
-            flows["video_flows"].append(flow)
-        elif flow["format"] == "urn:x-nmos:format:audio":
-            flows["audio_flows"].append(flow)
-    return flows["video_flows"], flows["audio_flows"]
+                # Only add it if not already processed to avoid duplicates and loops
+                if collected["id"] not in set(
+                    v["id"] for ft in flows_dict.values() for v in ft
+                ):
+                    flows_queue.append(get_flow(collected["id"]))
+        else:
+            flows_dict[flow["format"].split(":")[3]].append(flow)
+    return flows_dict
 
 
 @tracer.capture_method(capture_response=False)
-def get_collection_hls(flows):
-    video_flows, audio_flows = get_collected_flows(flows)
+def get_collection_hls(video_flows, audio_flows):
     video_flows.sort(key=lambda k: k["max_bit_rate"], reverse=True)
     manifest = m3u8.M3U8()
     manifest.version = 4
@@ -245,7 +246,8 @@ def get_source_hls(sourceId: str):
     manifest.version = 4
     try:
         flows = get_flows(sourceId)
-        m3u8_content = get_collection_hls(flows)
+        flows_dict = get_collected_flows(flows)
+        m3u8_content = get_collection_hls(flows_dict["video"], flows_dict["audio"])
         return Response(
             status_code=HTTPStatus.OK.value,  # 200
             content_type="application/vnd.apple.mpegurl",
@@ -268,65 +270,20 @@ def get_flow_hls(flowId: str):
     manifest.version = 4
     try:
         flow = get_flow(flowId)
-        if "flow_collection" in flow and len(flow["flow_collection"]) > 0:
-            return Response(
-                status_code=HTTPStatus.OK.value,  # 200
-                content_type="application/vnd.apple.mpegurl",
-                body=get_collection_hls(
-                    get_flow(collected["id"]) for collected in flow["flow_collection"]
-                ),
+        flows = []
+        if flow.get("container"):
+            flows.append(get_flow(flowId))
+        if flow.get("flow_collection"):
+            flows.extend(
+                [get_flow(collected["id"]) for collected in flow["flow_collection"]]
             )
-        flow_created_epoch = datetime.strptime(
-            flow["created"], "%Y-%m-%dT%H:%M:%SZ"
-        ).timestamp()
-        flow_segment_duration = flow.get(
-            "segment_duration", {"numerator": 0, "denominator": 1}
+        flows_dict = get_collected_flows(flows)
+        m3u8_content = get_collection_hls(flows_dict["video"], flows_dict["audio"])
+        return Response(
+            status_code=HTTPStatus.OK.value,  # 200
+            content_type="application/vnd.apple.mpegurl",
+            body=m3u8_content,
         )
-        flow_segment_duration_float = flow_segment_duration[
-            "numerator"
-        ] / flow_segment_duration.get("denominator", 1)
-        hls_segment_count = float(
-            flow.get("tags", {}).get("hls_segments", default_hls_segments)
-        )
-        flow_ingesting = flow.get("tags", {}).get("flow_status", "") == "ingesting"
-        segments = list(get_segments(flowId, hls_segment_count))[
-            ::-1
-        ]  # Need to reverse segments for correct playing order
-        first_segment_timestamp = TimeRange.from_str(segments[0]["timerange"])
-        if (
-            flow_segment_duration_float > 0
-        ):  # Zero value would be where Flow does not have segment_duration specified
-            manifest.target_duration = flow_segment_duration_float
-        if flow_ingesting:
-            manifest.media_sequence = int(
-                (first_segment_timestamp.start.to_float() - flow_created_epoch)
-                / flow_segment_duration_float
-            )
-        else:
-            manifest.media_sequence = 1
-        manifest.program_date_time = f'{datetime.fromtimestamp(first_segment_timestamp.start.to_float()).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}+00:00'
-        manifest.playlist_type = "EVENT" if flow_ingesting else "VOD"
-        prev_ts_offset = ""
-        for segment in segments:
-            presigned_urls = [
-                get_url["url"]
-                for get_url in segment["get_urls"]
-                if "s3.presigned" in get_url["label"]
-            ]
-            segment_duration = TimeRange.from_str(
-                segment["timerange"]
-            ).length.to_unix_float()
-            ts_offset = segment.get("ts_offset", "")
-            manifest.add_segment(
-                segment=m3u8.Segment(
-                    duration=segment_duration,
-                    uri=f"{presigned_urls[0]}",
-                    discontinuity=(prev_ts_offset != ts_offset),
-                )
-            )
-            prev_ts_offset = ts_offset
-        if not flow_ingesting:
-            manifest.is_endlist = True
     # pylint: disable=broad-exception-caught
     except Exception as ex:
         logger.error(ex)
