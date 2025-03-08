@@ -143,6 +143,12 @@ Resources:
             ApiId: !Ref Api
             Path: /flows/{flowId}/output.m3u8
             Method: get
+        getSegmentsHls:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /flows/{flowId}/segments/output.m3u8
+            Method: get
 
 Outputs:
   ApiEndpoint:

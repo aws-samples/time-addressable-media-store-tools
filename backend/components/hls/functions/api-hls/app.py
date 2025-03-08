@@ -188,7 +188,7 @@ def get_collection_hls(flows):
                         "average_bandwidth": flow["avg_bit_rate"],
                         "codecs": map_codec(flow["codec"]),
                     },
-                    uri=f'/flows/{flow["id"]}/output.m3u8',
+                    uri=f'/flows/{flow["id"]}/segments/output.m3u8',
                     media=m3u8.MediaList([]),
                     base_uri=None,
                 )
@@ -203,7 +203,7 @@ def get_collection_hls(flows):
             default="YES" if i == 0 else "NO",
             autoselect="YES",
             channels=flow["essence_parameters"]["channels"],
-            uri=f'/flows/{flow["id"]}/output.m3u8',
+            uri=f'/flows/{flow["id"]}/segments/output.m3u8',
             codecs=map_codec(flow["codec"]),
         )
         if i == 0:
@@ -230,7 +230,7 @@ def get_collection_hls(flows):
                     "frame_rate": frame_rate,
                     "audio": first_audio.group_id if first_audio else None,
                 },
-                uri=f'/flows/{flow["id"]}/output.m3u8',
+                uri=f'/flows/{flow["id"]}/segments/output.m3u8',
                 media=m3u8.MediaList([first_audio] if first_audio else []),
                 base_uri=None,
             )
