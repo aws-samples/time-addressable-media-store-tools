@@ -1,0 +1,9 @@
+
+-r ./backend/components/hls/functions/api-hls/requirements.txt
+-r ./backend/components/ingest/functions/s3-ingestion/requirements.txt
+-r ./backend/components/ingest/functions/sfn-flows/requirements.txt
+-r ./backend/components/ingest/layers/mediainfo/requirements.txt
+-r ./backend/components/ingest-mediaconvert/functions/api-job-ingestion/requirements.txt
+-r ./backend/components/ingest-medialive/functions/api-channel-ingestion/requirements.txt
+-r ./backend/functions/custom_resource/requirements.txt
+-r ./backend/layers/openid-auth/requirements.txt
