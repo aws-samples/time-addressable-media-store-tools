@@ -182,6 +182,23 @@ def get_collection_hls(flows):
     manifest.version = 4
     manifest.is_independent_segments = True
     first_audio = None
+    # Use Stream for Audio if no Video present
+    if len(video_flows) == 0:
+        for flow in audio_flows:
+            manifest.add_playlist(
+                m3u8.Playlist(
+                    stream_info={
+                        "bandwidth": flow["max_bit_rate"],
+                        "average_bandwidth": flow["avg_bit_rate"],
+                        "codecs": map_codec(flow["codec"]),
+                    },
+                    uri=f'/flows/{flow["id"]}/output.m3u8',
+                    media=m3u8.MediaList([]),
+                    base_uri=None,
+                )
+            )
+        return manifest.dumps()
+    # Use Media for Audio if Video present
     for i, flow in enumerate(audio_flows):
         media = m3u8.Media(
             type="AUDIO",
@@ -215,9 +232,10 @@ def get_collection_hls(flows):
                     "codecs": codecs,
                     "resolution": f"{width}x{height}",
                     "frame_rate": frame_rate,
+                    "audio": first_audio.group_id if first_audio else None,
                 },
                 uri=f'/flows/{flow["id"]}/output.m3u8',
-                media=[first_audio] if first_audio else [],
+                media=m3u8.MediaList([first_audio] if first_audio else []),
                 base_uri=None,
             )
         )
@@ -288,6 +306,7 @@ def get_flow_hls(flowId: str):
             flow_segment_duration_float > 0
         ):  # Zero value would be where Flow does not have segment_duration specified
             manifest.target_duration = flow_segment_duration_float
+        if flow_ingesting:
             manifest.media_sequence = int(
                 (first_segment_timestamp.start.to_float() - flow_created_epoch)
                 / flow_segment_duration_float
