@@ -41,7 +41,6 @@ def map_codec(flow):
     mapped_codec = codec
     get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
     codecs = json.loads(get_parameter["Value"])
-    print("codec", codec)
     mapped_codecs = [c["hls"] for c in codecs if codec == c["tams"]]
     if len(mapped_codecs) == 0:
         mapped_codec = codec.split("/")[-1]

@@ -25,7 +25,6 @@ def get_job_ingestions():
             source_id = list_tags["ResourceTags"]["Tags"].get("source_id", None)
             trigger_key = list_tags["ResourceTags"]["Tags"].get("trigger_key", None)
             if source_id:
-                print()
                 jobs.append(
                     {
                         "Id": job["Id"],
