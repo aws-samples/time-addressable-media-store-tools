@@ -2,6 +2,7 @@ import json
 import os
 from collections import defaultdict, deque
 from datetime import datetime
+from functools import lru_cache
 from http import HTTPStatus
 
 import boto3
@@ -34,25 +35,26 @@ default_hls_segments = os.environ["DEFAULT_HLS_SEGMENTS"]
 codec_parameter = os.environ["CODEC_PARAMETER"]
 
 
+@lru_cache()
+def get_codec_mappings():
+    get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
+    codecs_list = json.loads(get_parameter["Value"])
+    return {codec["tams"]: codec["hls"] for codec in codecs_list}
+
+
 @tracer.capture_method(capture_response=False)
 def map_codec(flow):
     codec = flow["codec"]
     essence_parameters = flow.get("essence_parameters", {})
-    mapped_codec = codec
-    get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
-    codecs = json.loads(get_parameter["Value"])
-    mapped_codecs = [c["hls"] for c in codecs if codec == c["tams"]]
-    if len(mapped_codecs) == 0:
-        mapped_codec = codec.split("/")[-1]
-    else:
-        mapped_codec = mapped_codecs[0]
-    match mapped_codec:
-        case "avc1":
-            return get_avc1_codec_string(essence_parameters)
-        case "mp4a":
-            return get_mp4a_codec_string(essence_parameters)
-        case _:
-            return mapped_codec
+    codec_mappings = get_codec_mappings()
+    mapped_codec = codec_mappings.get(codec, codec.split("/")[-1])
+    essence_parameter_handlers = {
+        "avc1": get_avc1_codec_string,
+        "mp4a": get_mp4a_codec_string,
+    }
+    return essence_parameter_handlers.get(mapped_codec, lambda x: mapped_codec)(
+        essence_parameters
+    )
 
 
 @tracer.capture_method(capture_response=False)
