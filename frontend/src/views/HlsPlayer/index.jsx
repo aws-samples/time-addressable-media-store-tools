@@ -1,11 +1,11 @@
-import { AWS_HLS_ENDPOINT } from "@/constants";
+import { AWS_HLS_API_ENDPOINT } from "@/constants";
 import VideoJS from "./components/VideoJS";
 import { useParams } from "react-router-dom";
 import { useRef } from "react";
 
 export const HlsPlayer = () => {
   const { type, id } = useParams();
-  const url = `${AWS_HLS_ENDPOINT}/${type}/${id}/manifest.m3u8`;
+  const url = `${AWS_HLS_API_ENDPOINT}/${type}/${id}/manifest.m3u8`;
   console.log(url);
 
   const playerRef = useRef(null);

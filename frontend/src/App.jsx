@@ -1,5 +1,5 @@
 import {
-  AWS_HLS_ENDPOINT,
+  AWS_HLS_API_ENDPOINT,
   AWS_IDENTITY_POOL_ID,
   AWS_MC_ENDPOINT,
   AWS_ML_ENDPOINT,
@@ -42,7 +42,7 @@ Amplify.configure({
         region: AWS_REGION,
       },
       Hls: {
-        endpoint: AWS_HLS_ENDPOINT,
+        endpoint: AWS_HLS_API_ENDPOINT,
         region: AWS_REGION,
       },
       MediaLive: {
@@ -81,7 +81,7 @@ const App = () => {
             <Route path="jobs" element={<MediaConvertIngestion />} />
           )}
         </Route>
-        {AWS_HLS_ENDPOINT && (
+        {AWS_HLS_API_ENDPOINT && (
           <Route path="player/:type/:id" element={<HlsPlayer />} />
         )}
       </Routes>
