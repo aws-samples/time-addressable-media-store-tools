@@ -1,0 +1,374 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  UserPoolId:
+    Type: String
+
+  ApiEndpoint:
+    Type: String
+
+  UserPoolClientId:
+    Type: String
+
+  TokenUrl:
+    Type: String
+
+  AuthRoleName:
+    Type: String
+
+  OpenIdAuthLayerArn:
+    Type: String
+
+  CodecsParameterName:
+    Type: String
+
+  TamsConnectionArn:
+    Type: String
+
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 30
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.13
+    Architectures:
+      - arm64
+
+  HttpApi:
+    AccessLogSettings:
+      DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiLogGroup}
+      Format: $context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId $context.extendedRequestId
+    Auth:
+      DefaultAuthorizer: AWS_IAM
+      EnableIamAuthorizer: True
+
+Resources:
+  AuthRolePolicyHls:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref AuthRoleName
+      PolicyName: HlsIngest
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - execute-api:Invoke
+            Resource:
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/job-ingestion
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/channel-ingestion
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/workflows
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !GetAtt ApiHlsIngestFunction.Arn
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${IngestHls.Name}
+          - Effect: Allow
+            Action:
+              - medialive:StartChannel
+              - medialive:StopChannel
+            Resource: '*'
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: Encryption not required
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/api/${AWS::StackName}
+      RetentionInDays: 30
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - '*'
+
+  ApiHlsIngestFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      CodeUri: functions/api-hls-ingestion/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+      Environment:
+        Variables:
+          MEDIACONVERT_QUEUE: Default
+          STATE_MACHINE_ARN: !Ref IngestHls
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - mediaconvert:ListJobs
+              Resource:
+                - !Sub arn:${AWS::Partition}:mediaconvert:${AWS::Region}:${AWS::AccountId}:*
+            - Effect: Allow
+              Action:
+                - medialive:ListChannels
+              Resource:
+                - !Sub arn:${AWS::Partition}:medialive:${AWS::Region}:${AWS::AccountId}:channel:*
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+            - Effect: Allow
+              Action:
+                - states:ListExecutions
+              Resource:
+                - !Ref IngestHls
+      Events:
+        getJobIngestions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /job-ingestion
+            Method: get
+        getChannelIngestions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /channel-ingestion
+            Method: get
+        getWorkflows:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /workflows
+            Method: get
+
+  ContainersParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-containers
+      Type: String
+      DataType: text
+      Description: Container mappings for HLS
+      Value: |
+        {
+          "aac": "audio/aac",
+          "mpegts": "video/mp2t"
+        }
+
+  FFprobeLayer:
+    Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+    Properties:
+      RetentionPolicy: Delete
+      ContentUri: layers/ffprobe
+      CompatibleRuntimes:
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+
+  SfnVariantFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 300
+      MemorySize: 1024
+      CodeUri: functions/sfn-variant-manifest
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+        - !Ref FFprobeLayer
+      Environment:
+        Variables:
+          CODEC_PARAMETER: !Ref CodecsParameterName
+          CONTAINERS_PARAMETER: !Ref ContainersParameter
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameterName}
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ContainersParameter}
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+
+  SfnMediaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 300
+      MemorySize: 1024
+      CodeUri: functions/sfn-media-manifest
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref IngestJobQueue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                - !GetAtt IngestJobQueue.Arn
+
+  IngestHls:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/ingest-hls.yaml
+      DefinitionSubstitutions:
+        VariantFunctionArn: !GetAtt SfnVariantFunction.Arn
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        MediaFunctionArn: !GetAtt SfnMediaFunction.Arn
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Ref TamsConnectionArn
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub
+                  - arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/${TamsConnection}/*
+                  - TamsConnection: !Select [1, !Split [/, !Ref TamsConnectionArn]]
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - PUT
+                StringLike:
+                  states:HTTPEndpoint:
+                    - !Sub ${ApiEndpoint}/flows/*
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !GetAtt SfnVariantFunction.Arn
+                - !GetAtt SfnMediaFunction.Arn
+
+  SqsIngestionFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      CodeUri: functions/sqs-ingestion
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+        - !Ref OpenIdAuthLayerArn
+      Environment:
+        Variables:
+          TAMS_ENDPOINT: !Ref ApiEndpoint
+          TOKEN_URL: !Ref TokenUrl
+          USER_POOL_ID: !Ref UserPoolId
+          CLIENT_ID: !Ref UserPoolClientId
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:DescribeUserPoolClient
+              Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt IngestJobQueue.Arn
+            BatchSize: 10
+            Enabled: True
+
+  IngestJobQueue:
+    Type: AWS::SQS::Queue
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W48
+            reason: Encryption not required
+    Properties:
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400
+
+Outputs:
+  ApiEndpoint:
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com
+
+  IngestHlsArn:
+    Value: !Ref IngestHls

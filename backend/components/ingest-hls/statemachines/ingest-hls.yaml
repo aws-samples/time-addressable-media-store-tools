@@ -1,0 +1,126 @@
+QueryLanguage: JSONata
+StartAt: ParseManifest
+States:
+  ParseManifest:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    Arguments:
+      FunctionName: ${VariantFunctionArn}
+      Payload: >-
+        {% $states.input %}
+    Assign:
+      flowManifests: >-
+        {% $states.result.Payload.flowManifests %}
+      flows: >-
+        {% $states.result.Payload.flows %}
+      multiFlows: >-
+        {% $states.result.Payload.multiFlows %}
+    Output: null
+    Next: CreateFlows
+  CreateFlows:
+    Type: Map
+    Items: >-
+      {% $flows %}
+    Assign:
+      flows: null
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: PutFlow
+      States:
+        PutFlow:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: PUT
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $states.input.id %}
+            Headers:
+              Content-Type: application/json
+            RequestBody: >-
+              {% $states.input %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          End: True
+    Output: null
+    Next: CreateMultiFlows
+  CreateMultiFlows:
+    Type: Map
+    Items: >-
+      {% $multiFlows %}
+    Assign:
+      multiFlows: null
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: PutMultiFlow
+      States:
+        PutMultiFlow:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: PUT
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $states.input.id %}
+            Headers:
+              Content-Type: application/json
+            RequestBody: >-
+              {% $states.input %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          End: True
+    Output: null
+    Next: ProcessMediaManifests
+  ProcessMediaManifests:
+    Type: Map
+    Items: >-
+      {% $flowManifests %}
+    Assign:
+      flowManifests: null
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: ProcessManifest
+      States:
+        ProcessManifest:
+          Type: Task
+          Resource: arn:aws:states:::lambda:invoke
+          Arguments:
+            FunctionName: ${MediaFunctionArn}
+            Payload:
+              flow_id: >-
+                {% $states.input.id %}
+              manifest_location: >-
+                {% $states.input.uri %}
+          Output: >-
+            {% $states.result.Payload %}
+          Next: CheckManifestLocation
+        CheckManifestLocation:
+          Type: Choice
+          Default: ExtXEndlist
+          Choices:
+            - Next: ProcessManifest
+              Condition: >-
+                {% $exists($states.input.manifest_location) %}
+              Output: >-
+                {% $states.input %}
+        ExtXEndlist:
+          Type: Succeed
+    Output: null
+    End: True
