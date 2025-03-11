@@ -1,4 +1,4 @@
-import { AWS_MC_ENDPOINT, AWS_ML_ENDPOINT } from "@/constants";
+import { AWS_HLS_INGEST_ENDPOINT, AWS_MC_ENDPOINT, AWS_ML_ENDPOINT } from "@/constants";
 import {
   AppLayout,
   BreadcrumbGroup,
@@ -76,11 +76,18 @@ const Layout = () => {
                   { type: "link", text: "Flows", href: "/flows" },
                 ],
               },
-              AWS_MC_ENDPOINT || AWS_ML_ENDPOINT
+              AWS_HLS_INGEST_ENDPOINT || AWS_MC_ENDPOINT || AWS_ML_ENDPOINT
                 ? {
                     type: "section",
                     text: "Ingestion",
                     items: [
+                      AWS_HLS_INGEST_ENDPOINT
+                        ? {
+                            type: "link",
+                            text: "HLS Ingestions",
+                            href: "/workflows",
+                          }
+                        : {},
                       AWS_ML_ENDPOINT
                         ? {
                             type: "link",
