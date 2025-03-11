@@ -19,6 +19,9 @@ Parameters:
   OpenIdAuthLayerArn:
     Type: String
 
+  CodecsParameterName:
+    Type: String
+
 Transform: AWS::Serverless-2016-10-31
 
 Globals:
@@ -50,25 +53,6 @@ Resources:
               - lambda:InvokeFunction
             Resource:
               - !GetAtt ApiHlsFunction.Arn
-
-  CodecsParameter:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: !Sub ${AWS::StackName}-codecs
-      Type: String
-      DataType: text
-      Description: Codec mappings for HLS
-      Value: |
-        [
-          {
-            "tams": "audio/aac",
-            "hls": "mp4a"
-          },
-          {
-            "tams": "video/h264",
-            "hls": "avc1"
-          }
-        ]
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -117,7 +101,7 @@ Resources:
           USER_POOL_ID: !Ref UserPoolId
           CLIENT_ID: !Ref UserPoolClientId
           DEFAULT_HLS_SEGMENTS: 150
-          CODEC_PARAMETER: !Ref CodecsParameter
+          CODEC_PARAMETER: !Ref CodecsParameterName
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -129,7 +113,7 @@ Resources:
               Action:
                 - ssm:GetParameter
               Resource:
-                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameter}
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameterName}
       Events:
         getSourceHls:
           Type: HttpApi
