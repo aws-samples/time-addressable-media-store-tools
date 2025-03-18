@@ -58,8 +58,15 @@ def upload_file(flow_id: str, data: bytes) -> dict:
         data=json.dumps({"limit": 1}),
         timeout=30,
     )
-    get_url.raise_for_status()
-    logger.info(f"Response status: {get_url.status_code}")
+    try:
+        get_url.raise_for_status()
+        logger.info(f"Response status: {get_url.status_code}")
+    except requests.exceptions.HTTPError as ex:
+        if ex.response.status_code == 404:
+            logger.error(ex)
+            return None
+        else:
+            raise ex
     media_object = get_url.json()["media_objects"][0]
     logger.info("Using pre-signed URL to put file in S3...")
     put_file = requests.put(
@@ -74,14 +81,14 @@ def upload_file(flow_id: str, data: bytes) -> dict:
 
 
 @tracer.capture_method(capture_response=False)
-def post_segment(flow_id: str, object_id: str, timerange: str) -> None:
+def post_segment(flow_id: str, object_id: str, timerange: str) -> bool:
     """Register the segment with the TAMS API"""
     segment = {
         "object_id": object_id,
         "timerange": timerange,
     }
     logger.info("Posting segment to TAMS...")
-    response = requests.post(
+    post_segment = requests.post(
         f"{endpoint}/flows/{flow_id}/segments",
         headers={
             "Content-Type": "application/json",
@@ -90,8 +97,16 @@ def post_segment(flow_id: str, object_id: str, timerange: str) -> None:
         data=json.dumps(segment),
         timeout=30,
     )
-    response.raise_for_status()
-    logger.info(f"Response status: {response.status_code}")
+    try:
+        post_segment.raise_for_status()
+        logger.info(f"Response status: {post_segment.status_code}")
+    except requests.exceptions.HTTPError as ex:
+        if ex.response.status_code == 400:
+            logger.error(ex)
+            return False
+        else:
+            raise ex
+    return True
 
 
 @tracer.capture_method(capture_response=False)
@@ -117,8 +132,16 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
             media_object = upload_file(
                 flow_id, get_file(message["uri"], message.get("byterange", None))
             )
+            if media_object is None:
+                logger.error(f"Unable to upload file to flow {flow_id}")
+                continue
             if media_object["put_url"]["content-type"].split("/")[0] == "image":
                 message["timerange"] = f'{message["timerange"].split("_")[0]}]'
-            post_segment(flow_id, media_object["object_id"], message["timerange"])
+            post_result = post_segment(
+                flow_id, media_object["object_id"], message["timerange"]
+            )
+            if not post_result:
+                logger.error(f"Unable to post segment to flow {flow_id}")
+                continue
             if message.get("deleteSource", False):
                 delete_s3_file(message["uri"])
