@@ -1,14 +1,28 @@
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+
+import {
+  SQSClient,
+  ReceiveMessageCommand,
+  SendMessageCommand,
+  DeleteMessageCommand,
+} from "@aws-sdk/client-sqs";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import ffmpeg from "fluent-ffmpeg";
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
 import { PassThrough } from "stream";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import { Agent } from "https";
 
 const REGION = process.env.AWS_REGION;
 const INGEST_QUEUE_URL = process.env.INGEST_QUEUE_URL;
+const FFMPEG_QUEUE_URL = process.env.FFMPEG_QUEUE_URL;
 
-const s3Client = new S3Client({ region: REGION });
+const s3Client = new S3Client({
+  region: REGION,
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new Agent({ keepAlive: false }),
+  }),
+});
 const sqsClient = new SQSClient({ region: REGION });
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -81,30 +95,30 @@ export const lambdaHandler = async (event, context) => {
   }
 };
 
-// export const main = async () => {
-//   const receiveMessageCommand = new ReceiveMessageCommand({
-//     QueueUrl: FFMPEG_QUEUE_URL,
-//     MaxNumberOfMessages: 1,
-//     WaitTimeSeconds: 10,
-//   });
-//   while (true) {
-//     console.info(`Polling SQS queue: ${FFMPEG_QUEUE_URL}...`);
-//     const receiveMessageResponse = await sqsClient.send(receiveMessageCommand);
-//     if (receiveMessageResponse.Messages) {
-//       for (const message of receiveMessageResponse.Messages) {
-//         console.info("Message received...");
-//         await processMessage(JSON.parse(message.Body));
-//         console.info("Deleting message...");
-//         await sqsClient.send(
-//           new DeleteMessageCommand({
-//             QueueUrl: FFMPEG_QUEUE_URL,
-//             ReceiptHandle: message.ReceiptHandle,
-//           })
-//         );
-//       }
-//     }
-//   }
-// };
+export const main = async () => {
+  const receiveMessageCommand = new ReceiveMessageCommand({
+    QueueUrl: FFMPEG_QUEUE_URL,
+    MaxNumberOfMessages: 1,
+    WaitTimeSeconds: 10,
+  });
+  while (true) {
+    console.info(`Polling SQS queue: ${FFMPEG_QUEUE_URL}...`);
+    const receiveMessageResponse = await sqsClient.send(receiveMessageCommand);
+    if (receiveMessageResponse.Messages) {
+      for (const message of receiveMessageResponse.Messages) {
+        console.info("Message received...");
+        await processMessage(JSON.parse(message.Body));
+        console.info("Deleting message...");
+        await sqsClient.send(
+          new DeleteMessageCommand({
+            QueueUrl: FFMPEG_QUEUE_URL,
+            ReceiptHandle: message.ReceiptHandle,
+          })
+        );
+      }
+    }
+  }
+};
 
 // main().catch((error) => {
 //   console.error("Error in main:", error);
