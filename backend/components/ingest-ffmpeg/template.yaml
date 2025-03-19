@@ -283,9 +283,11 @@ Resources:
             reason: ReservedConcurrentExecutions not required
     Properties:
       Timeout: 900
-      MemorySize: 1024
+      MemorySize: 8192
       Handler: app.lambdaHandler
       Runtime: nodejs22.x
+      EphemeralStorage:
+        Size: 6144
       CodeUri: functions/ffmpeg-worker/
       Environment:
         Variables:
