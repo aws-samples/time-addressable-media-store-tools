@@ -24,6 +24,14 @@ States:
     Assign:
       storeName: >-
         {% $states.result.ResponseBody.name ? $states.result.ResponseBody.name : 'tams' %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
     Next: GetSegments
   GetSegments:
     Type: Task
@@ -43,6 +51,14 @@ States:
     Assign:
       nextKey: >-
         {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
     Output:
       segments: >-
         {% $states.result.ResponseBody %}
@@ -122,6 +138,14 @@ States:
     Assign:
       nextKey: >-
         {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
     Output:
       segments: '{% $states.result.ResponseBody %}'
     Next: SegmentsFound
