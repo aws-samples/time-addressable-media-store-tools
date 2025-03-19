@@ -51,10 +51,10 @@ States:
     Type: Choice
     Default: Success
     Choices:
-      - Next: LoopSegments
+      - Next: MapSegments
         Condition: >-
           {% $boolean($states.input.segments) %}
-  LoopSegments:
+  MapSegments:
     Type: Map
     Items: >-
       {% $map($states.input.segments, function($v, $i) {{"index": $i, "segment": $v}}) %}
