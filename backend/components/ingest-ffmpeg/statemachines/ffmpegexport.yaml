@@ -1,0 +1,155 @@
+QueryLanguage: JSONata
+StartAt: GetStoreName
+States:
+  GetStoreName:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: ${ConnectionArn}
+      ApiEndpoint: ${TamsEndpoint}/service
+    Assign:
+      storeName: >-
+        {% $states.result.ResponseBody.name ? $states.result.ResponseBody.name : 'tams' %}
+      timerange: >-
+        {% $states.input.timerange %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Output: >-
+      {% $map($states.input.flowIds, function($v) {{"flowId": $v }}) %}
+    Next: MapFlows
+  MapFlows:
+    Type: Map
+    Items: >-
+      {% $states.input %}
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: SetVariables
+      States:
+        SetVariables:
+          Type: Pass
+          Assign:
+            flowId: >-
+              {% $states.input.flowId %}
+          Next: GetSegments
+        GetSegments:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: GET
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
+            QueryParameters:
+              accept_get_urls: >-
+                {% 'aws.${AwsRegion}:s3:' & $storeName %}
+              timerange: >-
+                {% $timerange %}
+          Assign:
+            xPagingCount: >-
+              {% $number($states.result.Headers.`x-paging-count`[0]) %}
+            nextKey: >-
+              {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          Output:
+            segments: >-
+              {% $states.result.ResponseBody %}
+          Next: NextKeyExists
+        NextKeyExists:
+          Type: Choice
+          Default: GetSegmentsNextPage
+          Choices:
+            - Condition: >-
+                {% $xPagingCount = 0 %}
+              Next: SegmentsComplete
+              Output: >-
+                {% $states.input %}
+            - Condition: >-
+                {% $not($nextKey) %}
+              Next: ConcatSegments
+              Output: >-
+                {% $states.input %}
+          Output: >-
+            {% $states.input %}
+        GetSegmentsNextPage:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+          Arguments:
+            Method: GET
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
+            QueryParameters:
+              accept_get_urls: >-
+                {% 'aws.${AwsRegion}:s3:' & $storeName %}
+              timerange: >-
+                {% $timerange %}
+              page: >-
+                {% $nextKey %}
+          Assign:
+            xPagingCount: >-
+              {% $number($states.result.Headers.`x-paging-count`[0]) %}
+            nextKey: >-
+              {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          Output:
+            segments: >-
+              {% $append($states.input.segments, $states.result.ResponseBody) %}
+          Next: NextKeyExists
+        SegmentsComplete:
+          Type: Succeed
+        ConcatSegments:
+          Type: Task
+          Resource: arn:aws:states:::lambda:invoke
+          Arguments:
+            FunctionName: ${FFmpegWorkerFunctionArn}
+            Payload:
+              action: CONCAT
+              outputBucket: ${BucketName}
+              segments: >-
+                {% $states.input.segments %}
+          Output: >-
+            {% $states.result.Payload.s3Object %}
+          Next: SegmentsComplete
+    Output:
+      s3Objects: >-
+        {% $states.result %}
+    Next: MergeFlows
+  MergeFlows:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    Arguments:
+      FunctionName: ${FFmpegWorkerFunctionArn}
+      Payload:
+        action: MERGE
+        outputBucket: ${BucketName}
+        s3Objects: >-
+          {% $states.input.s3Objects %}
+    Output: >-
+      {% $states.result.Payload %}
+    End: True

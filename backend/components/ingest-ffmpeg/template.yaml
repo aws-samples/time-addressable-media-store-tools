@@ -307,7 +307,9 @@ Resources:
                 - !Sub arn:aws:s3:::*/*
             - Effect: Allow
               Action:
+                - s3:GetObject
                 - s3:PutObject
+                - s3:DeleteObject
               Resource:
                 - !Sub ${FFmpegBucket.Arn}/*
       Events:
@@ -362,6 +364,51 @@ Resources:
                 - sqs:SendMessage
               Resource:
                 - !GetAtt FFmpegJobQueue.Arn
+
+  FfmpegExport:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/ffmpegexport.yaml
+      DefinitionSubstitutions:
+        AwsRegion: !Ref AWS::Region
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        FFmpegWorkerFunctionArn: !GetAtt FFmpegWorkerFunction.Arn
+        BucketName: !Ref FFmpegBucket
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Ref TamsConnectionArn
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub
+                  - arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/${TamsConnection}/*
+                  - TamsConnection: !Select [1, !Split [/, !Ref TamsConnectionArn]]
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - GET
+                StringLike:
+                  states:HTTPEndpoint:
+                    - !Sub ${ApiEndpoint}/service
+                    - !Sub ${ApiEndpoint}/flows/*/segments
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !GetAtt FFmpegWorkerFunction.Arn
 
 Outputs:
   ApiEndpoint:
