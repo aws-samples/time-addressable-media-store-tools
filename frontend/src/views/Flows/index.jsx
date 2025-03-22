@@ -17,6 +17,7 @@ import { useFlows } from "@/hooks/useFlows";
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useState } from "react";
+import CreateExportModal from "./components/CreateExportModal";
 import CreateRuleModal from "./components/CreateRuleModal";
 import CreateJobModal from "./components/CreateJobModal";
 
@@ -257,17 +258,24 @@ const Flows = () => {
                       ? {
                           text: "FFmpeg",
                           id: "ffmpeg",
-                          disabled: !(selectedItems.length === 1),
+                          disabled: !(selectedItems.length > 0),
                           disabledReason:
                             "Select only one Flow for this action.",
                           items: [
                             {
+                              text: "Create FFmpeg Export",
+                              id: "create-export",
+                              disabled: !(selectedItems.length > 1),
+                            },
+                            {
                               text: "Create FFmpeg Rule",
                               id: "create-rule",
+                              disabled: !(selectedItems.length === 1),
                             },
                             {
                               text: "Create FFmpeg Job",
                               id: "create-job",
+                              disabled: !(selectedItems.length === 1),
                             },
                           ],
                         }
@@ -329,6 +337,14 @@ const Flows = () => {
               modalVisible={modalVisible}
               setModalVisible={setModalVisible}
               selectedItems={selectedItems}
+            />
+          ),
+          "create-export": (
+            <CreateExportModal
+              modalVisible={modalVisible}
+              setModalVisible={setModalVisible}
+              selectedFlowIds={selectedItems.map((item) => item.id)}
+              mutateFlows={mutate}
             />
           ),
           "create-rule": (

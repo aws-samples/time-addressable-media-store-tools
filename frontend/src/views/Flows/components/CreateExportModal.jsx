@@ -10,26 +10,23 @@ import {
   SpaceBetween,
   TextContent,
 } from "@cloudscape-design/components";
-import { Link } from "react-router-dom";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import useStore from "@/stores/useStore";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { AWS_REGION, AWS_FFMPEG_PARAMETER } from "@/constants";
-import { useJobStart } from "@/hooks/useFfmpeg";
-import createFFmegFlow from "@/utils/createFFmegFlow";
+import { useExportStart } from "@/hooks/useFfmpeg";
 
-const CreateJobModal = ({
+const CreateExportModal = ({
   modalVisible,
   setModalVisible,
-  selectedFlowId,
+  selectedFlowIds,
   mutateFlows,
 }) => {
   const [commands, setCommands] = useState([]);
   const [timerange, setTimerange] = useState("");
-  const [outputFlow, setoutputFlow] = useState("");
   const [ffmpeg, setFfmpeg] = useState();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { start } = useJobStart();
+  const { start } = useExportStart();
   const addAlertItem = useStore((state) => state.addAlertItem);
   const delAlertItem = useStore((state) => state.delAlertItem);
 
@@ -41,12 +38,10 @@ const CreateJobModal = ({
           .then((response) => JSON.parse(response.Parameter.Value))
       );
       setCommands(
-        Object.entries(data)
-          .filter(([_, value]) => value.tams)
-          .map(([label, value]) => ({
-            label,
-            value,
-          }))
+        Object.entries(data).filter(([_, value]) => !value.tams).map(([label, value]) => ({
+          label,
+          value,
+        }))
       );
     };
     fetchCommands();
@@ -55,15 +50,12 @@ const CreateJobModal = ({
   const handleDismiss = () => {
     setModalVisible(false);
     setTimerange("");
-    setoutputFlow("");
     setFfmpeg();
     setIsSubmitting(false);
   };
 
   const createJob = async () => {
     setIsSubmitting(true);
-    const destination =
-      outputFlow || (await createFFmegFlow(selectedFlowId, ffmpeg.tams));
     const id = crypto.randomUUID();
     addAlertItem({
       type: "success",
@@ -71,21 +63,16 @@ const CreateJobModal = ({
       dismissLabel: "Dismiss message",
       content: (
         <TextContent>
-          <p>The Batch Job is being started...</p>
-          <p>
-            It will ingest into flow{" "}
-            <Link to={`/flows/${destination}`}>{destination}</Link>
-          </p>
+          <p>The Export is being started...</p>
         </TextContent>
       ),
       id: id,
       onDismiss: () => delAlertItem(id),
     });
     await start({
-      inputFlow: selectedFlowId,
-      sourceTimerange: timerange,
+      timerange: timerange,
+      flowIds: selectedFlowIds,
       ffmpeg: { command: ffmpeg.command, outputFormat: ffmpeg.outputFormat },
-      outputFlow: destination,
     });
     handleDismiss();
     setIsSubmitting(false);
@@ -132,17 +119,6 @@ const CreateJobModal = ({
           />
         </FormField>
         <FormField
-          description="(Optional) Specify the ID for an existing Flow to ingest into. Leave blank to create a new Flow."
-          label="Destination"
-        >
-          <Input
-            value={outputFlow}
-            onChange={({ detail }) => {
-              setoutputFlow(detail.value);
-            }}
-          />
-        </FormField>
-        <FormField
           description="Choose an FFmpeg command"
           label="FFmpeg Command"
         >
@@ -172,4 +148,4 @@ const CreateJobModal = ({
   );
 };
 
-export default CreateJobModal;
+export default CreateExportModal;

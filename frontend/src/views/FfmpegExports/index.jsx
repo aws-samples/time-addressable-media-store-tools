@@ -3,9 +3,11 @@ import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
 import {
   Box,
   CollectionPreferences,
+  CopyToClipboard,
   Link as ExternalLink,
   Header,
   Pagination,
+  SpaceBetween,
   StatusIndicator,
   Table,
   TextFilter,
@@ -13,23 +15,44 @@ import {
 
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
-import { useJobs } from "@/hooks/useFfmpeg";
+import { useExports } from "@/hooks/useFfmpeg";
 
 const columnDefinitions = [
   {
-    id: "id",
-    header: "Id",
-    cell: (item) => <Link to={`/flows/${item.id}`}>{item.id}</Link>,
-    sortingField: "id",
+    id: "executionArn",
+    header: "Execution Arn",
+    cell: (item) => (
+      <ExternalLink
+        external
+        href={`https://${AWS_REGION}.console.aws.amazon.com/states/home?region=${AWS_REGION}#/v2/executions/details/${item.executionArn}`}
+      >
+        {item.executionArn.split(":")[7]}
+      </ExternalLink>
+    ),
+    sortingField: "executionArn",
     isRowHeader: true,
     width: 310,
   },
   {
-    id: "sourceTimerange",
+    id: "timerange",
     header: "Timerange",
-    cell: (item) => item.sourceTimerange,
-    sortingField: "sourceTimerange",
+    cell: (item) => item.timerange,
+    sortingField: "timerange",
     maxWidth: 160,
+  },
+  {
+    id: "flowIds",
+    header: "Flows",
+    cell: (item) => (
+      <SpaceBetween>
+        {item.flowIds.map((flowId) => (
+          <Link key={flowId} to={`/flows/${flowId}`}>
+            {flowId}
+          </Link>
+        ))}
+      </SpaceBetween>
+    ),
+    sortingField: "flowIds",
   },
   {
     id: "command",
@@ -43,31 +66,32 @@ const columnDefinitions = [
     header: "Output Format",
     cell: (item) => item.ffmpeg?.outputFormat,
     sortingField: "outputFormat",
+    maxWidth: 100,
   },
   {
-    id: "outputFlow",
-    header: "Destination Flow",
-    cell: (item) => (
-      <Link to={`/flows/${item.outputFlow}`}>{item.outputFlow}</Link>
-    ),
-    sortingField: "outputFlow",
-    width: 310,
+    id: "output",
+    header: "Output",
+    cell: (item) =>
+      item.output.bucket && (
+        <CopyToClipboard
+          copyButtonAriaLabel="Copy S3 Uri"
+          copyErrorText="Uri failed to copy"
+          copySuccessText="Uri copied"
+          textToCopy={`s3://${item.output.bucket}/${item.output.key}`}
+          variant="icon"
+        />
+      ),
+    sortingField: "output",
+    width: 80,
   },
   {
     id: "status",
     header: "Status",
     cell: (item) =>
       item.status && (
-        <>
-          <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
-            {item.status}
-          </StatusIndicator>
-          <ExternalLink
-            external
-            href={`https://${AWS_REGION}.console.aws.amazon.com/states/home?region=${AWS_REGION}#/v2/executions/details/${item.executionArn}`}
-            variant="info"
-          />
-        </>
+        <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
+          {item.status}
+        </StatusIndicator>
       ),
     sortingField: "status",
   },
@@ -106,31 +130,29 @@ const collectionPreferencesProps = {
   title: "Preferences",
 };
 
-const FfmpegJobs = () => {
-  const { jobs, isLoading } = useJobs();
+const FfmpegExports = () => {
+  const { exports, isLoading } = useExports();
+
   const [preferences, setPreferences] = useState({
     pageSize: PAGE_SIZE,
     contentDisplay: [
-      { id: "id", visible: true },
-      { id: "sourceTimerange", visible: true },
-      { id: "command", visible: true },
-      { id: "outputFormat", visible: false },
-      { id: "outputFlow", visible: true },
+      { id: "executionArn", visible: true },
+      { id: "timerange", visible: true },
+      { id: "flowIds", visible: true },
+      { id: "command", visible: false },
+      { id: "outputFormat", visible: true },
+      { id: "output", visible: true },
       { id: "status", visible: true },
       { id: "startDate", visible: false },
       { id: "stopDate", visible: false },
     ],
   });
   const { items, collectionProps, filterProps, paginationProps } =
-    useCollection(isLoading ? [] : jobs, {
-      expandableRows: {
-        getId: (item) => item.id,
-        getParentId: (item) => item.parentId,
-      },
+    useCollection(isLoading ? [] : exports, {
       filtering: {
         empty: (
           <Box margin={{ vertical: "xs" }} textAlign="center" color="inherit">
-            <b>No jobs</b>
+            <b>No exports</b>
           </Box>
         ),
         noMatch: (
@@ -152,8 +174,8 @@ const FfmpegJobs = () => {
       wrapLines
       loadingText="Loading resources"
       loading={isLoading}
-      trackBy="key"
-      header={<Header>Jobs</Header>}
+      trackBy="executionArn"
+      header={<Header>Exports</Header>}
       columnDefinitions={columnDefinitions}
       columnDisplay={preferences.contentDisplay}
       contentDensity="compact"
@@ -171,4 +193,4 @@ const FfmpegJobs = () => {
   );
 };
 
-export default FfmpegJobs;
+export default FfmpegExports;

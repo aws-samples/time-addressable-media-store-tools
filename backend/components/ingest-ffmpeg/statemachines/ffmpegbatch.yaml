@@ -4,14 +4,14 @@ States:
   CheckTimerange:
     Type: Pass
     Assign:
-      sourceFlow: >-
-        {% $states.input.sourceFlow %}
+      inputFlow: >-
+        {% $states.input.inputFlow %}
       sourceTimerange: >-
         {% $boolean($states.input.sourceTimerange) ? $states.input.sourceTimerange: '_' %}
       ffmpeg: >-
         {% $states.input.ffmpeg %}
-      destinationFlow: >-
-        {% $states.input.destinationFlow %}
+      outputFlow: >-
+        {% $states.input.outputFlow %}
     Next: GetStoreName
   GetStoreName:
     Type: Task
@@ -41,7 +41,7 @@ States:
       InvocationConfig:
         ConnectionArn: ${ConnectionArn}
       ApiEndpoint: >-
-        {% '${TamsEndpoint}/flows/' & $sourceFlow & '/segments' %}
+        {% '${TamsEndpoint}/flows/' & $inputFlow & '/segments' %}
       QueryParameters:
         limit: 10
         accept_get_urls: >-
@@ -88,8 +88,8 @@ States:
             outputPrefix: ffmpeg/
             ffmpeg: >-
               {% $ffmpeg %}
-            destinationFlow: >-
-              {% $destinationFlow %}
+            outputFlow: >-
+              {% $outputFlow %}
           Next: Entry
           Assign:
             index: >-
@@ -126,7 +126,7 @@ States:
       InvocationConfig:
         ConnectionArn: ${ConnectionArn}
       ApiEndpoint: >-
-        {% '${TamsEndpoint}/flows/' & $sourceFlow & '/segments' %}
+        {% '${TamsEndpoint}/flows/' & $inputFlow & '/segments' %}
       QueryParameters:
         limit: 10
         accept_get_urls: >-

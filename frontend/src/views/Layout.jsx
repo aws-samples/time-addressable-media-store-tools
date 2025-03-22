@@ -106,6 +106,11 @@ const Layout = () => {
                     items: [
                       {
                         type: "link",
+                        text: "Export",
+                        href: "/ffmpeg-exports",
+                      },
+                      {
+                        type: "link",
                         text: "Rules",
                         href: "/ffmpeg-rules",
                       },

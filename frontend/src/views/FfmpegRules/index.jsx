@@ -41,14 +41,14 @@ const FfmpegRules = () => {
       maxWidth: 80,
     },
     {
-      id: "destinationFlow",
+      id: "outputFlow",
       header: "Destination Flow",
       cell: (item) => (
-        <Link to={`/flows/${item.destinationFlow}`}>
-          {item.destinationFlow}
+        <Link to={`/flows/${item.outputFlow}`}>
+          {item.outputFlow}
         </Link>
       ),
-      sortingField: "destinationFlow",
+      sortingField: "outputFlow",
     },
     {
       id: "delete",

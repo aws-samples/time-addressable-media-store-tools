@@ -19,6 +19,7 @@ queue_arn = os.environ["QUEUE_ARN"]
 output_bucket = os.environ["OUTPUT_BUCKET"]
 event_rule_role_arn = os.environ["EVENT_RULE_ROLE_ARN"]
 ffmpeg_batch_arn = os.environ["FFMPEG_BATCH_ARN"]
+ffmpeg_export_arn = os.environ["FFMPEG_EXPORT_ARN"]
 rule_id_prefix = "ffmpeg-flow-segments-"
 event_bus_name = "tams-api"
 
@@ -37,9 +38,9 @@ def list_ffmpeg_rules():
     return rule_targets
 
 
-@app.put("/ffmpeg-rules/<flowId>/<destinationFlowId>")
+@app.put("/ffmpeg-rules/<flowId>/<outputFlowId>")
 @tracer.capture_method(capture_response=False)
-def put_ffmpeg_rule(flowId: str, destinationFlowId: str):
+def put_ffmpeg_rule(flowId: str, outputFlowId: str):
     requestBody = json.loads(app.current_event.body)
     rule_name = f"{rule_id_prefix}{flowId}"
     rules = get_rule_names()
@@ -61,7 +62,7 @@ def put_ffmpeg_rule(flowId: str, destinationFlowId: str):
         EventBusName=event_bus_name,
         Targets=[
             {
-                "Id": destinationFlowId,
+                "Id": outputFlowId,
                 "Arn": queue_arn,
                 "RoleArn": event_rule_role_arn,
                 "InputTransformer": {
@@ -72,7 +73,7 @@ def put_ffmpeg_rule(flowId: str, destinationFlowId: str):
                             "outputBucket": output_bucket,
                             "outputPrefix": "ffmpeg/",
                             "ffmpeg": requestBody,
-                            "destinationFlow": destinationFlowId,
+                            "outputFlow": outputFlowId,
                         }
                     ).replace('"<segments>"', "<segments>"),
                 },
@@ -82,14 +83,14 @@ def put_ffmpeg_rule(flowId: str, destinationFlowId: str):
     return None, HTTPStatus.CREATED.value
 
 
-@app.delete("/ffmpeg-rules/<flowId>/<destinationFlowId>")
+@app.delete("/ffmpeg-rules/<flowId>/<outputFlowId>")
 @tracer.capture_method(capture_response=False)
-def delete_ffmpeg_rule(flowId: str, destinationFlowId: str):
+def delete_ffmpeg_rule(flowId: str, outputFlowId: str):
     rule_name = f"{rule_id_prefix}{flowId}"
     events.remove_targets(
         Rule=rule_name,
         EventBusName=event_bus_name,
-        Ids=[destinationFlowId],
+        Ids=[outputFlowId],
     )
     targets = get_rule_targets(rule_name)
     if len(targets) == 0:
@@ -103,13 +104,21 @@ def delete_ffmpeg_rule(flowId: str, destinationFlowId: str):
 @app.get("/ffmpeg-jobs")
 @tracer.capture_method(capture_response=False)
 def list_ffmpeg_jobs():
-    execution_arns = get_executions()
     flow_jobs = defaultdict(list)
-    for execution_arn in execution_arns:
-        source_flow, job_target = get_execution_details(execution_arn)
-        flow_jobs[source_flow].append(job_target)
+    for execution_arn in get_executions(ffmpeg_batch_arn):
+        input_flow, job_target = get_job_details(execution_arn)
+        flow_jobs[input_flow].append(job_target)
     return [
         {"id": flow_id, "targets": targets} for flow_id, targets in flow_jobs.items()
+    ]
+
+
+@app.get("/ffmpeg-exports")
+@tracer.capture_method(capture_response=False)
+def list_ffmpeg_exports():
+    return [
+        get_export_details(execution_arn)
+        for execution_arn in get_executions(ffmpeg_export_arn)
     ]
 
 
@@ -167,25 +176,24 @@ def parse_rule_target(target):
 
 
 @tracer.capture_method(capture_response=False)
-def get_executions():
-    list_executions = sfn.list_executions(stateMachineArn=ffmpeg_batch_arn)
-    execution_arns = [exec["executionArn"] for exec in list_executions["executions"]]
+def get_executions(state_machine_arn):
+    list_executions = sfn.list_executions(stateMachineArn=state_machine_arn)
+    for execution in list_executions["executions"]:
+        yield execution["executionArn"]
     while "NextToken" in list_executions:
         list_executions = sfn.list_executions(
-            stateMachineArn=ffmpeg_batch_arn,
+            stateMachineArn=state_machine_arn,
             NextToken=list_executions["NextToken"],
         )
-        execution_arns.extend(
-            [exec["executionArn"] for exec in list_executions["executions"]]
-        )
-    return execution_arns
+        for execution in list_executions["executions"]:
+            yield execution["executionArn"]
 
 
 @tracer.capture_method(capture_response=False)
-def get_execution_details(execution_arn):
+def get_job_details(execution_arn):
     describe_execution = sfn.describe_execution(executionArn=execution_arn)
     job_input = json.loads(describe_execution["input"])
-    return job_input["sourceFlow"], {
+    return job_input["inputFlow"], {
         "executionArn": describe_execution["executionArn"],
         "status": describe_execution["status"],
         "startDate": describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
@@ -196,5 +204,27 @@ def get_execution_details(execution_arn):
         ),
         "sourceTimerange": job_input["sourceTimerange"],
         "ffmpeg": job_input["ffmpeg"],
-        "destinationFlow": job_input["destinationFlow"],
+        "outputFlow": job_input["outputFlow"],
+    }
+
+
+@tracer.capture_method(capture_response=False)
+def get_export_details(execution_arn):
+    describe_execution = sfn.describe_execution(executionArn=execution_arn)
+    job_input = json.loads(describe_execution["input"])
+    return {
+        "executionArn": describe_execution["executionArn"],
+        "status": describe_execution["status"],
+        "startDate": describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
+        "stopDate": (
+            describe_execution["stopDate"].strftime("%Y-%m-%d %H:%M:%S")
+            if describe_execution.get("stopDate")
+            else ""
+        ),
+        "timerange": job_input["timerange"],
+        "flowIds": job_input["flowIds"],
+        "ffmpeg": job_input.get("ffmpeg", {}),
+        "output": json.loads(describe_execution.get("output", "{}")).get(
+            "s3Object", {}
+        ),
     }

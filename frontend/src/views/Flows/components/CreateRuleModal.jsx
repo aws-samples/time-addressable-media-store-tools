@@ -25,7 +25,7 @@ const CreateRuleModal = ({
   mutateFlows,
 }) => {
   const [commands, setCommands] = useState([]);
-  const [destinationFlow, setDestinationFlow] = useState("");
+  const [outputFlow, setoutputFlow] = useState("");
   const [ffmpeg, setFfmpeg] = useState();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { put } = useCreateRule();
@@ -40,10 +40,12 @@ const CreateRuleModal = ({
           .then((response) => JSON.parse(response.Parameter.Value))
       );
       setCommands(
-        Object.entries(data).map(([label, value]) => ({
-          label,
-          value,
-        }))
+        Object.entries(data)
+          .filter(([_, value]) => value.tams)
+          .map(([label, value]) => ({
+            label,
+            value,
+          }))
       );
     };
     fetchCommands();
@@ -51,13 +53,14 @@ const CreateRuleModal = ({
 
   const handleDismiss = () => {
     setModalVisible(false);
-    setDestinationFlow("");
+    setoutputFlow("");
     setFfmpeg();
   };
 
   const createRule = async () => {
     setIsSubmitting(true);
-    const destination = destinationFlow || (await createFFmegFlow(selectedFlowId, ffmpeg.tams));
+    const destination =
+      outputFlow || (await createFFmegFlow(selectedFlowId, ffmpeg.tams));
     const id = crypto.randomUUID();
     addAlertItem({
       type: "success",
@@ -77,7 +80,7 @@ const CreateRuleModal = ({
     });
     await put({
       flowId: selectedFlowId,
-      destinationFlowId: destination,
+      outputFlowId: destination,
       payload: ffmpeg,
     });
     handleDismiss();
@@ -118,9 +121,9 @@ const CreateRuleModal = ({
           label="Destination"
         >
           <Input
-            value={destinationFlow}
+            value={outputFlow}
             onChange={({ detail }) => {
-              setDestinationFlow(detail.value);
+              setoutputFlow(detail.value);
             }}
           />
         </FormField>

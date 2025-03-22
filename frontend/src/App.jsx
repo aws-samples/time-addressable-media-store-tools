@@ -19,6 +19,7 @@ import HlsPlayer from "@/views/HlsPlayer";
 import Home from "@/views/Home";
 import Layout from "@/views/Layout";
 import HlsIngestion from "@/views/HlsIngestion";
+import FfmpegExports from "@/views/FfmpegExports";
 import FfmpegRules from "@/views/FfmpegRules";
 import FfmpegJobs from "@/views/FfmpegJobs";
 import MediaConvertIngestion from "@/views/MediaConvertIngestion";
@@ -82,6 +83,7 @@ const App = () => {
           )}
           {AWS_FFMPEG_ENDPOINT && (
             <>
+              <Route path="ffmpeg-exports" element={<FfmpegExports />} />
               <Route path="ffmpeg-rules" element={<FfmpegRules />} />
               <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
             </>

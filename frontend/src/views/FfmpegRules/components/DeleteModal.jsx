@@ -14,8 +14,8 @@ const DeleteModal = ({ modalVisible, setModalVisible, selectedKey, setSelectedKe
   const delAlertItem = useStore((state) => state.delAlertItem);
 
   const deleteRule = async () => {
-    const [flowId, destinationFlowId] = selectedKey.split("_");
-    const delPromise = del({ flowId, destinationFlowId });
+    const [flowId, outputFlowId] = selectedKey.split("_");
+    const delPromise = del({ flowId, outputFlowId });
     const id = crypto.randomUUID();
     addAlertItem({
       type: "success",
