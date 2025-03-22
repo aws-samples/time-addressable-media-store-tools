@@ -265,7 +265,7 @@ const Flows = () => {
                             {
                               text: "Create FFmpeg Export",
                               id: "create-export",
-                              disabled: !(selectedItems.length > 1),
+                              disabled: !(selectedItems.length >= 1),
                             },
                             {
                               text: "Create FFmpeg Rule",
