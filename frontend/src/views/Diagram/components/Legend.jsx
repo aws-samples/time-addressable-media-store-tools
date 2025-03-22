@@ -1,9 +1,7 @@
-import { Mode } from "@cloudscape-design/global-styles";
-import useStore from "@/stores/useStore";
+import { colorTextLabel } from "@cloudscape-design/design-tokens";
 import { styles } from "../constants.js";
 
 const Legend = () => {
-  const mode = useStore((state) => state.themeMode);
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="48rem" viewBox="0 0 782 40">
       <g id="source">
@@ -59,7 +57,7 @@ const Legend = () => {
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <text x="322" y="30" fill={mode === Mode.Dark ? "#FFFFFF" : "#000000"} fontWeight="bold">
+        <text x="322" y="30" fill={colorTextLabel} fontWeight="bold">
           Represents
         </text>
       </g>
@@ -90,7 +88,7 @@ const Legend = () => {
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <text x="482" y="30" fill={mode === Mode.Dark ? "#FFFFFF" : "#000000"} fontWeight="bold">
+        <text x="482" y="30" fill={colorTextLabel} fontWeight="bold">
           Collects
         </text>
       </g>
@@ -102,7 +100,7 @@ const Legend = () => {
           y2="14"
           stroke={styles.edges.collects.lineColor}
           strokeWidth="2"
-          strokeDasharray="2"
+          strokeDasharray="10 5"
         />
         <line
           x1="776"
@@ -122,8 +120,7 @@ const Legend = () => {
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <text x="642" y="30" fill={mode === Mode.Dark ? "#FFFFFF" : "#000000"} fontWeight="bold">
-          {" "}
+        <text x="642" y="30" fill={colorTextLabel} fontWeight="bold">
           Collects (Implied)
         </text>
       </g>

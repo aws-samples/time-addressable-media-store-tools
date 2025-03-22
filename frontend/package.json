@@ -16,6 +16,7 @@
     "@aws-sdk/client-ssm": "^3.632.0",
     "@cloudscape-design/collection-hooks": "^1.0.50",
     "@cloudscape-design/components": "^3.0.714",
+    "@cloudscape-design/design-tokens": "^3.0.52",
     "@cloudscape-design/global-styles": "^1.0.32",
     "aws-amplify": "^6.5.0",
     "cytoscape": "^3.30.4",

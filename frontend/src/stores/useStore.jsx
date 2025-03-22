@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { Mode } from "@cloudscape-design/global-styles";
 
 const useStore = create((set) => ({
   alertItems: [],
@@ -15,10 +14,6 @@ const useStore = create((set) => ({
     set((state) => ({
       alertItems: [...state.alertItems, ...alertItems],
     })),
-
-  themeMode: Mode.Dark,
-  setDarkTheme: () => set({ themeMode: Mode.Dark }),
-  setLightTheme: () => set({ themeMode: Mode.Light }),
 }));
 
 export default useStore;

@@ -1,12 +1,10 @@
+import { useState } from "react";
 import { TopNavigation } from "@cloudscape-design/components";
 import { useAuthenticator } from "@aws-amplify/ui-react";
 import { Mode, applyMode } from "@cloudscape-design/global-styles";
-import useStore from "@/stores/useStore";
 
 const Header = () => {
-  const mode = useStore((state) => state.themeMode);
-  const setDark = useStore((state) => state.setDarkTheme);
-  const setLight = useStore((state) => state.setLightTheme);
+  const [mode, setMode] = useState(Mode.Dark);
   const { user, signOut } = useAuthenticator((context) => [context.user]);
 
   applyMode(mode);
@@ -16,10 +14,10 @@ const Header = () => {
       signOut();
     }
     if (detail.id === "dark") {
-      setDark();
+      setMode(Mode.Dark);
     }
     if (detail.id === "light") {
-      setLight();
+      setMode(Mode.Light);
     }
   };
 
