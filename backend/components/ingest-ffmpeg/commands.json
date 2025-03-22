@@ -36,5 +36,11 @@
             "essence_parameters.frame_width": 854,
             "essence_parameters.frame_height": 480
         }
+    },
+    "MP4 Export": {
+        "command": [
+            "-c copy"
+        ],
+        "outputFormat": "mp4"
     }
 }

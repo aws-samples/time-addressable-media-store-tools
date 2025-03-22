@@ -297,3 +297,9 @@ Outputs:
       - DeployIngestFfmpeg
       - !GetAtt IngestFfmpegStack.Outputs.FfmpegBatchArn
       - ""
+
+  FfmpegExportArn:
+    Value: !If
+      - DeployIngestFfmpeg
+      - !GetAtt IngestFfmpegStack.Outputs.FfmpegExportArn
+      - ""

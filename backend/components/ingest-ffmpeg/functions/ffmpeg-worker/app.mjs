@@ -13,6 +13,7 @@ import { unlink } from "fs/promises";
 
 const REGION = process.env.AWS_REGION;
 const INGEST_QUEUE_URL = process.env.INGEST_QUEUE_URL;
+const FFMPEG_BUCKET = process.env.FFMPEG_BUCKET;
 
 const s3Client = new S3Client({ region: REGION });
 const sqsClient = new SQSClient({ region: REGION });
@@ -66,11 +67,7 @@ const getObjectStream = async ({ bucket, key }) => {
   return getObjectCommandResponse.Body;
 };
 
-const executeFFmpegCommandSingle = (
-  inputStream,
-  ffmpegConfig,
-  outputStream
-) => {
+const executeFFmpegToStream = (inputStream, ffmpegConfig, outputStream) => {
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputStream)
@@ -80,7 +77,7 @@ const executeFFmpegCommandSingle = (
         console.info("FFmpeg command:", commandLine);
       })
       .on("progress", (progress) => {
-        console.log("Processing:", progress.percent, "% done");
+        console.log("Processing:", progress);
       })
       .on("error", (err, stdout, stderr) => {
         console.error("FFmpeg error:", err);
@@ -114,36 +111,21 @@ const processMessage = async (message) => {
         message.outputPrefix
       );
       const input = await getSegmentStream(segment);
-      await executeFFmpegCommandSingle(input, message.ffmpeg, outputStream);
+      await executeFFmpegToStream(input, message.ffmpeg, outputStream);
       console.info("Uploading output to S3...");
       await upload.done();
       console.info(
-        `Processing complete, Timerange: ${segment.timerange}, FlowId: ${message.destinationFlow}...`
+        `Processing complete, Timerange: ${segment.timerange}, FlowId: ${message.outputFlow}...`
       );
       console.info(`Sending SQS message to ${INGEST_QUEUE_URL}...`);
       await sendIngestMessage({
-        flowId: message.destinationFlow,
+        flowId: message.outputFlow,
         timerange: segment.timerange,
         uri: `s3://${message.outputBucket}/${outputKey}`,
         deleteSource: true,
       });
     }
   }
-};
-
-const downloadSegment = async (segment) => {
-  const readStream = await getSegmentStream(segment);
-  const downloadPath = `/tmp/${segment.object_id}`;
-  const writeStream = createWriteStream(downloadPath);
-  // Write the stream to file
-  await new Promise((resolve, reject) => {
-    readStream
-      .pipe(writeStream)
-      .on("error", (err) => reject(err))
-      .on("finish", () => resolve());
-  });
-  console.info(`File downloaded successfully to ${downloadPath}`);
-  return downloadPath;
 };
 
 const downloadObject = async (obj) => {
@@ -180,6 +162,104 @@ const s3Upload = async (bucket, prefix, tmpPath) => {
   return key;
 };
 
+const concatAction = async (message) => {
+  // Download segments to /tmp folder
+  const downloadPromises = message.s3Objects.map((s3Object) =>
+    downloadObject(s3Object)
+  );
+  const inputs = await Promise.all(downloadPromises);
+  // Execute the ffmpeg concat job
+  const ffmpegPromise = new Promise((resolve, reject) => {
+    ffmpeg(`concat:${inputs.join("|")}`)
+      .outputOptions(message.ffmpeg.command)
+      .outputFormat(message.ffmpeg.outputFormat)
+      .on("start", (commandLine) => {
+        console.info("FFmpeg command:", commandLine);
+      })
+      .on("progress", (progress) => {
+        console.log("Processing:", progress);
+      })
+      .on("error", (err, stdout, stderr) => {
+        console.error("FFmpeg error:", err);
+        console.error("FFmpeg stdout:", stdout);
+        console.error("FFmpeg stderr:", stderr);
+        reject(err);
+      })
+      .on("end", () => {
+        console.info("FFmpeg processing finished");
+        resolve();
+      })
+      .save("/tmp/ffmpegOutput");
+  });
+  await ffmpegPromise;
+  // Delete /tmp segments
+  await Promise.all(inputs.map((filePath) => unlink(filePath)));
+  // Upload concat output
+  const outputKey = await s3Upload(
+    message.outputBucket,
+    "concat/",
+    "/tmp/ffmpegOutput"
+  );
+  // Delete /tmp concat output
+  await unlink("/tmp/ffmpegOutput");
+  return { s3Object: { bucket: message.outputBucket, key: outputKey } };
+};
+
+const mergeAction = async (message) => {
+  // Download concat files to /tmp folder
+  const downloadPromises = message.s3Objects.map((s3Object) =>
+    downloadObject(s3Object)
+  );
+  const inputs = await Promise.all(downloadPromises);
+  // Execute the ffmpeg merge job
+  const ffmpegPromise = new Promise((resolve, reject) => {
+    let command = ffmpeg();
+    inputs.forEach((input) => {
+      command = command.input(input);
+    });
+    command
+      .outputOptions(message.ffmpeg.command)
+      .outputFormat(message.ffmpeg.outputFormat)
+      .on("start", (commandLine) => {
+        console.info("FFmpeg command:", commandLine);
+      })
+      .on("progress", (progress) => {
+        console.log("Processing:", progress.percent);
+      })
+      .on("error", (err, stdout, stderr) => {
+        console.error("FFmpeg error:", err);
+        console.error("FFmpeg stdout:", stdout);
+        console.error("FFmpeg stderr:", stderr);
+        reject(err);
+      })
+      .on("end", () => {
+        console.info("FFmpeg processing finished");
+        resolve();
+      })
+      .save("/tmp/ffmpegOutput");
+  });
+  await ffmpegPromise;
+  // Delete /tmp concat files
+  await Promise.all(inputs.map((filePath) => unlink(filePath)));
+  // Delete s3 concat files
+  await Promise.all(
+    message.s3Objects
+      .filter(({ bucket }) => bucket === FFMPEG_BUCKET)
+      .map(({ bucket, key }) =>
+        s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+      )
+  );
+  // upload export result
+  const outputKey = await s3Upload(
+    message.outputBucket,
+    "export/",
+    "/tmp/ffmpegOutput"
+  );
+  // delete /tmp export result
+  await unlink("/tmp/ffmpegOutput");
+  return { s3Object: { bucket: message.outputBucket, key: outputKey } };
+};
+
 export const lambdaHandler = async (event, _context) => {
   console.info(JSON.stringify(event));
   if (event.Records) {
@@ -189,109 +269,10 @@ export const lambdaHandler = async (event, _context) => {
   }
   if (event.action) {
     if (event.action == "CONCAT") {
-      // Download segments to /tmp folder
-      const downloadPromises = event.segments.map((segment) =>
-        downloadSegment(segment)
-      );
-      await Promise.all(downloadPromises);
-      // Sort inputs so that concat is done in correct timerange sequence
-      const orderedInputs = event.segments
-        .sort((a, b) => {
-          const getStartTime = (timerange) => {
-            const [start] = timerange.slice(1).split("_");
-            const [seconds, nanos] = start.split(":").map(Number);
-            return seconds * 1000000000 + nanos;
-          };
-          return getStartTime(b.timerange) - getStartTime(a.timerange);
-        })
-        .map((segment) => `/tmp/${segment.object_id}`);
-      // Execute the ffmpeg concat job
-      const ffmpegPromise = new Promise((resolve, reject) => {
-        ffmpeg(`concat:${orderedInputs.join("|")}`)
-          .outputOptions(["-c copy"])
-          .outputFormat("mpegts")
-          .on("start", (commandLine) => {
-            console.info("FFmpeg command:", commandLine);
-          })
-          .on("progress", (progress) => {
-            console.log("Processing:", progress.percent, "% done");
-          })
-          .on("error", (err, stdout, stderr) => {
-            console.error("FFmpeg error:", err);
-            console.error("FFmpeg stdout:", stdout);
-            console.error("FFmpeg stderr:", stderr);
-            reject(err);
-          })
-          .on("end", () => {
-            console.info("FFmpeg processing finished");
-            resolve();
-          })
-          .save("/tmp/ffmpegOutput");
-      });
-      await ffmpegPromise;
-      // Delete /tmp segments
-      await Promise.all(orderedInputs.map((filePath) => unlink(filePath)));
-      // Upload concat output
-      const outputKey = await s3Upload(
-        event.outputBucket,
-        "concat/",
-        "/tmp/ffmpegOutput"
-      );
-      // Delete /tmp concat output
-      await unlink("/tmp/ffmpegOutput");
-      return { s3Object: { bucket: event.outputBucket, key: outputKey } };
+      return await concatAction(event);
     }
     if (event.action == "MERGE") {
-      // Download concat files to /tmp folder
-      const downloadPromises = event.s3Objects.map((s3Object) =>
-        downloadObject(s3Object)
-      );
-      const inputs = await Promise.all(downloadPromises);
-      // Execute the ffmpeg merge job
-      const ffmpegPromise = new Promise((resolve, reject) => {
-        let command = ffmpeg();
-        inputs.forEach((input) => {
-          command = command.input(input);
-        });
-        command
-          .outputOptions(["-c copy"])
-          .outputFormat("mp4")
-          .on("start", (commandLine) => {
-            console.info("FFmpeg command:", commandLine);
-          })
-          .on("progress", (progress) => {
-            console.log("Processing:", progress.percent, "% done");
-          })
-          .on("error", (err, stdout, stderr) => {
-            console.error("FFmpeg error:", err);
-            console.error("FFmpeg stdout:", stdout);
-            console.error("FFmpeg stderr:", stderr);
-            reject(err);
-          })
-          .on("end", () => {
-            console.info("FFmpeg processing finished");
-            resolve();
-          })
-          .save("/tmp/ffmpegOutput");
-      });
-      await ffmpegPromise;
-      // Delete /tmp concat files
-      await Promise.all(inputs.map((filePath) => unlink(filePath)));
-      // Delete s3 concat files
-      await Promise.all(
-        event.s3Objects.map(({ bucket, key }) =>
-          s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
-        )
-      );
-      // upload export result
-      const outputKey = await s3Upload(
-        event.outputBucket,
-        "export/",
-        "/tmp/ffmpegOutput"
-      );
-      // delete /tmp export result
-      await unlink("/tmp/ffmpegOutput");
-      return { s3Object: { bucket: event.outputBucket, key: outputKey } };
+      return await mergeAction(event);
     }
   }
 };

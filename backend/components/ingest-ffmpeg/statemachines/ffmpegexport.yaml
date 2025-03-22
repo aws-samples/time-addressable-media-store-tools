@@ -11,9 +11,11 @@ States:
       ApiEndpoint: ${TamsEndpoint}/service
     Assign:
       storeName: >-
-        {% $states.result.ResponseBody.name ? $states.result.ResponseBody.name : 'tams' %}
+        {% $states.result.ResponseBody.name ? $states.result.ResponseBody.name : "tams" %}
       timerange: >-
-        {% $states.input.timerange %}
+        {% $boolean($states.input.timerange) ? $states.input.timerange: "_" %}
+      ffmpeg: >-
+        {% $states.input.ffmpeg %}
     Retry:
       - ErrorEquals:
           - Events.ConnectionResource.InvalidConnectionState
@@ -48,10 +50,10 @@ States:
             InvocationConfig:
               ConnectionArn: ${ConnectionArn}
             ApiEndpoint: >-
-              {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
+              {% "${TamsEndpoint}/flows/" & $flowId & "/segments" %}
             QueryParameters:
               accept_get_urls: >-
-                {% 'aws.${AwsRegion}:s3:' & $storeName %}
+                {% "aws.${AwsRegion}:s3:" & $storeName %}
               timerange: >-
                 {% $timerange %}
           Assign:
@@ -68,16 +70,61 @@ States:
               BackoffRate: 2
               MaxAttempts: 3
           Output:
-            segments: >-
-              {% $states.result.ResponseBody %}
-          Next: NextKeyExists
-        NextKeyExists:
+            s3Objects: >-
+              {%
+                $boolean($states.result.ResponseBody)
+                ?
+                $sort(
+                  $map(
+                    $states.result.ResponseBody,
+                    function($v) {
+                      {
+                        "key": $v.object_id,
+                        "start": $reduce(
+                          $split(
+                            $substringBefore(
+                              $substring(
+                                $v.timerange,
+                                1
+                              ),
+                              "_"
+                            ),
+                            ":"
+                          ),
+                          function($a, $t) {
+                            $number($a) * 1000000000 + $number($t)
+                          }
+                        ),
+                        "bucket": $substringBefore(
+                          $substringAfter(
+                            $v.get_urls[0].url,
+                            "https://"
+                          ),
+                          ".s3."
+                        )
+                      }
+                    }
+                  ),
+                  function($a, $b) {
+                    $a.start > $b.start
+                  }
+                )
+                :
+                []
+              %}
+          Next: CheckResponse
+        CheckResponse:
           Type: Choice
           Default: GetSegmentsNextPage
           Choices:
             - Condition: >-
                 {% $xPagingCount = 0 %}
-              Next: SegmentsComplete
+              Next: NoSegments
+              Output: >-
+                {% $states.input %}
+            - Condition: >-
+                {% $xPagingCount = 1 %}
+              Next: SingleSegment
               Output: >-
                 {% $states.input %}
             - Condition: >-
@@ -96,10 +143,10 @@ States:
             InvocationConfig:
               ConnectionArn: ${ConnectionArn}
             ApiEndpoint: >-
-              {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
+              {% "${TamsEndpoint}/flows/" & $flowId & "/segments" %}
             QueryParameters:
               accept_get_urls: >-
-                {% 'aws.${AwsRegion}:s3:' & $storeName %}
+                {% "aws.${AwsRegion}:s3:" & $storeName %}
               timerange: >-
                 {% $timerange %}
               page: >-
@@ -118,11 +165,64 @@ States:
               BackoffRate: 2
               MaxAttempts: 3
           Output:
-            segments: >-
-              {% $append($states.input.segments, $states.result.ResponseBody) %}
-          Next: NextKeyExists
-        SegmentsComplete:
-          Type: Succeed
+            s3Objects: >-
+              {%
+                $append(
+                  $states.input.s3Objects,
+                  $boolean($states.result.ResponseBody)
+                  ?
+                  $sort(
+                    $map(
+                      $states.result.ResponseBody,
+                      function($v) {
+                        {
+                          "key": $v.object_id,
+                          "start": $reduce(
+                            $split(
+                              $substringBefore(
+                                $substring(
+                                  $v.timerange,
+                                  1
+                                ),
+                                "_"
+                              ),
+                              ":"
+                            ),
+                            function($a, $t) {
+                              $number($a) * 1000000000 + $number($t)
+                            }
+                          ),
+                          "bucket": $substringBefore(
+                            $substringAfter(
+                              $v.get_urls[0].url,
+                              "https://"
+                            ),
+                            ".s3."
+                          )
+                        }
+                      }
+                    ),
+                    function($a, $b) {
+                      $a.start > $b.start
+                    }
+                  )
+                  :
+                  []
+                )
+              %}
+          Next: CheckResponse
+        SingleSegment:
+          Type: Pass
+          Output:
+            bucket: >-
+              {% $states.input.s3Objects[0].bucket %}
+            key: >-
+              {% $states.input.s3Objects[0].key %}
+          End: True
+        NoSegments:
+          Type: Pass
+          Output: null
+          End: True
         ConcatSegments:
           Type: Task
           Resource: arn:aws:states:::lambda:invoke
@@ -131,15 +231,30 @@ States:
             Payload:
               action: CONCAT
               outputBucket: ${BucketName}
-              segments: >-
-                {% $states.input.segments %}
+              s3Objects: >-
+                {% $states.input.s3Objects %}
+              ffmpeg:
+                command:
+                  -c copy
+                outputFormat: mpegts
           Output: >-
             {% $states.result.Payload.s3Object %}
-          Next: SegmentsComplete
+          End: True
     Output:
       s3Objects: >-
-        {% $states.result %}
-    Next: MergeFlows
+        {% $exists($filter($states.result, function($v) {$boolean($v)})) ? $filter($states.result, function($v) {$boolean($v)}) : [] %}
+    Next: CheckConcat
+  CheckConcat:
+    Type: Choice
+    Default: MergeFlows
+    Choices:
+      - Condition: >-
+          {% $not($states.input.s3Objects) %}
+        Next: NoOutput
+        Output: >-
+          {% $states.input %}
+    Output: >-
+      {% $states.input %}
   MergeFlows:
     Type: Task
     Resource: arn:aws:states:::lambda:invoke
@@ -150,6 +265,10 @@ States:
         outputBucket: ${BucketName}
         s3Objects: >-
           {% $states.input.s3Objects %}
+        ffmpeg: >-
+          {% $ffmpeg %}
     Output: >-
       {% $states.result.Payload %}
     End: True
+  NoOutput:
+    Type: Fail
