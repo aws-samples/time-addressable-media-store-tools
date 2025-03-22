@@ -39,7 +39,7 @@ export const styles = {
             targetEndpoint: "outside-to-line",
         },
         implied: {
-            lineStyle: "dotted",
+            lineStyle: "dashed",
         },
     },
 };
