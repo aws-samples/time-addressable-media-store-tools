@@ -69,7 +69,7 @@ const getObjectStream = async ({ bucket, key }) => {
 
 const executeFFmpegToStream = (inputStream, ffmpegConfig, outputStream) => {
   return new Promise((resolve, reject) => {
-    ffmpeg()
+    const stream = ffmpeg()
       .input(inputStream)
       .outputOptions(ffmpegConfig.command)
       .outputFormat(ffmpegConfig.outputFormat)
@@ -88,8 +88,19 @@ const executeFFmpegToStream = (inputStream, ffmpegConfig, outputStream) => {
       .on("end", () => {
         console.info("FFmpeg processing finished");
         resolve();
-      })
-      .pipe(outputStream, { end: true });
+      });
+    outputStream.on("error", (err) => {
+      reject(err);
+    });
+    outputStream.on("finish", () => {
+      console.info("Pass through stream finished");
+      resolve();
+    });
+    outputStream.on("close", () => {
+      console.info("PassThrough stream closed");
+      resolve();
+    });
+    stream.pipe(outputStream, { end: true });
   });
 };
 
@@ -100,32 +111,6 @@ const sendIngestMessage = async (messageBody) => {
       MessageBody: JSON.stringify(messageBody),
     })
   );
-};
-
-const processMessage = async (message) => {
-  if (message.segments) {
-    for (const segment of message.segments) {
-      console.info(`Processing Object Id: ${segment.object_id}...`);
-      const { outputStream, upload, outputKey } = createS3UploadStream(
-        message.outputBucket,
-        message.outputPrefix
-      );
-      const input = await getSegmentStream(segment);
-      await executeFFmpegToStream(input, message.ffmpeg, outputStream);
-      console.info("Uploading output to S3...");
-      await upload.done();
-      console.info(
-        `Processing complete, Timerange: ${segment.timerange}, FlowId: ${message.outputFlow}...`
-      );
-      console.info(`Sending SQS message to ${INGEST_QUEUE_URL}...`);
-      await sendIngestMessage({
-        flowId: message.outputFlow,
-        timerange: segment.timerange,
-        uri: `s3://${message.outputBucket}/${outputKey}`,
-        deleteSource: true,
-      });
-    }
-  }
 };
 
 const downloadObject = async (obj) => {
@@ -160,6 +145,33 @@ const s3Upload = async (bucket, prefix, tmpPath) => {
   });
   await upload.done();
   return key;
+};
+
+const processMessage = async (message) => {
+  if (message.segments) {
+    for (const segment of message.segments) {
+      console.info(`Processing Object Id: ${segment.object_id}...`);
+      const { outputStream, upload, outputKey } = createS3UploadStream(
+        message.outputBucket,
+        message.outputPrefix
+      );
+      const input = await getSegmentStream(segment);
+      console.info("Uploading output to S3...");
+      const uploadPromise = upload.done();
+      await executeFFmpegToStream(input, message.ffmpeg, outputStream);
+      await uploadPromise;
+      console.info(
+        `Processing complete, Timerange: ${segment.timerange}, FlowId: ${message.outputFlow}...`
+      );
+      console.info(`Sending SQS message to ${INGEST_QUEUE_URL}...`);
+      await sendIngestMessage({
+        flowId: message.outputFlow,
+        timerange: segment.timerange,
+        uri: `s3://${message.outputBucket}/${outputKey}`,
+        deleteSource: true,
+      });
+    }
+  }
 };
 
 const concatAction = async (message) => {
@@ -224,7 +236,7 @@ const mergeAction = async (message) => {
         console.info("FFmpeg command:", commandLine);
       })
       .on("progress", (progress) => {
-        console.log("Processing:", progress.percent);
+        console.log("Processing:", progress);
       })
       .on("error", (err, stdout, stderr) => {
         console.error("FFmpeg error:", err);
