@@ -88,6 +88,16 @@ Resources:
             Resource:
               - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${FfmpegBatch.Name}
               - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${FfmpegExport.Name}
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !GetAtt FFmpegBucket.Arn
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub ${FFmpegBucket.Arn}/export/*
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup

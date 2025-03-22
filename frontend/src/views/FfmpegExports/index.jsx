@@ -2,8 +2,8 @@ import { useState } from "react";
 import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
 import {
   Box,
+  Button,
   CollectionPreferences,
-  CopyToClipboard,
   Link as ExternalLink,
   Header,
   Pagination,
@@ -12,10 +12,36 @@ import {
   Table,
   TextFilter,
 } from "@cloudscape-design/components";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useExports } from "@/hooks/useFfmpeg";
+import { fetchAuthSession } from "aws-amplify/auth";
+
+const getPresignedUrl = (bucket, key, id) =>
+  fetchAuthSession().then((session) => {
+    const s3Client = new S3Client({
+      region: AWS_REGION,
+      credentials: session.credentials,
+    });
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${id}.mp4"`,
+    });
+    return getSignedUrl(s3Client, command, { expiresIn: 300 });
+  });
+
+const handleDownload = async (item) => {
+  const url = await getPresignedUrl(
+    item.output.bucket,
+    item.output.key,
+    item.executionArn.split(":")[7]
+  );
+  window.location.href = url;
+};
 
 const columnDefinitions = [
   {
@@ -73,13 +99,18 @@ const columnDefinitions = [
     header: "Output",
     cell: (item) =>
       item.output.bucket && (
-        <CopyToClipboard
-          copyButtonAriaLabel="Copy S3 Uri"
-          copyErrorText="Uri failed to copy"
-          copySuccessText="Uri copied"
-          textToCopy={`s3://${item.output.bucket}/${item.output.key}`}
+        <Button
+          onClick={() => handleDownload(item)}
+          iconName="download"
           variant="icon"
         />
+        // <CopyToClipboard
+        //   copyButtonAriaLabel="Copy S3 Uri"
+        //   copyErrorText="Uri failed to copy"
+        //   copySuccessText="Uri copied"
+        //   textToCopy={`s3://${item.output.bucket}/${item.output.key}`}
+        //   variant="icon"
+        // />
       ),
     sortingField: "output",
     width: 80,
