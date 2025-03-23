@@ -88,7 +88,7 @@ def post_segment(flow_id: str, object_id: str, timerange: str) -> bool:
         "timerange": timerange,
     }
     logger.info("Posting segment to TAMS...")
-    post_segment = requests.post(
+    post = requests.post(
         f"{endpoint}/flows/{flow_id}/segments",
         headers={
             "Content-Type": "application/json",
@@ -98,8 +98,8 @@ def post_segment(flow_id: str, object_id: str, timerange: str) -> bool:
         timeout=30,
     )
     try:
-        post_segment.raise_for_status()
-        logger.info(f"Response status: {post_segment.status_code}")
+        post.raise_for_status()
+        logger.info(f"Response status: {post.status_code}")
     except requests.exceptions.HTTPError as ex:
         if ex.response.status_code == 400:
             logger.error(ex)
