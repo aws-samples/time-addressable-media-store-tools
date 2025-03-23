@@ -20,8 +20,8 @@ output_bucket = os.environ["OUTPUT_BUCKET"]
 event_rule_role_arn = os.environ["EVENT_RULE_ROLE_ARN"]
 ffmpeg_batch_arn = os.environ["FFMPEG_BATCH_ARN"]
 ffmpeg_export_arn = os.environ["FFMPEG_EXPORT_ARN"]
+event_bus_name = os.environ["EVENT_BUS_NAME"]
 rule_id_prefix = "ffmpeg-flow-segments-"
-event_bus_name = "tams-api"
 
 
 @app.get("/ffmpeg-rules")

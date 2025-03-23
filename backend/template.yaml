@@ -259,6 +259,7 @@ Resources:
         SqsSegmentIngestionFunctionRoleName: !GetAtt IngestStack.Outputs.SqsSegmentIngestionFunctionRoleName
         SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
         SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        EventBusName: !Ref ApiStackName
     Condition: DeployIngestFfmpeg
 
 Outputs:

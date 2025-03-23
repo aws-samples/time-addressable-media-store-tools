@@ -31,6 +31,9 @@ Parameters:
   SegmentIngestQueueArn:
     Type: String
 
+  EventBusName:
+    Type: String
+
 Transform:
   - AWS::LanguageExtensions
 
@@ -147,6 +150,7 @@ Resources:
           EVENT_RULE_ROLE_ARN: !GetAtt EventRuleRole.Arn
           FFMPEG_BATCH_ARN: !Ref FfmpegBatch
           FFMPEG_EXPORT_ARN: !Ref FfmpegExport
+          EVENT_BUS_NAME: !Ref EventBusName
       Policies:
         - Version: "2012-10-17"
           Statement:
