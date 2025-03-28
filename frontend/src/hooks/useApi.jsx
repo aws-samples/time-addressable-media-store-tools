@@ -52,4 +52,50 @@ export const useApi = (apiName = "TAMS") => {
   };
 };
 
+export const useApiRaw = (apiName = "TAMS") => {
+    return {
+        get: (path, clientConfig = {}) =>
+            fetchAuthSession()
+                .then((session) => session.tokens.accessToken.toString())
+                .then(
+                    (accessToken) =>
+                        get({
+                            apiName,
+                            path,
+                            options: { headers: { Authorization: `Bearer ${accessToken}` } },
+                            ...clientConfig,
+                        }).response
+                ),
+        put: (path, jsonBody, clientConfig = {}) =>
+            fetchAuthSession()
+                .then((session) => session.tokens.accessToken.toString())
+                .then(
+                    (accessToken) =>
+                        put({
+                            apiName,
+                            path,
+                            options: {
+                                headers: { Authorization: `Bearer ${accessToken}` },
+                                body: jsonBody,
+                            },
+                            ...clientConfig,
+                        }).response
+                ),
+        del: (path, clientConfig = {}) =>
+            fetchAuthSession()
+                .then((session) => session.tokens.accessToken.toString())
+                .then(
+                    (accessToken) =>
+                        del({
+                            apiName,
+                            path,
+                            options: {
+                                headers: { Authorization: `Bearer ${accessToken}` },
+                            },
+                            ...clientConfig,
+                        }).response
+                ),
+    };
+};
+
 export default useApi;

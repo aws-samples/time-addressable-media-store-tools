@@ -39,6 +39,31 @@ export const useFlow = (flowId) => {
   };
 };
 
+export const useChildFlows = (flowIds) => {
+  const { get } = useApi();
+
+  const { data, mutate, error, isLoading, isValidating } = useSWR(
+      flowIds?.length > 0 ? flowIds.map((id) => ["/flows", id]) : null,
+      async (keys) => {
+        const responses = await Promise.all(
+            keys.map(([path, id]) => get(`${path}/${id}?include_timerange=true`))
+        );
+        return responses;
+      },
+      {
+        refreshInterval: 3000,
+      }
+  );
+
+  return {
+    flows: data,
+    mutate,
+    isLoading,
+    isValidating,
+    error,
+  };
+};
+
 export const useDelete = () => {
   const { del } = useApi();
   const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }) =>

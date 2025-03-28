@@ -32,15 +32,13 @@ const Source = () => {
         <Header variant="h2">
           <SpaceBetween size="xl" direction="horizontal">
             <span>Source details</span>
-            {AWS_HLS_API_ENDPOINT && (
-              <Button
-                href={`/player/sources/${sourceId}`}
-                variant="inline-link"
-                onFollow={followLink}
-              >
-                View HLS
-              </Button>
-            )}
+            <Button
+              href={`/player/sources/${sourceId}`}
+              variant="inline-link"
+              onFollow={followLink}
+            >
+              View HLS
+            </Button>
             <Button
               href={`/diagram/sources/${sourceId}`}
               variant="inline-link"

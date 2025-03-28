@@ -1,0 +1,81 @@
+.north-pole {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+
+  margin-top: 3em;
+}
+
+.mlc-cp-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.player-wrapper {
+  margin-bottom: 4em;
+  display: flex;
+  justify-content: end;
+}
+
+.segmentation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  text-transform: uppercase;
+
+  background-color: #6825991a;
+
+  border: 1px solid #655372;
+  border-bottom: 0px;
+
+  height: 40px;
+}
+
+.segmentation-header-export-only {
+  justify-content: end;
+}
+
+.segmentation-names {
+  display: flex;
+  height: 100%;
+
+  font-size: 14px;
+}
+
+.segmentation-names div {
+  display: flex;
+  align-items: center;
+}
+
+.segmentation-names-smaller {
+  font-size: 12px;
+}
+
+.segmentation-names div {
+  border-left: 1px solid #655372;
+  padding: 0.5em 1em;
+}
+
+#marker-list-component {
+  max-height: 350px;
+  overflow-y: auto;
+  border-bottom: 1px solid #655372;
+}
+.segmentation-names div:first-child {
+  border-left: 0px !important;
+}
+
+.highlighted-segmentation {
+  background-color: #68259933;
+  color: #ffffff;
+}
+
+.omakase-player {
+  background-color: black;
+}
+
+.player-wrapper *:focus {
+  outline: none;
+  box-shadow: none;
+}
