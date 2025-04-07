@@ -221,8 +221,8 @@ def get_export_details(execution_arn):
             if describe_execution.get("stopDate")
             else ""
         ),
-        "timerange": job_input["timerange"],
-        "flowIds": job_input["flowIds"],
+        "timerange": job_input.get("timerange", ""),
+        "flowIds": job_input.get("flowIds", []),
         "ffmpeg": job_input.get("ffmpeg", {}),
         "output": json.loads(describe_execution.get("output", "{}")).get(
             "s3Object", {}
