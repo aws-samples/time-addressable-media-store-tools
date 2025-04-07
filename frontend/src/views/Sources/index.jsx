@@ -13,6 +13,8 @@ import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useSources } from "@/hooks/useSources";
 import { useState } from "react";
+import useStore from "@/stores/useStore";
+import { PAGE_SIZE_PREFERENCE } from "@/constants";
 
 const columnDefinitions = [
   {
@@ -84,13 +86,7 @@ const columnDefinitions = [
   },
 ];
 const collectionPreferencesProps = {
-  pageSizePreference: {
-    title: "Select page size",
-    options: [
-      { value: 10, label: "10 resources" },
-      { value: 20, label: "20 resources" },
-    ],
-  },
+  pageSizePreference: PAGE_SIZE_PREFERENCE,
   contentDisplayPreference: {
     title: "Column preferences",
     description: "Customize the columns visibility and order.",
@@ -106,24 +102,11 @@ const collectionPreferencesProps = {
 };
 
 const Sources = () => {
+  const preferences = useStore((state) => state.sourcesPreferences);
+  const setPreferences = useStore((state) => state.setSourcesPreferences);
+  const showHierarchy = useStore((state) => state.sourcesShowHierarchy);
+  const setShowHierarchy = useStore((state) => state.setSourcesShowHierarchy);
   const { sources, isLoading } = useSources();
-  const [showHierarchy, setShowHierarchy] = useState(true);
-  const [preferences, setPreferences] = useState({
-    pageSize: 10,
-    contentDisplay: [
-      { id: "id", visible: true },
-      { id: "label", visible: true },
-      { id: "description", visible: true },
-      { id: "format", visible: true },
-      { id: "created_by", visible: false },
-      { id: "updated_by", visible: false },
-      { id: "created", visible: true },
-      { id: "updated", visible: false },
-      { id: "tags", visible: false },
-      { id: "source_collection", visible: false },
-      { id: "collected_by", visible: false },
-    ],
-  });
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : sources, {
       expandableRows: showHierarchy && {

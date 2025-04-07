@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
+import useStore from "@/stores/useStore";
+import { AWS_REGION, STATUS_MAPPINGS, PAGE_SIZE_PREFERENCE } from "@/constants";
 import {
   Box,
   CollectionPreferences,
@@ -85,13 +85,7 @@ const columnDefinitions = [
   },
 ];
 const collectionPreferencesProps = {
-  pageSizePreference: {
-    title: "Select page size",
-    options: [
-      { value: 10, label: "10 resources" },
-      { value: 20, label: "20 resources" },
-    ],
-  },
+  pageSizePreference: PAGE_SIZE_PREFERENCE,
   contentDisplayPreference: {
     title: "Column preferences",
     description: "Customize the columns visibility and order.",
@@ -107,20 +101,9 @@ const collectionPreferencesProps = {
 };
 
 const FfmpegJobs = () => {
+  const preferences = useStore((state) => state.ffmpegJobsPreferences);
+  const setPreferences = useStore((state) => state.setFfmpegJobsPreferences);
   const { jobs, isLoading } = useJobs();
-  const [preferences, setPreferences] = useState({
-    pageSize: PAGE_SIZE,
-    contentDisplay: [
-      { id: "id", visible: true },
-      { id: "sourceTimerange", visible: true },
-      { id: "command", visible: true },
-      { id: "outputFormat", visible: false },
-      { id: "outputFlow", visible: true },
-      { id: "status", visible: true },
-      { id: "startDate", visible: false },
-      { id: "stopDate", visible: false },
-    ],
-  });
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : jobs, {
       expandableRows: {

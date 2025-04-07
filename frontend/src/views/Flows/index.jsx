@@ -1,4 +1,4 @@
-import { AWS_FFMPEG_ENDPOINT } from "@/constants";
+import { AWS_FFMPEG_ENDPOINT, PAGE_SIZE_PREFERENCE } from "@/constants";
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import { useFlows } from "@/hooks/useFlows";
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useState } from "react";
+import useStore from "@/stores/useStore";
 import CreateExportModal from "./components/CreateExportModal";
 import CreateRuleModal from "./components/CreateRuleModal";
 import CreateJobModal from "./components/CreateJobModal";
@@ -146,13 +147,7 @@ const columnDefinitions = [
   },
 ];
 const collectionPreferencesProps = {
-  pageSizePreference: {
-    title: "Select page size",
-    options: [
-      { value: 10, label: "10 resources" },
-      { value: 20, label: "20 resources" },
-    ],
-  },
+  pageSizePreference: PAGE_SIZE_PREFERENCE,
   contentDisplayPreference: {
     title: "Column preferences",
     description: "Customize the columns visibility and order.",
@@ -168,35 +163,13 @@ const collectionPreferencesProps = {
 };
 
 const Flows = () => {
+  const preferences = useStore((state) => state.flowsPreferences);
+  const setPreferences = useStore((state) => state.setFlowsPreferences);
+  const showHierarchy = useStore((state) => state.flowsShowHierarchy);
+  const setShowHierarchy = useStore((state) => state.setFlowsShowHierarchy);
   const { flows, mutate, isLoading, isValidating } = useFlows();
-  const [showHierarchy, setShowHierarchy] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
-  const [preferences, setPreferences] = useState({
-    pageSize: 10,
-    contentDisplay: [
-      { id: "id", visible: true },
-      { id: "label", visible: true },
-      { id: "description", visible: true },
-      { id: "format", visible: true },
-      { id: "created_by", visible: false },
-      { id: "updated_by", visible: false },
-      { id: "created", visible: true },
-      { id: "tags", visible: false },
-      { id: "flow_collection", visible: false },
-      { id: "collected_by", visible: false },
-      { id: "source_id", visible: false },
-      { id: "metadata_version", visible: false },
-      { id: "generation", visible: false },
-      { id: "metadata_updated", visible: false },
-      { id: "segments_updated", visible: false },
-      { id: "read_only", visible: false },
-      { id: "codec", visible: false },
-      { id: "container", visible: false },
-      { id: "avg_bit_rate", visible: false },
-      { id: "max_bit_rate", visible: false },
-    ],
-  });
   const { items, collectionProps, filterProps, paginationProps, actions } =
     useCollection(isValidating || isLoading ? [] : flows, {
       expandableRows: showHierarchy && {

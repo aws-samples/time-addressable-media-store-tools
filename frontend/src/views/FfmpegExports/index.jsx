@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
+import useStore from "@/stores/useStore";
+import { AWS_REGION, STATUS_MAPPINGS, PAGE_SIZE_PREFERENCE } from "@/constants";
 import {
   Box,
   Button,
@@ -104,13 +104,6 @@ const columnDefinitions = [
           iconName="download"
           variant="icon"
         />
-        // <CopyToClipboard
-        //   copyButtonAriaLabel="Copy S3 Uri"
-        //   copyErrorText="Uri failed to copy"
-        //   copySuccessText="Uri copied"
-        //   textToCopy={`s3://${item.output.bucket}/${item.output.key}`}
-        //   variant="icon"
-        // />
       ),
     sortingField: "output",
     width: 80,
@@ -140,13 +133,7 @@ const columnDefinitions = [
   },
 ];
 const collectionPreferencesProps = {
-  pageSizePreference: {
-    title: "Select page size",
-    options: [
-      { value: 10, label: "10 resources" },
-      { value: 20, label: "20 resources" },
-    ],
-  },
+  pageSizePreference: PAGE_SIZE_PREFERENCE,
   contentDisplayPreference: {
     title: "Column preferences",
     description: "Customize the columns visibility and order.",
@@ -162,22 +149,9 @@ const collectionPreferencesProps = {
 };
 
 const FfmpegExports = () => {
+  const preferences = useStore((state) => state.ffmpegExportsPreferences);
+  const setPreferences = useStore((state) => state.setFfmpegExportsPreferences);
   const { exports, isLoading } = useExports();
-
-  const [preferences, setPreferences] = useState({
-    pageSize: PAGE_SIZE,
-    contentDisplay: [
-      { id: "executionArn", visible: true },
-      { id: "timerange", visible: true },
-      { id: "flowIds", visible: true },
-      { id: "command", visible: false },
-      { id: "outputFormat", visible: true },
-      { id: "output", visible: true },
-      { id: "status", visible: true },
-      { id: "startDate", visible: false },
-      { id: "stopDate", visible: false },
-    ],
-  });
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : exports, {
       filtering: {

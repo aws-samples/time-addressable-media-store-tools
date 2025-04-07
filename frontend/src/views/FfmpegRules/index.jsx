@@ -9,6 +9,7 @@ import {
 } from "@cloudscape-design/components";
 import DeleteModal from "./components/DeleteModal";
 import { useRules } from "@/hooks/useFfmpeg";
+import { PAGE_SIZE } from "@/constants";
 
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
@@ -82,7 +83,7 @@ const FfmpegRules = () => {
           </Box>
         ),
       },
-      pagination: { pageSize: 10 },
+      pagination: { pageSize: PAGE_SIZE },
       sorting: {},
       selection: {},
     });
