@@ -15,7 +15,6 @@ import { ConsoleLogger } from "aws-amplify/utils";
 import Diagram from "@/views/Diagram";
 import Flow from "@/views/Flow";
 import Flows from "@/views/Flows";
-import HlsPlayer from "@/views/HlsPlayer";
 import Home from "@/views/Home";
 import Layout from "@/views/Layout";
 import HlsIngestion from "@/views/HlsIngestion";
@@ -27,6 +26,7 @@ import MediaLiveIngestion from "@/views/MediaLiveIngestion";
 import React from "react";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
+import { OmakaseHlsPlayer } from "./views/OmakasePlayer";
 import { withAuthenticator } from "@aws-amplify/ui-react";
 
 ConsoleLogger.LOG_LEVEL = "INFO";
@@ -71,9 +71,7 @@ const App = () => {
             <Route path=":flowId" element={<Flow />} />
           </Route>
           <Route path="diagram/:type/:id" element={<Diagram />} />
-          {AWS_HLS_API_ENDPOINT && (
-            <Route path="player/:type/:id" element={<HlsPlayer />} />
-          )}
+          <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
           {AWS_HLS_INGEST_ENDPOINT && (
             <>
               <Route path="workflows" element={<HlsIngestion />} />

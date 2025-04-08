@@ -14,11 +14,14 @@ import Collection from "@/components/Collection";
 import EntityDetails from "@/components/EntityDetails";
 import FlowsTab from "./components/FlowsTab";
 import Tags from "@/components/Tags";
-import { useSource } from "@/hooks/useSources";
+import { useSource, useSourceFlows } from "@/hooks/useSources";
 
 const Source = () => {
   const { sourceId } = useParams();
   const { source, isLoading: loadingSource } = useSource(sourceId);
+
+  // const { flows, isLoading: loadingFlows } = useSourceFlows(sourceId);
+
   const navigate = useNavigate();
 
   const followLink = (e) => {
@@ -32,15 +35,15 @@ const Source = () => {
         <Header variant="h2">
           <SpaceBetween size="xl" direction="horizontal">
             <span>Source details</span>
-            {AWS_HLS_API_ENDPOINT && (
-              <Button
-                href={`/player/sources/${sourceId}`}
-                variant="inline-link"
-                onFollow={followLink}
-              >
-                View HLS
-              </Button>
-            )}
+
+            <Button
+              href={`/player/sources/${sourceId}`}
+              variant="inline-link"
+              onFollow={followLink}
+            >
+              View HLS
+            </Button>
+
             <Button
               href={`/diagram/sources/${sourceId}`}
               variant="inline-link"
