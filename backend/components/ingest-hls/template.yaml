@@ -353,6 +353,8 @@ Resources:
           - id: W48
             reason: Encryption not required
     Properties:
+      FifoQueue: True
+      ContentBasedDeduplication: True
       VisibilityTimeout: 300
       MessageRetentionPeriod: 86400
 
