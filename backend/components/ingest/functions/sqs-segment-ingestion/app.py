@@ -1,16 +1,20 @@
 import json
 import os
 from urllib.parse import urlparse
+from datetime import datetime
 
 import boto3
 import requests
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
+from aws_lambda_powertools.metrics import MetricUnit
+from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 from openid_auth import Credentials
 
 tracer = Tracer()
 logger = Logger()
+metrics = Metrics(namespace="Powertools")
 
 s3 = boto3.client("s3")
 endpoint = os.environ["TAMS_ENDPOINT"]
@@ -37,8 +41,12 @@ def get_file(source: str, byterange: str | None) -> bytes:
             }
             if byterange:
                 params["Range"] = range_string
-            response = s3.get_object(**params)
-            return response["Body"].read()
+            try:
+                response = s3.get_object(**params)
+                return response["Body"].read()
+            except s3.exceptions.NoSuchKey as ex:
+                logger.error("NoSuchKey", error=ex.response["Error"])
+                return False
         case "https" | "http":
             headers = {"Range": f"bytes={range_string}"} if byterange else None
             response = requests.get(source, headers=headers, timeout=30)
@@ -63,7 +71,7 @@ def upload_file(flow_id: str, data: bytes) -> dict:
         logger.info(f"Response status: {get_url.status_code}")
     except requests.exceptions.HTTPError as ex:
         if ex.response.status_code == 404:
-            logger.error(ex)
+            logger.error(ex.response.text)
             return None
         else:
             raise ex
@@ -102,7 +110,7 @@ def post_segment(flow_id: str, object_id: str, timerange: str) -> bool:
         logger.info(f"Response status: {post.status_code}")
     except requests.exceptions.HTTPError as ex:
         if ex.response.status_code == 400:
-            logger.error(ex)
+            logger.error(ex.response.text, body=segment)
             return False
         else:
             raise ex
@@ -123,23 +131,36 @@ def delete_s3_file(source: str) -> None:
 
 @logger.inject_lambda_context(log_event=True)
 @tracer.capture_lambda_handler(capture_response=False)
+@metrics.log_metrics(capture_cold_start_metric=True)
 # pylint: disable=unused-argument
 def lambda_handler(event: dict, context: LambdaContext) -> dict:
-    for record in event.get("Records", []):
-        if record.get("eventSource", "") == "aws:sqs":
-            message = json.loads(record["body"])
-            flow_id = message["flowId"]
-            media_object = upload_file(
-                flow_id, get_file(message["uri"], message.get("byterange", None))
-            )
-            if media_object is None:
-                raise ValueError(f"Unable to upload file to flow {flow_id}")
-            if media_object["put_url"]["content-type"].split("/")[0] == "image":
-                message["timerange"] = f'{message["timerange"].split("_")[0]}]'
-            post_result = post_segment(
-                flow_id, media_object["object_id"], message["timerange"]
-            )
-            if not post_result:
-                raise ValueError(f"Unable to post segment to flow {flow_id}")
-            if message.get("deleteSource", False):
-                delete_s3_file(message["uri"])
+    event: SQSEvent = SQSEvent(event)
+    for record in event.records:
+        message = json.loads(record.body)
+        sent_timestamp = datetime.fromtimestamp(int(record.attributes.sent_timestamp) / 1000)
+        first_receive_timestamp = datetime.fromtimestamp(int(record.attributes.approximate_first_receive_timestamp) / 1000)
+        receive_delta_seconds = (first_receive_timestamp - sent_timestamp).total_seconds()
+        logger.info(f"Approximate receive delta: {receive_delta_seconds}")
+        with single_metric(
+            namespace="Powertools",
+            name="SQSIngestReceiveDelta",
+            unit=MetricUnit.Seconds,
+            value=receive_delta_seconds,
+        ) as metric:
+            metric.add_dimension(name="base_uri", value="/".join(message["uri"].split("/")[:-1]))
+        flow_id = message["flowId"]
+        file_data = get_file(message["uri"], message.get("byterange", None))
+        if not file_data:
+            raise ValueError(f'Unable to read source file {message["uri"]}')
+        media_object = upload_file(flow_id, file_data)
+        if media_object is None:
+            raise ValueError(f"Unable to upload file to flow {flow_id}")
+        if media_object["put_url"]["content-type"].split("/")[0] == "image":
+            message["timerange"] = f'{message["timerange"].split("_")[0]}]'
+        post_result = post_segment(
+            flow_id, media_object["object_id"], message["timerange"]
+        )
+        if not post_result:
+            raise ValueError(f"Unable to post segment to flow {flow_id}")
+        if message.get("deleteSource", False):
+            delete_s3_file(message["uri"])
