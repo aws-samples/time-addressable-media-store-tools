@@ -5,12 +5,14 @@ from urllib.parse import urlparse
 import boto3
 import m3u8
 import requests
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
+from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()
 logger = Logger()
+metrics = Metrics(namespace="Powertools")
 
 s3 = boto3.client("s3")
 sfn = boto3.client("stepfunctions")
@@ -68,6 +70,13 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
                 message = json.loads(record["body"])
                 flow_id = message["flowId"]
                 manifest_location = message["manifestLocation"]
+                with single_metric(
+                    namespace="Powertools",
+                    name="MediaManifestProcessing",
+                    unit=MetricUnit.Count,
+                    value=1,
+                ) as metric:
+                    metric.add_dimension(name="manifestLocation", value=manifest_location)
                 manifest_path = os.path.dirname(manifest_location)
                 manifest = get_manifest(manifest_location)
                 if manifest.is_variant:
