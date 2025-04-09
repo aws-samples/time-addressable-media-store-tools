@@ -65,6 +65,9 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         task_token = record.message_attributes.get("TaskToken", {}).get(
             "stringValue", None
         )
+        if not task_token:
+            logger.error("No task token found")
+            continue
         try:
             message = json.loads(record.body)
             flow_id = message["flowId"]
