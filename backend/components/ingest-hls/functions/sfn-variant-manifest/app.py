@@ -6,9 +6,10 @@ from fractions import Fraction
 from functools import lru_cache
 from urllib.parse import urlparse
 
-import boto3
 import m3u8
 import requests
+import boto3
+from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -137,10 +138,18 @@ def get_last_modified(source: str) -> int:
     source_parse = urlparse(source)
     match source_parse.scheme:
         case "s3":
-            response = s3.head_object(
-                Bucket=source_parse.netloc, Key=source_parse.path[1:]
-            )
-            return int(response["LastModified"].timestamp())
+            try:
+                response = s3.head_object(
+                    Bucket=source_parse.netloc, Key=source_parse.path[1:]
+                )
+                return int(response["LastModified"].timestamp())
+            except ClientError as ex:
+                if ex.response["Error"]["Code"] == "404":
+                    raise s3.exceptions.NoSuchKey(
+                        ex.response["Error"], "HeadObject"
+                    ) from ex
+                else:
+                    raise ex
         case "https" | "http":
             response = requests.head(source, timeout=30)
             response.raise_for_status()
