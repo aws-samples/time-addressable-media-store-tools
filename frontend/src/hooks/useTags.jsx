@@ -6,7 +6,9 @@ export const useUpdate = (entityType, id) => {
   const { trigger, isMutating } = useSWRMutation(
     [`/${entityType}`, id],
     ([path, id], { arg }) =>
-      put(`${path}/${id}/tags/${arg.name}`, arg.value)
+      put(`${path}/${id}/tags/${arg.name}`, arg.value).then(
+        (response) => response.data
+      )
   );
 
   return {
@@ -19,7 +21,8 @@ export const useDelete = (entityType, id) => {
   const { del } = useApi();
   const { trigger, isMutating } = useSWRMutation(
     [`/${entityType}`, id],
-    ([path, id], { arg }) => del(`${path}/${id}/tags/${arg.name}`)
+    ([path, id], { arg }) =>
+      del(`${path}/${id}/tags/${arg.name}`).then((response) => response.data)
   );
 
   return {

@@ -1,12 +1,11 @@
-import { TAMS_PAGE_LIMIT } from "@/constants";
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
+import paginationFetcher from "@/utils/paginationFetcher";
 
 export const useSources = () => {
-  const { get } = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
-    "/sources",
-    (path) => get(`${path}?limit=${TAMS_PAGE_LIMIT}`),
+    "/sources?limit=300",
+    paginationFetcher,
     {
       refreshInterval: 3000,
     }
@@ -23,7 +22,13 @@ export const useSources = () => {
 
 export const useSource = (sourceId) => {
   const { get } = useApi();
-  const { data, mutate, error, isLoading, isValidating } = useSWR(
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR(
     ["/sources", sourceId],
     ([path, sourceId]) => get(`${path}/${sourceId}`),
     {
@@ -32,7 +37,7 @@ export const useSource = (sourceId) => {
   );
 
   return {
-    source: data,
+    source: response?.data,
     mutate,
     isLoading,
     isValidating,
@@ -42,7 +47,13 @@ export const useSource = (sourceId) => {
 
 export const useSourceFlows = (sourceId) => {
   const { get } = useApi();
-  const { data, mutate, error, isLoading, isValidating } = useSWR(
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR(
     ["/flows", sourceId],
     ([path, sourceId]) => get(`${path}?source_id=${sourceId}`),
     {
@@ -51,7 +62,7 @@ export const useSourceFlows = (sourceId) => {
   );
 
   return {
-    flows: data,
+    flows: response?.data,
     mutate,
     isLoading,
     isValidating,
