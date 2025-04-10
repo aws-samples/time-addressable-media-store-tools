@@ -3,7 +3,13 @@ import useSWR from "swr";
 
 export const useSegments = (flowId) => {
   const { get } = useApi();
-  const { data, mutate, error, isLoading, isValidating } = useSWR(
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR(
     `/flows/${flowId}/segments`,
     (path) => get(`${path}?accept_get_urls=&reverse_order=true`),
     {
@@ -12,7 +18,7 @@ export const useSegments = (flowId) => {
   );
 
   return {
-    segments: data,
+    segments: response?.data,
     mutate,
     isLoading,
     isValidating,

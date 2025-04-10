@@ -1,13 +1,12 @@
-import { TAMS_PAGE_LIMIT } from "@/constants";
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import paginationFetcher from "@/utils/paginationFetcher";
 
 export const useFlows = () => {
-  const { get } = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
-    "/flows",
-    (path) => get(`${path}?limit=${TAMS_PAGE_LIMIT}`)
+    "/flows?limit=300",
+    paginationFetcher
   );
 
   return {
@@ -21,7 +20,13 @@ export const useFlows = () => {
 
 export const useFlow = (flowId) => {
   const { get } = useApi();
-  const { data, mutate, error, isLoading, isValidating } = useSWR(
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR(
     ["/flows", flowId],
     ([path, flowId]) => get(`${path}/${flowId}?include_timerange=true`),
     get,
@@ -31,7 +36,7 @@ export const useFlow = (flowId) => {
   );
 
   return {
-    flow: data,
+    flow: response?.data,
     mutate,
     isLoading,
     isValidating,
@@ -41,8 +46,12 @@ export const useFlow = (flowId) => {
 
 export const useDelete = () => {
   const { del } = useApi();
-  const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }) =>
-    del(`${path}/${arg.flowId}`).then((response) => setTimeout(response, 1000)) // setTimeout used to artificially wait until basic deletes are complete.
+  const { trigger, isMutating } = useSWRMutation(
+    "/flows",
+    (path, { arg }) =>
+      del(`${path}/${arg.flowId}`).then((response) =>
+        setTimeout(response.data, 1000)
+      ) // setTimeout used to artificially wait until basic deletes are complete.
   );
 
   return {
@@ -54,7 +63,9 @@ export const useDelete = () => {
 export const useDeleteTimerange = () => {
   const { del } = useApi();
   const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }) =>
-    del(`${path}/${arg.flowId}/segments?timerange=${arg.timerange}`)
+    del(`${path}/${arg.flowId}/segments?timerange=${arg.timerange}`).then(
+      (response) => response.data
+    )
   );
 
   return {
@@ -66,7 +77,9 @@ export const useDeleteTimerange = () => {
 export const useFlowStatusTag = () => {
   const { put } = useApi();
   const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }) =>
-    put(`${path}/${arg.flowId}/tags/flow_status`, arg.status)
+    put(`${path}/${arg.flowId}/tags/flow_status`, arg.status).then(
+      (response) => response.data
+    )
   );
 
   return {

@@ -32,13 +32,13 @@ const applyChanges = (flow, changes, sourceId) => {
 
 const createFFmegFlow = async (flowId, changes) => {
   const { get, put } = useApi();
-  const flow = await get(`/flows/${flowId}`);
+  const { data: flow } = await get(`/flows/${flowId}`);
   let newSourceId = changes.format ? crypto.randomUUID() : flow.source_id;
   const flowCollectionsMap = new Map();
   if (flow.collected_by) {
     await Promise.all(
       flow.collected_by.map(async (collectedById) => {
-        const flowCollection = await get(
+        const { data: flowCollection } = await get(
           `/flows/${collectedById}/flow_collection`
         );
         flowCollectionsMap.set(collectedById, flowCollection);
@@ -51,7 +51,7 @@ const createFFmegFlow = async (flowId, changes) => {
         const flowCollection = flowCollectionsMap.get(collectedById);
         return await Promise.all(
           flowCollection.map(async ({ id }) => {
-            const collectedFlow = await get(`/flows/${id}`);
+            const { data: collectedFlow } = await get(`/flows/${id}`);
             return collectedFlow.format === changes.format
               ? collectedFlow.source_id
               : null;
