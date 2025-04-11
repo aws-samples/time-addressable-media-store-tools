@@ -402,6 +402,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
             {
                 "flowId": flow_id,
                 "manifestLocation": uri,
+                "lastMediaSequence": 1,
                 "lastTimestamp": f"{flow_start}:0",
             }
             for flow_id, uri in flow_manifests.items()

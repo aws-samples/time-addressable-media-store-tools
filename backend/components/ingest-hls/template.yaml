@@ -176,6 +176,27 @@ Resources:
             Path: /workflows
             Method: get
 
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W74
+            reason: Encyption not required
+          - id: W78
+            reason: Backup not required
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiration
+        Enabled: True
+      BillingMode: PAY_PER_REQUEST
+
   ContainersParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -264,6 +285,7 @@ Resources:
         Variables:
           MANIFEST_QUEUE_URL: !Ref MediaManifestQueue
           INGEST_QUEUE_URL: !Ref SegmentIngestQueueUrl
+          IDEMPOTENCY_TABLE: !Ref IdempotencyTable
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -289,13 +311,21 @@ Resources:
                 - states:SendTaskHeartbeat
               Resource:
                 - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${IngestHls.Name}
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource: !GetAtt IdempotencyTable.Arn
       Events:
         SQSEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt MediaManifestQueue.Arn
-            BatchSize: 1
             Enabled: True
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
 
   IngestHls:
     Type: AWS::Serverless::StateMachine
