@@ -136,8 +136,6 @@ States:
           Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
           HeartbeatSeconds: 900
           Arguments:
-            MessageGroupId: >-
-              {% $states.input.flowId %}
             MessageBody: >-
               {% $states.input %}
             MessageAttributes:

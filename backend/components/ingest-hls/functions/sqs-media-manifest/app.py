@@ -7,7 +7,6 @@ import m3u8
 import requests
 from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
-from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from mediatimestamp.immutable import TimeRange, Timestamp
 
@@ -60,82 +59,83 @@ def get_file(source: str) -> bytes:
 @tracer.capture_lambda_handler(capture_response=False)
 # pylint: disable=unused-argument
 def lambda_handler(event: dict, context: LambdaContext) -> dict:
-    event: SQSEvent = SQSEvent(event)
-    for record in event.records:
-        task_token = record.message_attributes.get("TaskToken", {}).get(
-            "stringValue", None
+    for record in event.get("Records", []):
+        task_token = (
+            record.get("messageAttributes", {})
+            .get("TaskToken", {})
+            .get("stringValue", None)
         )
         if not task_token:
             logger.error("No task token found")
             continue
         try:
-            message = json.loads(record.body)
-            flow_id = message["flowId"]
-            manifest_location = message["manifestLocation"]
-            with single_metric(
-                namespace="Powertools",
-                name="MediaManifestProcessing",
-                unit=MetricUnit.Count,
-                value=1,
-            ) as metric:
-                metric.add_dimension(name="manifestLocation", value=manifest_location)
-            manifest_path = os.path.dirname(manifest_location)
-            manifest = get_manifest(manifest_location)
-            if manifest.is_variant:
-                raise ValueError("Not a media manifest")
-            last_media_sequence = message.get("lastMediaSequence", 0)
-            last_timestamp = Timestamp.from_str(message.get("lastTimestamp", "0:0"))
-            segments = []
-            for segment in manifest.segments:
-                if segment.media_sequence > last_media_sequence:
-                    segment_start = last_timestamp
-                    segment_end = Timestamp.from_nanosec(
-                        segment_start.to_nanosec() + (segment.duration * 1000000000)
-                    )
-                    timerange = TimeRange(
-                        segment_start, segment_end, TimeRange.INCLUDE_START
-                    )
-                    segment_dict = {
-                        "flowId": flow_id,
-                        "timerange": str(timerange),
-                        "uri": (
-                            segment.uri
-                            if segment.uri.startswith("http")
-                            else f"{manifest_path}/{segment.uri}"
+            if record.get("eventSource", "") == "aws:sqs":
+                message = json.loads(record["body"])
+                flow_id = message["flowId"]
+                manifest_location = message["manifestLocation"]
+                with single_metric(
+                    namespace="Powertools",
+                    name="MediaManifestProcessing",
+                    unit=MetricUnit.Count,
+                    value=1,
+                ) as metric:
+                    metric.add_dimension(name="manifestLocation", value=manifest_location)
+                manifest_path = os.path.dirname(manifest_location)
+                manifest = get_manifest(manifest_location)
+                if manifest.is_variant:
+                    raise ValueError("Not a media manifest")
+                last_media_sequence = message.get("lastMediaSequence", 0)
+                last_timestamp = Timestamp.from_str(message.get("lastTimestamp", "0:0"))
+                segments = []
+                for segment in manifest.segments:
+                    if segment.media_sequence > last_media_sequence:
+                        segment_start = last_timestamp
+                        segment_end = Timestamp.from_nanosec(
+                            segment_start.to_nanosec() + (segment.duration * 1000000000)
+                        )
+                        timerange = TimeRange(
+                            segment_start, segment_end, TimeRange.INCLUDE_START
+                        )
+                        segment_dict = {
+                            "flowId": flow_id,
+                            "timerange": str(timerange),
+                            "uri": (
+                                segment.uri
+                                if segment.uri.startswith("http")
+                                else f"{manifest_path}/{segment.uri}"
+                            ),
+                        }
+                        if segment.byterange:
+                            segment_dict["byterange"] = segment.byterange
+                        segments.append(segment_dict)
+                        last_timestamp = segment_end
+                        last_media_sequence = segment.media_sequence
+                        if len(segments) == 10:
+                            send_message_batch(segments)
+                            segments = []
+                send_message_batch(segments)
+                # pylint: disable=no-member
+                if manifest.is_endlist:
+                    sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
+                else:
+                    sfn.send_task_heartbeat(taskToken=task_token)
+                    sqs.send_message(
+                        QueueUrl=manifest_queue_url,
+                        MessageAttributes={
+                            "TaskToken": {
+                                "DataType": "String",
+                                "StringValue": task_token,
+                            }
+                        },
+                        MessageBody=json.dumps(
+                            {
+                                **message,
+                                "lastMediaSequence": last_media_sequence,
+                                "lastTimestamp": str(last_timestamp),
+                            }
                         ),
-                    }
-                    if segment.byterange:
-                        segment_dict["byterange"] = segment.byterange
-                    segments.append(segment_dict)
-                    last_timestamp = segment_end
-                    last_media_sequence = segment.media_sequence
-                    if len(segments) == 10:
-                        send_message_batch(segments)
-                        segments = []
-            send_message_batch(segments)
-            # pylint: disable=no-member
-            if manifest.is_endlist:
-                sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
-            else:
-                sfn.send_task_heartbeat(taskToken=task_token)
-                sqs.send_message(
-                    QueueUrl=manifest_queue_url,
-                    MessageGroupId=flow_id,
-                    MessageAttributes={
-                        "TaskToken": {
-                            "DataType": "String",
-                            "StringValue": task_token,
-                        }
-                    },
-                    MessageBody=json.dumps(
-                        {
-                            **message,
-                            "lastMediaSequence": last_media_sequence,
-                            "lastTimestamp": str(last_timestamp),
-                        }
-                    ),
-                    DelaySeconds=manifest.target_duration,
-                )
+                        DelaySeconds=manifest.target_duration,
+                    )
         # pylint: disable=broad-exception-caught
         except Exception as ex:
             sfn.send_task_failure(taskToken=task_token, error=str(ex))
