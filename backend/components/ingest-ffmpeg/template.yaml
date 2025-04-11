@@ -357,6 +357,19 @@ Resources:
             Parameters:
               Location: commands.json
 
+  FFmpegLayer:
+    Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+    Properties:
+      RetentionPolicy: Delete
+      ContentUri: layers/ffmpeg
+      CompatibleRuntimes:
+        - python3.13
+      CompatibleArchitectures:
+        - arm64
+
   FFmpegWorkerFunction:
     Type: AWS::Serverless::Function
     Metadata:
