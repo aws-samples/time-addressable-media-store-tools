@@ -142,7 +142,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         receive_delta_seconds = (first_receive_timestamp - sent_timestamp).total_seconds()
         logger.info(f"Approximate receive delta: {receive_delta_seconds}")
         with single_metric(
-            namespace="Powertools",
+            namespace="TAMS-Tools",
             name="SQSIngestReceiveDelta",
             unit=MetricUnit.Seconds,
             value=receive_delta_seconds,

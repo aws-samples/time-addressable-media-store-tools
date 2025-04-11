@@ -110,7 +110,7 @@ def process_message(message: dict, task_token: str) -> None:
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
     with single_metric(
-        namespace="Powertools",
+        namespace="TAMS-Tools",
         name="MediaManifestProcessing",
         unit=MetricUnit.Count,
         value=1,
