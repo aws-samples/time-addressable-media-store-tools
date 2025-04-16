@@ -25,7 +25,7 @@ States:
         BackoffRate: 2
         MaxAttempts: 3
     Output: >-
-      {% $map($states.input.flowIds, function($v) {{"flowId": $v }}) %}
+      {% [$map($states.input.flowIds, function($v) {{"flowId": $v }})] %}
     Next: MapFlows
   MapFlows:
     Type: Map
@@ -118,12 +118,12 @@ States:
           Default: GetSegmentsNextPage
           Choices:
             - Condition: >-
-                {% $xPagingCount = 0 %}
+                {% $xPagingCount = 0 and $count($states.input.s3Objects) = 0 %}
               Next: NoSegments
               Output: >-
                 {% $states.input %}
             - Condition: >-
-                {% $xPagingCount = 1 %}
+                {% $xPagingCount = 1 and $count($states.input.s3Objects) = 1 %}
               Next: SingleSegment
               Output: >-
                 {% $states.input %}
@@ -242,7 +242,7 @@ States:
           End: True
     Output:
       s3Objects: >-
-        {% $exists($filter($states.result, function($v) {$boolean($v)})) ? $filter($states.result, function($v) {$boolean($v)}) : [] %}
+        {% $exists($filter($states.result, function($v) {$boolean($v)})) ? [$filter($states.result, function($v) {$boolean($v)})] : [] %}
     Next: CheckConcat
   CheckConcat:
     Type: Choice
