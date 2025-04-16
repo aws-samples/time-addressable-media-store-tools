@@ -41,7 +41,6 @@ def map_container(probe: dict) -> str:
     mappings = get_containers_mappings()
     if not mappings.get(format_name):
         with single_metric(
-            namespace="TAMS-Tools",
             name="ContainerMappingMiss",
             unit=MetricUnit.Count,
             value=1,
@@ -69,7 +68,6 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
     codec_mappings = get_codec_mappings()
     if not codec_mappings.get(codec):
         with single_metric(
-            namespace="TAMS-Tools",
             name="CodecMappingMiss",
             unit=MetricUnit.Count,
             value=1,

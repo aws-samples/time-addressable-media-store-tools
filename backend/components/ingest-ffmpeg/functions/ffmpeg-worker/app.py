@@ -20,7 +20,7 @@ from botocore.exceptions import ClientError
 
 tracer = Tracer()
 logger = Logger()
-metrics = Metrics(namespace="Powertools")
+metrics = Metrics()
 batch_processor = BatchProcessor(event_type=EventType.SQS)
 
 s3 = boto3.client("s3")

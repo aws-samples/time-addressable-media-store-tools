@@ -127,6 +127,8 @@ Resources:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           MEDIACONVERT_QUEUE: Default
           STATE_MACHINE_ARN: !Ref IngestHls
       Policies:
@@ -244,6 +246,7 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           CODEC_PARAMETER: !Ref CodecsParameterName
           CONTAINERS_PARAMETER: !Ref ContainersParameter
       Policies:
@@ -283,6 +286,8 @@ Resources:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           MANIFEST_QUEUE_URL: !Ref MediaManifestQueue
           INGEST_QUEUE_URL: !Ref SegmentIngestQueueUrl
           IDEMPOTENCY_TABLE: !Ref IdempotencyTable

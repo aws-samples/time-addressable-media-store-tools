@@ -23,7 +23,7 @@ from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()
 logger = Logger()
-metrics = Metrics(namespace="Powertools")
+metrics = Metrics()
 persistence_layer = DynamoDBPersistenceLayer(table_name=os.environ["IDEMPOTENCY_TABLE"])
 batch_processor = BatchProcessor(event_type=EventType.SQS)
 idempotency_config = IdempotencyConfig(
@@ -110,7 +110,6 @@ def process_message(message: dict, task_token: str) -> None:
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
     with single_metric(
-        namespace="TAMS-Tools",
         name="MediaManifestProcessing",
         unit=MetricUnit.Count,
         value=1,

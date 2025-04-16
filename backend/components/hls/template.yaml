@@ -96,6 +96,8 @@ Resources:
         - !Ref OpenIdAuthLayerArn
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           TAMS_ENDPOINT: !Ref ApiEndpoint
           TOKEN_URL: !Ref TokenUrl
           USER_POOL_ID: !Ref UserPoolId

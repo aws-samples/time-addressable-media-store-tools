@@ -148,6 +148,8 @@ Resources:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           QUEUE_ARN: !GetAtt FFmpegJobQueue.Arn
           OUTPUT_BUCKET: !Ref FFmpegBucket
           EVENT_RULE_ROLE_ARN: !GetAtt EventRuleRole.Arn
@@ -236,6 +238,8 @@ Resources:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           QUEUE_ARN: !GetAtt FFmpegJobQueue.Arn
           EVENT_BUS_NAME: !Ref EventBusName
       Policies:
@@ -394,6 +398,7 @@ Resources:
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           INGEST_QUEUE_URL: !Ref SegmentIngestQueueUrl
           FFMPEG_BUCKET: !Ref FFmpegBucket
       Policies:
