@@ -5,4 +5,4 @@ build-FFprobeLayer:
 	mkdir -p "$(ARTIFACTS_DIR)/bin"
 	cp ffmpeg-temp/*/bin/ffprobe "$(ARTIFACTS_DIR)/bin"
 	mkdir -p "$(ARTIFACTS_DIR)/python"
-	cp ffprobe.py "$(ARTIFACTS_DIR)/python"
+	cp *.py "$(ARTIFACTS_DIR)/python"

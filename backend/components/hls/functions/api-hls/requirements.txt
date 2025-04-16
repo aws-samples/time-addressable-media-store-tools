@@ -1,2 +1,2 @@
-mediatimestamp
-m3u8
+mediatimestamp==5.2.0
+m3u8==6.0.0
