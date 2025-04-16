@@ -86,7 +86,7 @@ def s3_upload(data, bucket, prefix):
             for part_number in range(math.ceil(len(data) / part_size)):
                 # Calculate byte range for this part
                 start_byte = part_number * part_size
-                end_byte = min(start_byte + part_size - 1, len(data) - 1)
+                end_byte = min(start_byte + part_size, len(data))
                 logger.info(f"Uploading part {part_number + 1}...")
                 part = s3.upload_part(
                     Bucket=bucket,
