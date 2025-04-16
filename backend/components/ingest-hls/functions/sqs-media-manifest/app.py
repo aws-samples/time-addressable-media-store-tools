@@ -7,18 +7,18 @@ import m3u8
 import requests
 from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
-from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent, SQSRecord
-from aws_lambda_powertools.utilities.typing import LambdaContext
-from aws_lambda_powertools.utilities.idempotency import (
-    DynamoDBPersistenceLayer,
-    IdempotencyConfig,
-    idempotent_function,
-)
 from aws_lambda_powertools.utilities.batch import (
     BatchProcessor,
     EventType,
     process_partial_response,
 )
+from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent, SQSRecord
+from aws_lambda_powertools.utilities.idempotency import (
+    DynamoDBPersistenceLayer,
+    IdempotencyConfig,
+    idempotent_function,
+)
+from aws_lambda_powertools.utilities.typing import LambdaContext
 from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()

@@ -83,16 +83,9 @@ const columnDefinitions = [
   {
     id: "command",
     header: "FFmpeg Command",
-    cell: (item) => item.ffmpeg?.command?.join(" "),
+    cell: (item) =>  item.ffmpeg && Object.entries(item.ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
     sortingField: "command",
     maxWidth: 200,
-  },
-  {
-    id: "outputFormat",
-    header: "Output Format",
-    cell: (item) => item.ffmpeg?.outputFormat,
-    sortingField: "outputFormat",
-    maxWidth: 100,
   },
   {
     id: "output",

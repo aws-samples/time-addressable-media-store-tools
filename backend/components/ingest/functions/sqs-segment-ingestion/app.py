@@ -1,7 +1,7 @@
 import json
 import os
-from urllib.parse import urlparse
 from datetime import datetime
+from urllib.parse import urlparse
 
 import boto3
 import requests
@@ -137,9 +137,15 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     event: SQSEvent = SQSEvent(event)
     for record in event.records:
         message = json.loads(record.body)
-        sent_timestamp = datetime.fromtimestamp(int(record.attributes.sent_timestamp) / 1000)
-        first_receive_timestamp = datetime.fromtimestamp(int(record.attributes.approximate_first_receive_timestamp) / 1000)
-        receive_delta_seconds = (first_receive_timestamp - sent_timestamp).total_seconds()
+        sent_timestamp = datetime.fromtimestamp(
+            int(record.attributes.sent_timestamp) / 1000
+        )
+        first_receive_timestamp = datetime.fromtimestamp(
+            int(record.attributes.approximate_first_receive_timestamp) / 1000
+        )
+        receive_delta_seconds = (
+            first_receive_timestamp - sent_timestamp
+        ).total_seconds()
         logger.info(f"Approximate receive delta: {receive_delta_seconds}")
         with single_metric(
             namespace="TAMS-Tools",
@@ -147,7 +153,9 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
             unit=MetricUnit.Seconds,
             value=receive_delta_seconds,
         ) as metric:
-            metric.add_dimension(name="base_uri", value="/".join(message["uri"].split("/")[:-1]))
+            metric.add_dimension(
+                name="base_uri", value="/".join(message["uri"].split("/")[:-1])
+            )
         flow_id = message["flowId"]
         file_data = get_file(message["uri"], message.get("byterange", None))
         if not file_data:

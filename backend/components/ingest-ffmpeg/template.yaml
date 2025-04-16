@@ -34,6 +34,9 @@ Parameters:
   EventBusName:
     Type: String
 
+  TamsMediaBucket:
+    Type: String
+
 Transform:
   - AWS::LanguageExtensions
 
@@ -381,14 +384,16 @@ Resources:
             reason: ReservedConcurrentExecutions not required
     Properties:
       Timeout: 900
-      MemorySize: 8192
-      Handler: app.lambdaHandler
-      Runtime: nodejs22.x
+      MemorySize: 10240
       EphemeralStorage:
-        Size: 6144
+        Size: 10240
       CodeUri: functions/ffmpeg-worker/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+        - !Ref FFmpegLayer
       Environment:
         Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
           INGEST_QUEUE_URL: !Ref SegmentIngestQueueUrl
           FFMPEG_BUCKET: !Ref FFmpegBucket
       Policies:
@@ -403,7 +408,7 @@ Resources:
               Action:
                 - s3:GetObject
               Resource:
-                - !Sub arn:aws:s3:::*/*
+                - !Sub arn:aws:s3:::${TamsMediaBucket}/*
             - Effect: Allow
               Action:
                 - s3:GetObject
@@ -416,8 +421,9 @@ Resources:
           Type: SQS
           Properties:
             Queue: !GetAtt FFmpegJobQueue.Arn
-            BatchSize: 1
             Enabled: True
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
 
   FfmpegBatch:
     Type: AWS::Serverless::StateMachine

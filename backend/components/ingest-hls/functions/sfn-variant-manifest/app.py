@@ -6,13 +6,13 @@ from fractions import Fraction
 from functools import lru_cache
 from urllib.parse import urlparse
 
+import boto3
 import m3u8
 import requests
-import boto3
-from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from botocore.exceptions import ClientError
 from ffprobe import ffprobe_link
 
 tracer = Tracer()

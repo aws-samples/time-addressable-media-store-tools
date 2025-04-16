@@ -1,12 +1,12 @@
 {
     "Thumbnail size image": {
-        "command": [
-            "-ss 00:00:00",
-            "-frames:v 1",
-            "-vf scale=320:180",
-            "-qscale:v 2"
-        ],
-        "outputFormat": "image2",
+        "command": {
+            "-ss": "00:00:00",
+            "-frames:v": "1",
+            "-vf": "scale=320:180",
+            "-qscale:v": "2",
+            "-f": "image2"
+        },
         "tams": {
             "description": "FFmpeg (Thumbnail)",
             "codec": "image/jpeg",
@@ -21,26 +21,48 @@
             }
         }
     },
-    "Proxy Video": {
-        "command": [
-            "-c:v libx264",
-            "-copyts",
-            "-vf scale=854:480",
-            "-b:v 1000k"
-        ],
-        "outputFormat": "mpegts",
+    "Proxy Video (1080)": {
+        "command": {
+            "-c:v": "libx264",
+            "-copyts": null,
+            "-vf": "scale=1920:1080",
+            "-b:v": "5000k",
+            "-f": "mpegts"
+        },
         "tams": {
-            "description": "FFmpeg (Proxy Video)",
-            "avg_bit_rate": 1000000,
-            "max_bit_rate": 1000000,
-            "essence_parameters.frame_width": 854,
-            "essence_parameters.frame_height": 480
+            "description": "FFmpeg (1080 Proxy Video)",
+            "avg_bit_rate": 5000000,
+            "max_bit_rate": 5000000,
+            "essence_parameters.frame_width": 1920,
+            "essence_parameters.frame_height": 1080
+        }
+    },
+    "Proxy Video (720)": {
+        "command": {
+            "-c:v": "libx264",
+            "-copyts": null,
+            "-vf": "scale=1280:720",
+            "-b:v": "2500k",
+            "-f": "mpegts"
+        },
+        "tams": {
+            "description": "FFmpeg (720 Proxy Video)",
+            "avg_bit_rate": 2500000,
+            "max_bit_rate": 2500000,
+            "essence_parameters.frame_width": 1280,
+            "essence_parameters.frame_height": 720
         }
     },
     "MP4 Export": {
-        "command": [
-            "-c copy"
-        ],
-        "outputFormat": "mp4"
+        "command": {
+            "-c": "copy",
+            "-f": "mp4"
+        }
+    },
+    "TS Export": {
+        "command": {
+            "-c": "copy",
+            "-f": "mpegts"
+        }
     }
 }

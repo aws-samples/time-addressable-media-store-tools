@@ -3,6 +3,7 @@ aws-lambda-powertools[all]
 -r components/hls/functions/api-hls/requirements.txt
 -r components/ingest/functions/sqs-segment-ingestion/requirements.txt
 -r components/ingest-ffmpeg/functions/api-ffmpeg-ingestion/requirements.txt
+-r components/ingest-ffmpeg/layers/ffmpeg/requirements.txt
 -r components/ingest-hls/functions/api-hls-ingestion/requirements.txt
 -r components/ingest-hls/functions/sfn-variant-manifest/requirements.txt
 -r components/ingest-hls/functions/sqs-media-manifest/requirements.txt

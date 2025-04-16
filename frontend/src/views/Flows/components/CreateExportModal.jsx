@@ -72,7 +72,7 @@ const CreateExportModal = ({
     await start({
       timerange: timerange,
       flowIds: selectedFlowIds,
-      ffmpeg: { command: ffmpeg.command, outputFormat: ffmpeg.outputFormat },
+      ffmpeg: { command: ffmpeg.command },
     });
     handleDismiss();
     setIsSubmitting(false);
@@ -130,15 +130,11 @@ const CreateExportModal = ({
         </FormField>
         {ffmpeg && (
           <KeyValuePairs
-            columns={2}
+            columns={1}
             items={[
               {
                 label: "Command",
-                value: ffmpeg.command?.join(" "),
-              },
-              {
-                label: "Output",
-                value: ffmpeg.outputFormat,
+                value: Object.entries(ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
               },
             ]}
           />

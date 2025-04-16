@@ -139,15 +139,11 @@ const CreateRuleModal = ({
         </FormField>
         {ffmpeg && (
           <KeyValuePairs
-            columns={2}
+            columns={1}
             items={[
               {
                 label: "Command",
-                value: ffmpeg.command?.join(" "),
-              },
-              {
-                label: "Output",
-                value: ffmpeg.outputFormat,
+                value: Object.entries(ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
               },
             ]}
           />

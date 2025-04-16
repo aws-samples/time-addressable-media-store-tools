@@ -235,8 +235,8 @@ States:
                 {% $states.input.s3Objects %}
               ffmpeg:
                 command:
-                  -c copy
-                outputFormat: mpegts
+                  "-c": copy
+                  "-f": mpegts
           Output: >-
             {% $states.result.Payload.s3Object %}
           End: True

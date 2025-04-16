@@ -84,7 +84,7 @@ const CreateJobModal = ({
     await start({
       inputFlow: selectedFlowId,
       sourceTimerange: timerange,
-      ffmpeg: { command: ffmpeg.command, outputFormat: ffmpeg.outputFormat },
+      ffmpeg: { command: ffmpeg.command },
       outputFlow: destination,
     });
     handleDismiss();
@@ -154,15 +154,11 @@ const CreateJobModal = ({
         </FormField>
         {ffmpeg && (
           <KeyValuePairs
-            columns={2}
+            columns={1}
             items={[
               {
                 label: "Command",
-                value: ffmpeg.command?.join(" "),
-              },
-              {
-                label: "Output",
-                value: ffmpeg.outputFormat,
+                value: Object.entries(ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
               },
             ]}
           />
