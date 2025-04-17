@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import time
 from datetime import datetime
 from fractions import Fraction
 from functools import lru_cache
@@ -402,6 +403,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
                 "manifestLocation": uri,
                 "lastMediaSequence": 1,
                 "lastTimestamp": f"{flow_start}:0",
+                "eventTimestamp": int(time.time() * 1000),
             }
             for flow_id, uri in flow_manifests.items()
         ],

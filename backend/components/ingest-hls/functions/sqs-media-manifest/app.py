@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from urllib.parse import urlparse
 
 import boto3
@@ -19,6 +20,9 @@ from aws_lambda_powertools.utilities.idempotency import (
     idempotent_function,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
+    DataRecord,
+)
 from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()
@@ -26,8 +30,19 @@ logger = Logger()
 metrics = Metrics()
 persistence_layer = DynamoDBPersistenceLayer(table_name=os.environ["IDEMPOTENCY_TABLE"])
 batch_processor = BatchProcessor(event_type=EventType.SQS)
+
+
+def idempotency_hook(response: dict, idempotent_data: DataRecord) -> dict:
+    logger.warning(
+        "Idempotency blocked processing",
+        idempotency_key=idempotent_data.idempotency_key,
+    )
+    return response
+
+
 idempotency_config = IdempotencyConfig(
-    event_key_jmespath='["flowId", "lastMediaSequence"]'
+    event_key_jmespath='["flowId", "lastMediaSequence", "eventTimestamp"]',
+    response_hook=idempotency_hook,
 )
 
 s3 = boto3.client("s3")
@@ -107,6 +122,7 @@ def process_segment(
 @tracer.capture_method(capture_response=False)
 def process_message(message: dict, task_token: str) -> None:
     """Processes a single message from within the SQS record"""
+    logger.info("Idempotency allowed processing.")
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
     with single_metric(
@@ -150,10 +166,12 @@ def process_message(message: dict, task_token: str) -> None:
                     **message,
                     "lastMediaSequence": last_media_sequence,
                     "lastTimestamp": str(last_timestamp),
+                    "eventTimestamp": int(time.time() * 1000),
                 }
             ),
             DelaySeconds=manifest.target_duration,
         )
+    return (message["flowId"], message["lastMediaSequence"], message["eventTimestamp"])
 
 
 @tracer.capture_method(capture_response=False)
