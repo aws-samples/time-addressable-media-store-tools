@@ -513,6 +513,7 @@ Resources:
                 StringLike:
                   states:HTTPEndpoint:
                     - !Sub ${ApiEndpoint}/service
+                    - !Sub ${ApiEndpoint}/flows/*
                     - !Sub ${ApiEndpoint}/flows/*/segments
             - Effect: Allow
               Action:

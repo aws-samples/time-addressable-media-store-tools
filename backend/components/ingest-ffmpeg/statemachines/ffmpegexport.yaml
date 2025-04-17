@@ -41,6 +41,29 @@ States:
           Assign:
             flowId: >-
               {% $states.input.flowId %}
+          Next: GetFlowContainer
+        GetFlowContainer:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: GET
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% "${TamsEndpoint}/flows/" & $flowId %}
+          Assign:
+            flowContainer: >-
+              {% $exists($states.result.ResponseBody.container) ? $states.result.ResponseBody.container : null %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          Output: >-
+              {% $states.input %}
           Next: GetSegments
         GetSegments:
           Type: Task
@@ -233,6 +256,8 @@ States:
               outputBucket: ${BucketName}
               s3Objects: >-
                 {% $states.input.s3Objects %}
+              flowContainer: >-
+                {% $flowContainer %}
               ffmpeg:
                 command:
                   "-c": copy

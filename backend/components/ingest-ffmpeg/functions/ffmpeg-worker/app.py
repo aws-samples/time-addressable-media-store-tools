@@ -114,8 +114,7 @@ def s3_upload(data, bucket, prefix):
                     )
                 except ClientError as err:
                     logger.error(f"Error aborting multipart upload: {err}")
-            logger.error(f"Error copying file: {ex}")
-            raise
+            raise ex
     return key
 
 
@@ -209,7 +208,7 @@ def process_message(message):
 
 
 @tracer.capture_method(capture_response=False)
-def concat_action(message):
+def ffmpeg_concat(message):
     logger.info("Downloading segments to /tmp...")
     download_paths = download_objects_parallel(message["s3Objects"])
     logger.info("Executing FFmpeg concat...")
@@ -239,7 +238,157 @@ def concat_action(message):
 
 
 @tracer.capture_method(capture_response=False)
+def file_concat(message):
+    bytes_buffer = bytearray()
+    part_size = 50_000_000  # 50MB chunks
+    output_bucket = message["outputBucket"]
+    output_key = f"concat/{str(uuid.uuid4())}"
+    try:
+        mpu = s3.create_multipart_upload(Bucket=output_bucket, Key=output_key)
+        parts = []
+        part_number = 1
+        for obj in message["s3Objects"]:
+            bucket = obj["bucket"]
+            key = obj["key"]
+            logger.info(f"Reading s3://{bucket}/{key}...")
+            get_object = s3.get_object(Bucket=bucket, Key=key)
+            bytes_buffer.extend(get_object["Body"].read())
+            if len(bytes_buffer) > part_size:
+                logger.info(f"Uploading part {part_number}...")
+                part = s3.upload_part(
+                    Bucket=output_bucket,
+                    Key=output_key,
+                    Body=bytes_buffer,
+                    PartNumber=part_number,
+                    UploadId=mpu["UploadId"],
+                )
+                bytes_buffer = bytearray()
+                parts.append({"PartNumber": part_number, "ETag": part["ETag"]})
+                part_number += 1
+        if len(parts) > 0:
+            logger.info(f"Uploading part {part_number}...")
+            part = s3.upload_part(
+                Bucket=output_bucket,
+                Key=output_key,
+                Body=bytes_buffer,
+                PartNumber=part_number,
+                UploadId=mpu["UploadId"],
+            )
+            bytes_buffer = bytearray()
+            parts.append({"PartNumber": part_number, "ETag": part["ETag"]})
+            logger.info("Completing multi part upload...")
+            s3.complete_multipart_upload(
+                Bucket=output_bucket,
+                Key=output_key,
+                UploadId=mpu["UploadId"],
+                MultipartUpload={"Parts": parts},
+            )
+        else:
+            logger.info(
+                "Upload smaller than threshold so no need for multi-part upload..."
+            )
+            s3.abort_multipart_upload(
+                Bucket=output_bucket,
+                Key=output_key,
+                UploadId=mpu["UploadId"],
+            )
+            s3.put_object(
+                Bucket=output_bucket,
+                Key=output_key,
+                Body=bytes_buffer,
+            )
+    except Exception as ex:
+        try:
+            s3.abort_multipart_upload(
+                Bucket=output_bucket,
+                Key=output_key,
+                UploadId=mpu["UploadId"],
+            )
+        except ClientError as err:
+            logger.error(f"Error aborting multipart upload: {err}")
+        raise ex
+    return {"s3Object": {"bucket": output_bucket, "key": output_key}}
+
+
+@tracer.capture_method(capture_response=False)
+def concat_action(message):
+    if message.get("flowContainer", "").endswith("/mp2t"):
+        logger.info(
+            "flowContainer is mpegts, concat will incrementally append to binary file."
+        )
+        return file_concat(message)
+    else:
+        logger.info("flowContainer not supplied or not mpegts, concat will use ffmpeg.")
+        return ffmpeg_concat(message)
+
+
+@tracer.capture_method(capture_response=False)
+def move_s3_object(bucket, source_key, dest_key):
+    try:
+        head_object = s3.head_object(Bucket=bucket, Key=source_key)
+        object_size = head_object["ContentLength"]
+        # If object is smaller than 5GB, use simple copy
+        logger.info("Copying concat file to export location...")
+        if object_size < 5_000_000_000:
+            s3.copy_object(
+                CopySource={"Bucket": bucket, "Key": source_key},
+                Bucket=bucket,
+                Key=dest_key,
+            )
+        else:
+            mpu = s3.create_multipart_upload(Bucket=bucket, Key=dest_key)
+            parts = []
+            copied_bytes = 0
+            part_number = 1
+            part_size = 50_000_000  # 50MB chunks
+            while copied_bytes < object_size:
+                range_start = copied_bytes
+                range_end = min(copied_bytes + part_size - 1, object_size - 1)
+                part = s3.upload_part_copy(
+                    Bucket=bucket,
+                    Key=dest_key,
+                    PartNumber=part_number,
+                    UploadId=mpu["UploadId"],
+                    CopySource={"Bucket": bucket, "Key": source_key},
+                    CopySourceRange=f"bytes={range_start}-{range_end}",
+                )
+                parts.append(
+                    {"PartNumber": part_number, "ETag": part["CopyPartResult"]["ETag"]}
+                )
+                copied_bytes = range_end + 1
+                part_number += 1
+            s3.complete_multipart_upload(
+                Bucket=bucket,
+                Key=dest_key,
+                UploadId=mpu["UploadId"],
+                MultipartUpload={"Parts": parts},
+            )
+        logger.info("Deleting S3 concat file...")
+        s3.delete_object(Bucket=bucket, Key=source_key)
+    except ClientError as ex:
+        if "mpu" in locals():
+            s3.abort_multipart_upload(
+                Bucket=bucket, Key=dest_key, UploadId=mpu["UploadId"]
+            )
+        raise ex
+
+
+@tracer.capture_method(capture_response=False)
 def merge_action(message):
+    if len(message["s3Objects"]) == 1:
+        logger.info("Single input file supplied, checking requested export format...")
+        if message["ffmpeg"]["command"].get("-f", "") == "mpegts":
+            logger.info(
+                "Requested export format is mpegts so no ffmpeg job is required."
+            )
+            bucket = message["s3Objects"][0]["bucket"]
+            key = message["s3Objects"][0]["key"]
+            output_key = key.replace("concat/", "export/")
+            move_s3_object(bucket, key, output_key)
+            return {"s3Object": {"bucket": bucket, "key": output_key}}
+        logger.info(
+            "Requested export format is not mpegts so proceeding with ffmpeg job."
+        )
     logger.info("Downloading concat files to /tmp...")
     download_paths = download_objects_parallel(message["s3Objects"])
     logger.info("Executing FFmpeg merge...")
