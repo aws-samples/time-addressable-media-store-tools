@@ -18,7 +18,7 @@ import { useJobs } from "@/hooks/useFfmpeg";
 const columnDefinitions = [
   {
     id: "id",
-    header: "Origin Flow",
+    header: "Source Flow",
     cell: (item) => <Link to={`/flows/${item.id}`}>{item.id}</Link>,
     sortingField: "id",
     isRowHeader: true,

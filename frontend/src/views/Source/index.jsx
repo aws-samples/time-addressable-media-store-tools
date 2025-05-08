@@ -52,6 +52,13 @@ const Source = () => {
               </span>
             )}
             <Button
+              href={`/player/sources/${sourceId}`}
+              variant="inline-link"
+              onFollow={followLink}
+            >
+              View Player
+            </Button>
+            <Button
               href={`/diagram/sources/${sourceId}`}
               variant="inline-link"
               onFollow={followLink}
