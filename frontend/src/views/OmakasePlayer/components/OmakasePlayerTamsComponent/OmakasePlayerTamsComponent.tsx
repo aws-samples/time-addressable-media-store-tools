@@ -1,5 +1,3 @@
-import React, { useMemo, useRef, useState } from "react";
-import { useEffect } from "react";
 import "./style.css";
 
 import {
@@ -41,14 +39,38 @@ import {
   TIMELINE_LANE_STYLE,
   VARIABLES,
 } from "./constants";
-import { ColorResolver } from "./color-resolver";
+import {
+  ImageButton,
+  Marker,
+  MarkerLane,
+  MarkerListApi,
+  OmakasePlayer,
+  PeriodMarker,
+  PeriodObservation,
+  TextLabel,
+  TimelineApi,
+  VideoLoadOptions,
+} from "@byomakase/omakase-player";
+import {
+  OmakaseMarkerListComponent,
+  OmakasePlayerTimelineBuilder,
+  OmakasePlayerTimelineComponent,
+  OmakasePlayerTimelineControlsToolbar,
+  OmakaseTamsPlayerComponent,
+  OmakaseTimeRangePicker,
+  TimeRangeUtil,
+} from "@byomakase/omakase-react-components";
+import React, { useMemo, useRef, useState } from "react";
 
-import RowTemplate from "./OmakaseMarkerListComponentTemplates/RowTemplate";
+import { ColorResolver } from "./color-resolver";
+import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
 import HeaderTemplate from "./OmakaseMarkerListComponentTemplates/HeaderTemplate";
 import OmakaseSegmentationHeader from "../OmakaseSegmentation/OmakaseSegmentationHeader";
 import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
 import { TimecodeUtil } from "../../util/timecode-util";
 import { TAMSThumbnailUtil } from "../../util/tams-thumbnail-util";
+import { TimecodeUtil } from "@byomakase/omakase-react-components";
+import { useEffect } from "react";
 
 type OmakasePlayerTamsComponentProps = {
   flow: Flow;
@@ -99,6 +121,8 @@ function resolveVideoInfo(
   flowSegments: Map<string, FlowSegment[]>,
   requestedTimeRange: string
 ): VideoInfo {
+  console.log({ flows, flowSegments });
+
   const sortedStartTimeAndFramerate = flows
     .filter((flow) => flowSegments.get(flow.id)!.length > 0)
     .map((flow) => {

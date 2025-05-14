@@ -50,3 +50,26 @@ export const OmakaseHlsPlayer = () => {
 };
 
 export default OmakaseHlsPlayer;
+
+// Flow could not be fetched from backend
+
+// if (
+//   flow &&
+//   (flow.tags?.hls_exclude === "true" ||
+//     flow.tags?.hls_exclude === true ||
+//     flow.tags?.hls_exclude === "1" ||
+//     flow.tags?.hls_exclude === 1)
+// ) {
+//   return <div>Flow is excluded from HLS</div>;
+// }
+
+//   if (
+//     !loadingFlow &&
+//     !childFlows.isLoading &&
+//     !childFlowsSegmentsRaw.isLoading &&
+//     !flowSegments.isLoading &&
+//     !containsAudioOrVideoFlow(flow, filteredChildFlows) &&
+//     (flow || filteredChildFlows)
+//   ) {
+//     return <div>Selected {type} don’t contain video or audio</div>;
+//   }
