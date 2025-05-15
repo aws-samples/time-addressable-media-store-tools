@@ -4,6 +4,7 @@ import { OmakasePlayerTamsComponent } from ".";
 import { Spinner } from "@cloudscape-design/components";
 import { useOmakaseData } from "../../hooks/useOmakaseData";
 import { useParams } from "react-router-dom";
+import { useState } from "react";
 
 export const OmakaseHlsPlayer = () => {
   const { type, id } = useParams();
@@ -30,6 +31,7 @@ export const OmakaseHlsPlayer = () => {
       return <div>Selected timerange has no segments</div>;
     }
   }
+
   return !isLoading ? (
     <OmakasePlayerTamsComponent
       flow={flow}

@@ -1,10 +1,7 @@
-import getOmakaseData from "../utils/getOmakaseData";
 import paginationFetcher from "@/utils/paginationFetcher";
-import { parseTimerangeObj } from "@/utils/parseTimerange";
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { useState } from "react";
 
 export const useFlows = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR(
@@ -117,45 +114,5 @@ export const useFlowStatusTag = () => {
   return {
     update: trigger,
     isUpdating: isMutating,
-  };
-};
-
-export const useOmakaseData = (type, id) => {
-  const [timerange, setTimerange] = useState();
-  const {
-    data: response,
-    error,
-    isLoading,
-    isValidating,
-  } = useSWR(
-    ["/omakase-data", type, id, timerange],
-    async ([_, type, id, timerange]) => {
-      const {
-        flow,
-        relatedFlows,
-        flowSegments,
-        maxTimerange,
-        timerange: segmentsTimerange,
-      } = await getOmakaseData({ type, id, timerange });
-
-      return {
-        flow,
-        relatedFlows,
-        flowSegments,
-        maxTimerange,
-        timerange: segmentsTimerange,
-      };
-    }
-  );
-  return {
-    flow: response?.flow,
-    relatedFlows: response?.relatedFlows,
-    flowSegments: response?.flowSegments,
-    maxTimerange: response?.maxTimerange,
-    timerange: response?.timerange,
-    setTimerange,
-    isLoading,
-    isValidating,
-    error,
   };
 };
