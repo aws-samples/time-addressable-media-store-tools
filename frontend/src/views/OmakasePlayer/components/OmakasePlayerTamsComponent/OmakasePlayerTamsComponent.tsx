@@ -121,8 +121,6 @@ function resolveVideoInfo(
   flowSegments: Map<string, FlowSegment[]>,
   requestedTimeRange: string
 ): VideoInfo {
-  console.log({ flows, flowSegments });
-
   const sortedStartTimeAndFramerate = flows
     .filter((flow) => flowSegments.get(flow.id)!.length > 0)
     .map((flow) => {

@@ -2,6 +2,7 @@ import paginationFetcher from "@/utils/paginationFetcher";
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import { useState } from "react";
 
 export const useFlows = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR(
@@ -117,7 +118,8 @@ export const useFlowStatusTag = () => {
   };
 };
 
-export const useOmakaseData = (type, id, timerange) => {
+export const useOmakaseData = (type, id) => {
+  const [timerange, setTimerange] = useState();
   const {
     data: response,
     error,
@@ -138,7 +140,7 @@ export const useOmakaseData = (type, id, timerange) => {
         flow,
         relatedFlows,
         flowSegments,
-        maxTimerange: parseTimerangeObj(maxTimerange),
+        maxTimerange,
         timerange: segmentsTimerange,
       };
     }
@@ -149,6 +151,7 @@ export const useOmakaseData = (type, id, timerange) => {
     flowSegments: response?.flowSegments,
     maxTimerange: response?.maxTimerange,
     timerange: response?.timerange,
+    setTimerange,
     isLoading,
     isValidating,
     error,

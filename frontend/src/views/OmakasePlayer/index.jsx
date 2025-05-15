@@ -4,7 +4,6 @@ import { OmakasePlayerTamsComponent } from ".";
 import { Spinner } from "@cloudscape-design/components";
 import { useOmakaseData } from "../../hooks/useOmakaseData";
 import { useParams } from "react-router-dom";
-import { useState } from "react";
 
 export const OmakaseHlsPlayer = () => {
   const { type, id } = useParams();
@@ -31,7 +30,6 @@ export const OmakaseHlsPlayer = () => {
       return <div>Selected timerange has no segments</div>;
     }
   }
-
   return !isLoading ? (
     <OmakasePlayerTamsComponent
       flow={flow}
@@ -50,26 +48,3 @@ export const OmakaseHlsPlayer = () => {
 };
 
 export default OmakaseHlsPlayer;
-
-// Flow could not be fetched from backend
-
-// if (
-//   flow &&
-//   (flow.tags?.hls_exclude === "true" ||
-//     flow.tags?.hls_exclude === true ||
-//     flow.tags?.hls_exclude === "1" ||
-//     flow.tags?.hls_exclude === 1)
-// ) {
-//   return <div>Flow is excluded from HLS</div>;
-// }
-
-//   if (
-//     !loadingFlow &&
-//     !childFlows.isLoading &&
-//     !childFlowsSegmentsRaw.isLoading &&
-//     !flowSegments.isLoading &&
-//     !containsAudioOrVideoFlow(flow, filteredChildFlows) &&
-//     (flow || filteredChildFlows)
-//   ) {
-//     return <div>Selected {type} don’t contain video or audio</div>;
-//   }
