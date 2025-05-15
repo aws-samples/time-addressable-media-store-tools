@@ -121,8 +121,6 @@ function resolveVideoInfo(
   flowSegments: Map<string, FlowSegment[]>,
   requestedTimeRange: string
 ): VideoInfo {
-  console.log({ flows, flowSegments });
-
   const sortedStartTimeAndFramerate = flows
     .filter((flow) => flowSegments.get(flow.id)!.length > 0)
     .map((flow) => {
@@ -288,7 +286,6 @@ function buildTimeline(
     description: "Segmentation",
     style: TIMELINE_LANE_STYLE,
   });
-
   const parsedTimeRange = TimeRangeUtil.parseTimeRange(timerange);
   const start = Math.max(
     TimeRangeUtil.timeMomentToSeconds(parsedTimeRange.start!) - markerOffset,
