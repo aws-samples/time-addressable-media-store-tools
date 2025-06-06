@@ -22,6 +22,8 @@ Metadata:
         default: Deploy HLS ingest?
       DeployIngestFfmpeg:
         default: Deploy Ffmpeg ingest?
+      DeployReplication:
+        default: Deploy Replication?
 
 Parameters:
   ApiStackName:
@@ -48,6 +50,13 @@ Parameters:
       - "No"
     Default: "No"
 
+  DeployReplication:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
 Conditions:
   DeployHlsApi: !Equals [!Ref DeployHlsApi, "Yes"]
 
@@ -55,9 +64,11 @@ Conditions:
 
   DeployIngestFfmpeg: !Equals [!Ref DeployIngestFfmpeg, "Yes"]
 
+  DeployReplication: !Equals [!Ref DeployReplication, "Yes"]
+
   DeployHls: !Or [!Condition DeployHlsApi, !Condition DeployIngestHls]
 
-  DeployIngest: !Or [!Condition DeployIngestHls, !Condition DeployIngestFfmpeg]
+  DeployIngest: !Or [!Condition DeployIngestHls, !Condition DeployIngestFfmpeg, !Condition DeployReplication]
 
 Transform: AWS::Serverless-2016-10-31
 
@@ -80,7 +91,7 @@ Globals:
     TracingEnabled: true
     MethodSettings:
       - ResourcePath: /*
-        HttpMethod: '*'
+        HttpMethod: "*"
         DataTraceEnabled: True
         LoggingLevel: INFO
 
@@ -412,6 +423,19 @@ Resources:
         TamsMediaBucket: !ImportValue
           Fn::Sub: ${ApiStackName}-MediaStorageBucket
     Condition: DeployIngestFfmpeg
+
+  ReplicationStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/replication/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
+        SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        ParentStackName: !Ref AWS::StackName
+    Condition: DeployReplication
 
 Outputs:
   OmakaseExportEventBus:

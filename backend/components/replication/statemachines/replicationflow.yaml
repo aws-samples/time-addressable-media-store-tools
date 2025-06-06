@@ -1,0 +1,79 @@
+QueryLanguage: JSONata
+StartAt: GetFlow
+States:
+  GetFlow:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: >-
+          {% $states.input.sourceConnectionArn %}
+      ApiEndpoint: >-
+        {% $states.input.sourceEndpoint & '/flows/' & $states.input.flowId %}
+      QueryParameters:
+        include_timerange: 'true'
+    Assign:
+      flowId: >-
+        {% $states.input.flowId %}
+      timerange: >-
+        {% $boolean($states.input.timerange) ? $states.input.timerange: $states.result.ResponseBody.timerange %}
+      flow: >-
+        {% $states.result.ResponseBody %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Next: CheckFlow
+  CheckFlow:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: ${ConnectionArn}
+      ApiEndpoint: >-
+        {% '${TamsEndpoint}/flows/' & $flowId %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Catch:
+      - ErrorEquals:
+          - States.Http.StatusCode.404
+        Next: CreateFlow
+    Output:
+      timerange: >-
+        {% $timerange %}
+    End: True
+  CreateFlow:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      InvocationConfig:
+        ConnectionArn: ${ConnectionArn}
+      ApiEndpoint: >-
+        {% '${TamsEndpoint}/flows/' & $flowId %}
+      Method: PUT
+      RequestBody: >-
+        {% $flow %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Output:
+      timerange: >-
+        {% $timerange %}
+    End: True

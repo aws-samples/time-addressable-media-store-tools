@@ -1,0 +1,242 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ApiEndpoint:
+    Type: String
+
+  TamsConnectionArn:
+    Type: String
+
+  SegmentIngestQueueUrl:
+    Type: String
+
+  SegmentIngestQueueArn:
+    Type: String
+
+  ParentStackName:
+    Type: String
+
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 30
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.13
+    Architectures:
+      - arm64
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      OpenApiVersion: 3.0.1
+      EndpointConfiguration:
+        Type: REGIONAL
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: True
+        UsagePlan:
+          CreateUsagePlan: PER_API
+
+  WebhookReceiverFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      CodeUri: functions/webhook-receiver/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref SegmentIngestQueueUrl
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                - !Ref SegmentIngestQueueArn
+      Events:
+        postEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /
+            Method: post
+
+  ReplicationFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: Encryption no required.
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/states/${ParentStackName}-replication-flow
+      RetentionInDays: 30
+
+  ReplicationFlow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      Tracing:
+        Enabled: True
+      Logging:
+        Level: ALL
+        IncludeExecutionData: True
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt ReplicationFlowLogGroup.Arn
+      DefinitionUri: statemachines/replicationflow.yaml
+      DefinitionSubstitutions:
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogDelivery
+                - logs:PutResourcePolicy
+                - logs:DescribeLogGroups
+                - logs:UpdateLogDelivery
+                - logs:DeleteLogDelivery
+                - logs:DescribeResourcePolicies
+                - logs:GetLogDelivery
+                - logs:ListLogDeliveries
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ReplicationFlowLogGroup}:log-stream:*
+            - Effect: Allow
+              Action:
+                - logs:PutDestination
+                - logs:PutDestinationPolicy
+              Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ReplicationFlowLogGroup}:destination:*
+            - Effect: Allow
+              Action:
+                - logs:PutSubscriptionFilter
+              Resource:
+                - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ReplicationFlowLogGroup}
+                - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ReplicationFlowLogGroup}:destination:*
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - GET
+                StringLike:
+                  states:HTTPEndpoint:
+                    - "*/flows/*"
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - PUT
+                StringLike:
+                  states:HTTPEndpoint:
+                    - !Sub ${ApiEndpoint}/flows/*
+
+  ReplicationBatch:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/replicationbatch.yaml
+      DefinitionSubstitutions:
+        ReplicationFlowArn: !Ref ReplicationFlow
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        QueueUrl: !Ref SegmentIngestQueueUrl
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${ReplicationFlow.Name}
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+                - states:StopExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${ReplicationFlow.Name}:*
+            - Effect: Allow
+              Action:
+                - events:PutTargets
+                - events:PutRule
+                - events:DescribeRule
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - GET
+                StringLike:
+                  states:HTTPEndpoint:
+                    - "*/service"
+                    - "*/flows/*/segments"
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                - !Ref SegmentIngestQueueArn
+
+Outputs:
+  ApiEndpoint:
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
+
+  ApiKeyId:
+    Value: !Ref Api.ApiKey
+
+  ReplicationFlowArn:
+    Value: !Ref ReplicationFlow
+
+  ReplicationBatchArn:
+    Value: !Ref ReplicationBatch
