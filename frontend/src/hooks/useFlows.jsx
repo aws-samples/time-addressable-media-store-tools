@@ -1,7 +1,7 @@
-import paginationFetcher from "@/utils/paginationFetcher";
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
+import paginationFetcher from "@/utils/paginationFetcher";
 
 export const useFlows = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR(
@@ -39,33 +39,6 @@ export const useFlow = (flowId) => {
 
   return {
     flow: response?.data,
-    mutate,
-    isLoading,
-    isValidating,
-    error,
-  };
-};
-
-export const useChildFlows = (flowIds) => {
-  const { get } = useApi();
-
-  const { data, mutate, error, isLoading, isValidating } = useSWR(
-    flowIds?.length > 0 ? flowIds.map((id) => ["/flows", id]) : null,
-    async (keys) => {
-      const responses = await Promise.all(
-        keys.map(([path, id]) =>
-          get(`${path}/${id}?include_timerange=true`).then((resp) => resp.data)
-        )
-      );
-      return responses;
-    },
-    {
-      refreshInterval: 3000,
-    }
-  );
-
-  return {
-    flows: data,
     mutate,
     isLoading,
     isValidating,
