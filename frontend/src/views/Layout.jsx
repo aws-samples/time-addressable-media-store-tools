@@ -26,6 +26,7 @@ const Layout = () => {
   const breadCrumbs = () => {
     let breadCrumbPath = pathname;
     if (
+      breadCrumbPath.startsWith("/player") ||
       breadCrumbPath.startsWith("/hlsplayer") ||
       breadCrumbPath.startsWith("/diagram")
     ) {

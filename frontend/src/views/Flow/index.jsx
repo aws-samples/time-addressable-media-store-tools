@@ -53,6 +53,13 @@ const Flow = () => {
               </span>
             )}
             <Button
+              href={`/player/flows/${flowId}`}
+              variant="inline-link"
+              onFollow={followLink}
+            >
+              View Player
+            </Button>
+            <Button
               href={`/diagram/flows/${flowId}`}
               variant="inline-link"
               onFollow={followLink}

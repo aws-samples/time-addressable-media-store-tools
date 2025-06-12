@@ -16,6 +16,7 @@ import Diagram from "@/views/Diagram";
 import Flow from "@/views/Flow";
 import Flows from "@/views/Flows";
 import HlsPlayer from "@/views/HlsPlayer";
+import { OmakaseHlsPlayer } from "@/views/OmakasePlayer";
 import Home from "@/views/Home";
 import Layout from "@/views/Layout";
 import HlsIngestion from "@/views/HlsIngestion";
@@ -74,6 +75,7 @@ const App = () => {
           {AWS_HLS_API_ENDPOINT && (
             <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
           )}
+          <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
           {AWS_HLS_INGEST_ENDPOINT && (
             <>
               <Route path="workflows" element={<HlsIngestion />} />

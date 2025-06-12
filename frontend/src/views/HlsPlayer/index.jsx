@@ -7,7 +7,6 @@ import { useRef } from "react";
 export const HlsPlayer = () => {
   const { type, id } = useParams();
   const url = `${AWS_HLS_API_ENDPOINT}/${type}/${id}/manifest.m3u8`;
-  console.log(url);
 
   const playerRef = useRef(null);
 

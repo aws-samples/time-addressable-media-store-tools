@@ -59,9 +59,13 @@ export const parseTimerangeObj = ({
   const startNanoseconds =
     start === undefined
       ? ""
-      : Math.floor((start.toSeconds() - Math.floor(start.toSeconds())) * 10 ** 9);
+      : Math.floor(
+          (start.toSeconds() - Math.floor(start.toSeconds())) * 10 ** 9
+        );
   const endNanoseconds =
-    end === undefined ? "" : Math.floor((end.toSeconds() - Math.floor(end.toSeconds())) * 10 ** 9);
+    end === undefined
+      ? ""
+      : Math.floor((end.toSeconds() - Math.floor(end.toSeconds())) * 10 ** 9);
   const startTimerange =
     start === undefined ? "" : `${startSeconds}:${startNanoseconds}`;
   const endTimerange =
