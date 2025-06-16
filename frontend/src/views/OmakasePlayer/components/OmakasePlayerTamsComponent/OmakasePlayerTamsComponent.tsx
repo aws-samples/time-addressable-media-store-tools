@@ -1,5 +1,28 @@
+import React, { useMemo, useRef, useState } from "react";
+import { useEffect } from "react";
 import "./style.css";
 
+import {
+  ImageButton,
+  Marker,
+  MarkerLane,
+  MarkerListApi,
+  OmakasePlayer,
+  PeriodMarker,
+  TextLabel,
+  TimelineApi,
+  VideoLoadOptions,
+} from "@byomakase/omakase-player";
+
+import {
+  OmakaseMarkerListComponent,
+  OmakasePlayerTimelineBuilder,
+  OmakasePlayerTimelineComponent,
+  OmakasePlayerTimelineControlsToolbar,
+  OmakaseTamsPlayerComponent,
+  OmakaseTimeRangePicker,
+  TimeRangeUtil,
+} from "@byomakase/omakase-react-components";
 import {
   Flow,
   FlowSegment,
@@ -18,37 +41,14 @@ import {
   TIMELINE_LANE_STYLE,
   VARIABLES,
 } from "./constants";
-import {
-  ImageButton,
-  Marker,
-  MarkerLane,
-  MarkerListApi,
-  OmakasePlayer,
-  PeriodMarker,
-  PeriodObservation,
-  TextLabel,
-  TimelineApi,
-  VideoLoadOptions,
-} from "@byomakase/omakase-player";
-import {
-  OmakaseMarkerListComponent,
-  OmakasePlayerTimelineBuilder,
-  OmakasePlayerTimelineComponent,
-  OmakasePlayerTimelineControlsToolbar,
-  OmakaseTamsPlayerComponent,
-  OmakaseTimeRangePicker,
-  TimeRangeUtil,
-} from "@byomakase/omakase-react-components";
-import React, { useMemo, useRef, useState } from "react";
-
 import { ColorResolver } from "./color-resolver";
-import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
+
+import RowTemplate from "./OmakaseMarkerListComponentTemplates/RowTemplate";
 import HeaderTemplate from "./OmakaseMarkerListComponentTemplates/HeaderTemplate";
 import OmakaseSegmentationHeader from "../OmakaseSegmentation/OmakaseSegmentationHeader";
-import RowTemplate from "./OmakaseMarkerListComponentTemplates/RowTemplate";
+import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
+import { TimecodeUtil } from "../../util/timecode-util";
 import { TAMSThumbnailUtil } from "../../util/tams-thumbnail-util";
-import { TimecodeUtil } from "@byomakase/omakase-react-components";
-import { useEffect } from "react";
 
 type OmakasePlayerTamsComponentProps = {
   flow: Flow;
@@ -72,6 +72,7 @@ type VideoInfo = {
   ffom: string | undefined;
   markerOffset: number;
   fps: number;
+  dropFrame: boolean;
 };
 
 function resolveDisplayConfig(
@@ -104,6 +105,7 @@ function resolveVideoInfo(
     .map((flow) => {
       const segments = flowSegments.get(flow.id)!;
       let frameRate;
+      let dropFrame = false;
 
       if (flow.format === "urn:x-nmos:format:video") {
         flow as VideoFlow;
@@ -113,6 +115,14 @@ function resolveVideoInfo(
           frameRate =
             frameRateParameters.numerator /
             (frameRateParameters.denominator ?? 1);
+
+          if (
+            (frameRateParameters.numerator === 60000 ||
+              frameRateParameters.numerator === 30000) &&
+            frameRateParameters.denominator === 1001
+          ) {
+            dropFrame = true;
+          }
         }
       }
 
@@ -121,6 +131,7 @@ function resolveVideoInfo(
           TimeRangeUtil.parseTimeRange(segments.at(0)!.timerange).start!
         ),
         frameRate: frameRate,
+        dropFrame: dropFrame,
       };
     })
     .sort((a, b) => a.start - b.start);
@@ -142,19 +153,22 @@ function resolveVideoInfo(
 
   if (videoStartTimeAndFrameRate === undefined) {
     return {
-      ffom: TimecodeUtil.formatToTimecode(realStart, 100),
+      ffom: TimecodeUtil.formatToTimecode(realStart, 100, false),
       markerOffset: start,
       fps: 100,
+      dropFrame: false,
     };
   }
 
   return {
     ffom: TimecodeUtil.formatToTimecode(
       realStart,
-      videoStartTimeAndFrameRate.frameRate!
+      videoStartTimeAndFrameRate.frameRate!,
+      videoStartTimeAndFrameRate.dropFrame
     ),
     markerOffset: videoStartTimeAndFrameRate.start,
     fps: videoStartTimeAndFrameRate.frameRate!,
+    dropFrame: videoStartTimeAndFrameRate.dropFrame,
   };
 }
 
@@ -176,6 +190,10 @@ function segmentToMarker(
 
     if (end > videoLength) {
       end = videoLength - 0.001;
+
+      if (start !== undefined && start > end) {
+        start = undefined;
+      }
     }
   }
 
@@ -241,6 +259,7 @@ function buildTimeline(
     description: "Segmenetation",
     style: TIMELINE_LANE_STYLE,
   });
+
   const parsedTimeRange = TimeRangeUtil.parseTimeRange(timerange);
   const start =
     TimeRangeUtil.timeMomentToSeconds(parsedTimeRange.start!) - markerOffset;
@@ -249,7 +268,7 @@ function buildTimeline(
 
   const segmentationMarker = new PeriodMarker({
     timeObservation: {
-      start: start,
+      start: Math.max(0, start),
       end: end,
     },
     editable: true,
@@ -318,13 +337,19 @@ function buildTimeline(
     });
 
     if (segments?.length) {
-      const markers = segments?.map((segment) =>
-        segmentToMarker(
-          segment,
-          markerOffset,
-          omakasePlayer.video.getDuration()
+      const markers = segments
+        ?.map((segment) =>
+          segmentToMarker(
+            segment,
+            markerOffset,
+            omakasePlayer.video.getDuration()
+          )
         )
-      );
+        .filter(
+          (marker) =>
+            marker.timeObservation.start != undefined &&
+            marker.timeObservation.end != undefined
+        );
 
       markers.forEach((marker) => {
         marker.style.color = colorResolver.color;
@@ -453,6 +478,7 @@ const OmakasePlayerTamsComponent = React.memo(
       }
       return flows;
     }, [childFlows, flowSegments, flow]);
+
     const timelineBuilderFlowSegments = useMemo(() => {
       const segments = new Map([...childFlowsSegments]);
       if (flowSegments && flowSegments.length > 0) {
@@ -460,6 +486,7 @@ const OmakasePlayerTamsComponent = React.memo(
       }
       return segments;
     }, [childFlowsSegments, flowSegments, flow]);
+
     const videoInfo = resolveVideoInfo(
       timelineBuilderFlows,
       timelineBuilderFlowSegments,
@@ -467,8 +494,17 @@ const OmakasePlayerTamsComponent = React.memo(
     );
 
     const videoLoadOptions: VideoLoadOptions = videoInfo.ffom
-      ? { protocol: "hls", ffom: videoInfo.ffom }
-      : { protocol: "hls" };
+      ? {
+          protocol: "hls",
+          ffom: videoInfo.ffom,
+          frameRate: videoInfo.fps,
+          dropFrame: videoInfo.dropFrame,
+        }
+      : {
+          protocol: "hls",
+          frameRate: videoInfo.fps,
+          dropFrame: videoInfo.dropFrame,
+        };
 
     timelineBuilderFlows.sort(flowFormatSorting);
 
@@ -657,10 +693,15 @@ const OmakasePlayerTamsComponent = React.memo(
                 childFlows={childFlows}
                 flowSegments={flowSegments}
                 childFlowsSegments={childFlowsSegments}
-                fps={videoInfo.fps}
                 videoLoadOptions={videoLoadOptions}
-                setOmakasePlayer={setOmakasePlayer}
-                config={{ mediaChrome: "enabled" }}
+                onVideoLoadedCallback={(omakasePlayer) =>
+                  setOmakasePlayer((prev) => prev ?? omakasePlayer)
+                }
+                config={{
+                  mediaChrome: {
+                    visibility: "enabled",
+                  },
+                }}
                 timerange={timeRange}
                 enableHotkey={true}
               />
@@ -682,7 +723,7 @@ const OmakasePlayerTamsComponent = React.memo(
           <OmakasePlayerTimelineComponent
             omakasePlayer={omakasePlayer}
             timelineConfig={TIMELINE_CONFIG}
-            timelinePopulateFn={(timeline) =>
+            onTimelineCreatedCallback={(timeline) =>
               buildTimeline(
                 omakasePlayer,
                 timeline,

@@ -14,9 +14,62 @@
  * limitations under the License.
  */
 
+import Decimal from "decimal.js";
+
 const frameRatePrecision = 15; // frame rate precision
 
+export interface FrameRateModel {
+  value: number;
+  fraction?: string;
+  dropFrameEnabled: boolean;
+  dropFramesOnMinute?: number;
+}
+
+const initFrameRates: { fraction: string; dropFramesOnMinute?: number }[] = [
+  {
+    fraction: "24000/1001",
+  },
+  {
+    fraction: "30000/1001",
+    dropFramesOnMinute: 2,
+  },
+  {
+    fraction: "60000/1001",
+    dropFramesOnMinute: 4,
+  },
+  {
+    fraction: "120000/1001",
+  },
+  {
+    fraction: "240000/1001",
+  },
+];
+
 export class FrameRateUtil {
+  static AUDIO_FRAME_RATE = 100;
+
+  private static frameRateModels: FrameRateModel[];
+  private static frameRateModelByValue: Map<number, FrameRateModel> = new Map<
+    number,
+    FrameRateModel
+  >();
+
+  static {
+    this.frameRateModels = initFrameRates.map((fractionFrameRate) => {
+      return {
+        value: this.resolveFrameRateValueFromFraction(
+          fractionFrameRate.fraction
+        ),
+        fraction: fractionFrameRate.fraction,
+        dropFrameEnabled: fractionFrameRate.dropFramesOnMinute != undefined,
+        dropFramesOnMinute: fractionFrameRate.dropFramesOnMinute,
+      };
+    });
+
+    this.frameRateModels.forEach((frameRateModel) => {
+      this.frameRateModelByValue.set(frameRateModel.value, frameRateModel);
+    });
+  }
   static resolveFrameRateValueFromFraction(fraction: string): number {
     let parts = fraction.split("/");
 
@@ -39,5 +92,15 @@ export class FrameRateUtil {
     }
 
     return parseFloat((numerator / denominator).toFixed(frameRatePrecision));
+  }
+
+  static resolveDropFramesOnMinute(frameRateDecimal: Decimal): number {
+    let frameRateModel = this.frameRateModelByValue.get(
+      frameRateDecimal.toNumber()
+    );
+    if (!frameRateModel || !frameRateModel.dropFrameEnabled) {
+      throw new Error("Drop frame for frame rate not supported");
+    }
+    return frameRateModel.dropFramesOnMinute!;
   }
 }

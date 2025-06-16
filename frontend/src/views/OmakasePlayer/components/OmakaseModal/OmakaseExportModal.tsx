@@ -340,18 +340,6 @@ export function OmakaseExportModalBody({
       setShowModal && setShowModal(false);
       setIsSpinnerVisible(false);
     }
-
-    // client
-    //   .send(new PutEventsCommand(params))
-    //   .then(() => {
-    //     window.alert("Export was successful");
-    //   })
-    //   .catch(() => {
-    //     window.alert("Error");
-    //   })
-    //   .finally(() => {
-    //     setShowModal && setShowModal(false);
-    //   });
   };
 
   const handleOperationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

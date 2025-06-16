@@ -17,8 +17,8 @@
     "@aws-sdk/client-sfn": "^3.787.0",
     "@aws-sdk/client-ssm": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
-    "@byomakase/omakase-player": "0.15.1-SNAPSHOT.1743508940",
-    "@byomakase/omakase-react-components":"0.0.1-SNAPSHOT.1743629559",
+    "@byomakase/omakase-player": "0.18.0",
+    "@byomakase/omakase-react-components": "1.0.1",
     "@cloudscape-design/collection-hooks": "^1.0.71",
     "@cloudscape-design/components": "^3.0.948",
     "@cloudscape-design/design-tokens": "^3.0.55",
@@ -50,6 +50,8 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.37.0",
-    "@rollup/rollup-darwin-arm64": "^4.37.0"
+    "@rollup/rollup-darwin-arm64": "^4.37.0",
+    "@esbuild/linux-x64":"^0.25.0",
+    "@esbuild/darwin-arm64":"^0.25.0"
   }
 }

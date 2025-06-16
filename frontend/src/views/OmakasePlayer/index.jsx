@@ -22,6 +22,15 @@ export const OmakaseHlsPlayer = () => {
   if (!isLoading && !flow) {
     return <div>{`No valid ${type} found`}</div>;
   }
+  if (!isLoading) {
+    const hasSegments =
+      Object.values(flowSegments).find((segments) => segments.length > 0) !=
+      undefined;
+
+    if (!hasSegments) {
+      return <div>Selected timerange has no segments</div>;
+    }
+  }
 
   return !isLoading ? (
     <OmakasePlayerTamsComponent

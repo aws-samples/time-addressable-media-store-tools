@@ -64,6 +64,11 @@ export class TimeRangeUtil {
     return milliseconds + timeMoment[1] / 1_000_000;
   }
 
+  static timeMomentToNanoseconds(timeMoment: TimeMoment): number {
+    const nanoseconds = timeMoment[0] * 1_000_000_000;
+    return nanoseconds + timeMoment[1];
+  }
+
   static timeMomentToDate(timeMoment: TimeMoment): Date {
     const milliseconds = timeMoment[0] * 1000;
     // Convert nanoseconds to milliseconds and add to total milliseconds
