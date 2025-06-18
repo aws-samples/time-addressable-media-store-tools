@@ -284,14 +284,6 @@ const getOmakaseData = async ({ type, id, timerange }) => {
 
   const flowSegments = Object.fromEntries(await Promise.all(fetchPromises));
 
-  console.log({
-    flow,
-    relatedFlows,
-    flowSegments,
-    maxTimerange: parsedMaxTimerange,
-    timerange: parsedTimerange,
-  });
-
   return {
     flow,
     relatedFlows,
