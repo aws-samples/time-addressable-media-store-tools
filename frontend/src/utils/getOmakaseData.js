@@ -177,6 +177,41 @@ const getsegmentationTimerange = (maxTimerange) => {
   const maxTimerangeDuration = Number(
     (maxTimerange.end - maxTimerange.start) / NANOS_PER_SECOND
   );
+  // Early return if max timerange is less than default
+  if (maxTimerangeDuration <= DEFAULT_SEGMENTATION_DURATION) {
+    return maxTimerange;
+  }
+
+  // Filter for video flows
+  const videoFlows = flows.filter(
+    ({ format }) => format === "urn:x-nmos:format:video"
+  );
+
+  // Determine which flows to use for calculation
+  const flowsToUse = videoFlows.length > 0 ? videoFlows : flows;
+
+  // Parse timeranges for the selected flows
+  const timeranges = flowsToUse.map((flow) =>
+    parseTimerangeStrNano(flow.timerange)
+  );
+
+  if (timeranges.length === 0) {
+    return {
+      start: null,
+      end: null,
+    };
+  }
+
+  // Find the earliest end time among the selected flows
+  const earliestEnd = timeranges.reduce(
+    (earliest, current) => (current.end < earliest ? current.end : earliest),
+    timeranges[0].end
+  );
+
+  // Calculate the start time (300 seconds before end, or as much as available)
+  const start =
+    earliestEnd - BigInt(DEFAULT_SEGMENTATION_DURATION) * NANOS_PER_SECOND;
+
   return {
     timerange: {
       start: parseTimerangeStrBigInt(windowSegments[0].timerange).start,
