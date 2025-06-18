@@ -173,6 +173,10 @@ const getSegmentationTimerange = async (flows) => {
     };
   }
 
+const getsegmentationTimerange = (maxTimerange) => {
+  const maxTimerangeDuration = Number(
+    (maxTimerange.end - maxTimerange.start) / NANOS_PER_SECOND
+  );
   return {
     timerange: {
       start: parseTimerangeStrBigInt(windowSegments[0].timerange).start,
