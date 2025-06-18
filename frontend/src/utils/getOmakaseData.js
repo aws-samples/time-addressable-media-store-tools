@@ -190,27 +190,47 @@ const getsegmentationTimerange = (maxTimerange) => {
   // Determine which flows to use for calculation
   const flowsToUse = videoFlows.length > 0 ? videoFlows : flows;
 
-  // Parse timeranges for the selected flows
-  const timeranges = flowsToUse.map((flow) =>
-    parseTimerangeStrNano(flow.timerange)
-  );
-
-  if (timeranges.length === 0) {
+  if (flowsToUse.length === 0) {
     return {
-      start: null,
-      end: null,
+      timerange: { start: null, end: null },
+      flowId: null,
+      segments: null,
     };
   }
 
-  // Find the earliest end time among the selected flows
-  const earliestEnd = timeranges.reduce(
-    (earliest, current) => (current.end < earliest ? current.end : earliest),
-    timeranges[0].end
+  // Find the flow with the earliest end time
+  const earliestEndFlow = flowsToUse.reduce((earliest, current) =>
+    current.timerange.end < earliest.timerange.end ? current : earliest
   );
 
-  // Calculate the start time (300 seconds before end, or as much as available)
-  const start =
-    earliestEnd - BigInt(DEFAULT_SEGMENTATION_DURATION) * NANOS_PER_SECOND;
+  const windowTimerange = {
+    start:
+      earliestEndFlow.timerange.end -
+      BigInt(DEFAULT_SEGMENTATION_DURATION) * NANOS_PER_SECOND,
+    end: earliestEndFlow.timerange.end,
+  };
+
+  const windowSegments = await paginationFetcher(
+    `/flows/${
+      earliestEndFlow.id
+    }/segments?limit=300&timerange=${parseTimerangeObjBigInt(windowTimerange)}`
+  );
+
+  if (windowSegments.length === 0) {
+    return {
+      timerange: { start: null, end: null },
+      flowId: null,
+      segments: null,
+    };
+  }
+
+  if (windowSegments.length === 1) {
+    return {
+      timerange: parseTimerangeStrBigInt(windowSegments[0].timerange),
+      flowId: null,
+      segments: null,
+    };
+  }
 
   return {
     timerange: {
@@ -263,6 +283,14 @@ const getOmakaseData = async ({ type, id, timerange }) => {
     );
 
   const flowSegments = Object.fromEntries(await Promise.all(fetchPromises));
+
+  console.log({
+    flow,
+    relatedFlows,
+    flowSegments,
+    maxTimerange: parsedMaxTimerange,
+    timerange: parsedTimerange,
+  });
 
   return {
     flow,
