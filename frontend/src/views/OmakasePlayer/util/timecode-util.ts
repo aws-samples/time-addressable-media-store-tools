@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
-import Decimal from 'decimal.js';
+import Decimal from "decimal.js";
+import { FrameRateUtil } from "./frame-rate-util";
 
 export class TimecodeUtil {
-
-  static formatToTimecode(time: number, frameRate: number, audioOnly = false): string {
+  static formatToTimecode(
+    time: number,
+    frameRate: number,
+    dropFrame: boolean,
+    audioOnly = false
+  ): string {
     let frameRateDecimal = new Decimal(frameRate);
     let frameNumberDecimal: Decimal;
     let frameRateRoundedDecimal = frameRateDecimal.round();
@@ -30,29 +35,101 @@ export class TimecodeUtil {
     let minutesDecimal: Decimal;
     let hoursDecimal: Decimal;
 
-    // if (video.dropFrame) {
-    // algorithm for non-drop frame
-    let framesPer24HoursDecimal = frameRateRoundedDecimal.mul(86400); // 60 * 60 * 24
+    if (dropFrame) {
+      // algorithm for drop frame
+      let dropFramesDecimal = new Decimal(
+        FrameRateUtil.resolveDropFramesOnMinute(frameRateDecimal)
+      );
+      let framesPerHourDecimal = frameRateDecimal.mul(3600).round(); // 60 * 60
+      let framesPer24HoursDecimal = framesPerHourDecimal.mul(24);
+      let framesPer10MinutesDecimal = frameRateDecimal.mul(600).round(); // 60 * 10
+      let framesPerMinuteDecimal = frameRateDecimal
+        .round()
+        .mul(60)
+        .minus(dropFramesDecimal);
 
-    let remainingFramesDecimal = frameNumberDecimal.mod(framesPer24HoursDecimal);
-    let hourFramesDecimal = frameRateRoundedDecimal.mul(3600);  // 60 * 60
-    let minuteFramesDecimal = frameRateRoundedDecimal.mul(60);
+      frameNumberDecimal = frameNumberDecimal.mod(framesPer24HoursDecimal);
 
-    hoursDecimal = remainingFramesDecimal.divToInt(hourFramesDecimal);
-    remainingFramesDecimal = remainingFramesDecimal.minus(hoursDecimal.mul(hourFramesDecimal));
+      let dDecimal = frameNumberDecimal.divToInt(framesPer10MinutesDecimal);
+      let mDecimal = frameNumberDecimal.mod(framesPer10MinutesDecimal);
 
-    minutesDecimal = remainingFramesDecimal.divToInt(minuteFramesDecimal);
-    remainingFramesDecimal = remainingFramesDecimal.minus(minutesDecimal.mul(minuteFramesDecimal));
+      if (mDecimal.gt(dropFramesDecimal)) {
+        frameNumberDecimal = frameNumberDecimal
+          .plus(dropFramesDecimal.mul(9).mul(dDecimal))
+          .plus(
+            dropFramesDecimal.mul(
+              mDecimal.minus(dropFramesDecimal).divToInt(framesPerMinuteDecimal)
+            )
+          );
+      } else {
+        frameNumberDecimal = frameNumberDecimal.plus(
+          dropFramesDecimal.mul(9).mul(dDecimal)
+        );
+      }
 
-    secondsDecimal = remainingFramesDecimal.divToInt(frameRateRoundedDecimal);
-    framesDecimal = remainingFramesDecimal.minus(secondsDecimal.mul(frameRateRoundedDecimal));
+      framesDecimal = frameNumberDecimal.mod(frameRateRoundedDecimal);
+      secondsDecimal = frameNumberDecimal
+        .divToInt(frameRateRoundedDecimal)
+        .mod(60);
+      minutesDecimal = frameNumberDecimal
+        .divToInt(frameRateRoundedDecimal)
+        .divToInt(60)
+        .mod(60);
+      hoursDecimal = frameNumberDecimal
+        .divToInt(frameRateRoundedDecimal)
+        .divToInt(60)
+        .divToInt(60);
+    } else {
+      // algorithm for non-drop frame
+      let framesPer24HoursDecimal = frameRateRoundedDecimal.mul(86400); // 60 * 60 * 24
 
-    return TimecodeUtil.formatTimecodeText(hoursDecimal.toNumber(), minutesDecimal.toNumber(), secondsDecimal.toNumber(), framesDecimal.toNumber(), audioOnly);
+      let remainingFramesDecimal = frameNumberDecimal.mod(
+        framesPer24HoursDecimal
+      );
+      let hourFramesDecimal = frameRateRoundedDecimal.mul(3600); // 60 * 60
+      let minuteFramesDecimal = frameRateRoundedDecimal.mul(60);
+
+      hoursDecimal = remainingFramesDecimal.divToInt(hourFramesDecimal);
+      remainingFramesDecimal = remainingFramesDecimal.minus(
+        hoursDecimal.mul(hourFramesDecimal)
+      );
+
+      minutesDecimal = remainingFramesDecimal.divToInt(minuteFramesDecimal);
+      remainingFramesDecimal = remainingFramesDecimal.minus(
+        minutesDecimal.mul(minuteFramesDecimal)
+      );
+
+      secondsDecimal = remainingFramesDecimal.divToInt(frameRateRoundedDecimal);
+      framesDecimal = remainingFramesDecimal.minus(
+        secondsDecimal.mul(frameRateRoundedDecimal)
+      );
+    }
+
+    return TimecodeUtil.formatTimecodeText(
+      hoursDecimal.toNumber(),
+      minutesDecimal.toNumber(),
+      secondsDecimal.toNumber(),
+      framesDecimal.toNumber(),
+      dropFrame,
+      audioOnly
+    );
   }
 
-  static formatTimecodeText(hours: number, minutes: number, seconds: number, frames: number, audioOnly = false): string {
-    let frameSeparator = audioOnly ? '.' : ':';
-    return `${TimecodeUtil.padZero(hours)}:${TimecodeUtil.padZero(minutes)}:${TimecodeUtil.padZero(seconds)}${frameSeparator}${TimecodeUtil.padZero(frames)}`;
+  static formatTimecodeText(
+    hours: number,
+    minutes: number,
+    seconds: number,
+    frames: number,
+    dropFrame: boolean,
+    audioOnly = false
+  ): string {
+    let frameSeparator = audioOnly ? "." : ":";
+    frameSeparator = dropFrame ? ";" : frameSeparator;
+    return `${TimecodeUtil.padZero(hours)}:${TimecodeUtil.padZero(
+      minutes
+    )}:${TimecodeUtil.padZero(seconds)}${frameSeparator}${TimecodeUtil.padZero(
+      frames
+    )}`;
   }
 
   /**
@@ -63,5 +140,4 @@ export class TimecodeUtil {
   private static padZero(num: number): string {
     return num < 10 ? `0${num}` : `${num}`;
   }
-
 }

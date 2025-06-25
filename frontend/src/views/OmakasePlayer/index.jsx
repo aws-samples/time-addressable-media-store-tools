@@ -22,19 +22,21 @@ export const OmakaseHlsPlayer = () => {
   if (!isLoading && !flow) {
     return <div>{`No valid ${type} found`}</div>;
   }
+  if (!isLoading) {
+    const hasSegments =
+      Object.values(flowSegments).find((segments) => segments.length > 0) !=
+      undefined;
+
+    if (!hasSegments) {
+      return <div>Selected timerange has no segments</div>;
+    }
+  }
 
   return !isLoading ? (
     <OmakasePlayerTamsComponent
       flow={flow}
       childFlows={filteredChildFlows}
-      flowSegments={flowSegments[flow.id]} // TODO: intended to be removed once implemented in OmakasePlayerTamsComponent
-      childFlowsSegments={
-        new Map(
-          Object.entries(flowSegments).filter(
-            ([flowId, _]) => flowId !== flow.id
-          )
-        )
-      } // TODO: intended to be removed once implemented in OmakasePlayerTamsComponent
+      flowsSegments={new Map(Object.entries(flowSegments))}
       timeRange={calculatedTimerange}
       maxTimeRange={maxTimerange}
       setTimeRange={setTimerange}

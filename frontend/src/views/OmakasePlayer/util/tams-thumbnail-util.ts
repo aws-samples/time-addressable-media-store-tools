@@ -6,13 +6,11 @@ export class TAMSThumbnailUtil {
   public static resolveLowestQualityImageFlow(flows: Flow[]) {
     const imageFlows = flows.filter(
       (flow) => flow.format === "urn:x-tam:format:image"
-    );
+    ) as ImageFlow[];
 
     if (imageFlows.length === 0) {
       return undefined;
     }
-
-    imageFlows as ImageFlow[];
 
     const lowestQualityImageFlow = imageFlows.reduce<ImageFlow | undefined>(
       (lowestQualityFlow: undefined | ImageFlow, currentFlow: ImageFlow) => {
