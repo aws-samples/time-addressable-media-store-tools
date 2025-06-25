@@ -1,3 +1,5 @@
+import React, { useMemo, useRef, useState } from "react";
+import { useEffect } from "react";
 import "./style.css";
 
 import {
@@ -39,38 +41,14 @@ import {
   TIMELINE_LANE_STYLE,
   VARIABLES,
 } from "./constants";
-import {
-  ImageButton,
-  Marker,
-  MarkerLane,
-  MarkerListApi,
-  OmakasePlayer,
-  PeriodMarker,
-  PeriodObservation,
-  TextLabel,
-  TimelineApi,
-  VideoLoadOptions,
-} from "@byomakase/omakase-player";
-import {
-  OmakaseMarkerListComponent,
-  OmakasePlayerTimelineBuilder,
-  OmakasePlayerTimelineComponent,
-  OmakasePlayerTimelineControlsToolbar,
-  OmakaseTamsPlayerComponent,
-  OmakaseTimeRangePicker,
-  TimeRangeUtil,
-} from "@byomakase/omakase-react-components";
-import React, { useMemo, useRef, useState } from "react";
-
 import { ColorResolver } from "./color-resolver";
-import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
+
+import RowTemplate from "./OmakaseMarkerListComponentTemplates/RowTemplate";
 import HeaderTemplate from "./OmakaseMarkerListComponentTemplates/HeaderTemplate";
 import OmakaseSegmentationHeader from "../OmakaseSegmentation/OmakaseSegmentationHeader";
 import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
 import { TimecodeUtil } from "../../util/timecode-util";
 import { TAMSThumbnailUtil } from "../../util/tams-thumbnail-util";
-import { TimecodeUtil } from "@byomakase/omakase-react-components";
-import { useEffect } from "react";
 
 type OmakasePlayerTamsComponentProps = {
   flow: Flow;
@@ -286,6 +264,7 @@ function buildTimeline(
     description: "Segmentation",
     style: TIMELINE_LANE_STYLE,
   });
+
   const parsedTimeRange = TimeRangeUtil.parseTimeRange(timerange);
   const start = Math.max(
     TimeRangeUtil.timeMomentToSeconds(parsedTimeRange.start!) - markerOffset,
