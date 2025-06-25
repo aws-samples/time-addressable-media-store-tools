@@ -4,7 +4,10 @@ import {
   PeriodMarker,
 } from "@byomakase/omakase-player";
 import React, { useEffect, useState } from "react";
-import OmakaseExportModal from "../OmakaseModal/OmakaseExportModal";
+// @ts-ignore
+import OmakaseModal from "../../../../components/OmakaseModal";
+import { PopUpIcon } from "../../icons/PopUpIcon";
+import "./OmakaseSegmentation.css";
 import { Flow, FlowSegment } from "@byomakase/omakase-react-components";
 
 type OmakaseSegmentationHeaderProps = {
@@ -106,12 +109,18 @@ const OmakaseSegmentationHeader = ({
 
       {source &&
         flows.find((flow) => flow.format === "urn:x-nmos:format:video") && (
-          <OmakaseExportModal
+          <OmakaseModal
             flows={flows}
             source={source}
             markerOffset={markerOffset}
             exportDisabled={exportDisabled}
             omakasePlayer={omakasePlayer}
+            trigger={
+              <div className="segmentation-export">
+                <PopUpIcon />
+                EXPORT
+              </div>
+            }
           />
         )}
     </div>
