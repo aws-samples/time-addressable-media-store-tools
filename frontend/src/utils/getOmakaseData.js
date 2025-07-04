@@ -173,65 +173,6 @@ const getSegmentationTimerange = async (flows) => {
     };
   }
 
-const getsegmentationTimerange = (maxTimerange) => {
-  const maxTimerangeDuration = Number(
-    (maxTimerange.end - maxTimerange.start) / NANOS_PER_SECOND
-  );
-  // Early return if max timerange is less than default
-  if (maxTimerangeDuration <= DEFAULT_SEGMENTATION_DURATION) {
-    return maxTimerange;
-  }
-
-  // Filter for video flows
-  const videoFlows = flows.filter(
-    ({ format }) => format === "urn:x-nmos:format:video"
-  );
-
-  // Determine which flows to use for calculation
-  const flowsToUse = videoFlows.length > 0 ? videoFlows : flows;
-
-  if (flowsToUse.length === 0) {
-    return {
-      timerange: { start: null, end: null },
-      flowId: null,
-      segments: null,
-    };
-  }
-
-  // Find the flow with the earliest end time
-  const earliestEndFlow = flowsToUse.reduce((earliest, current) =>
-    current.timerange.end < earliest.timerange.end ? current : earliest
-  );
-
-  const windowTimerange = {
-    start:
-      earliestEndFlow.timerange.end -
-      BigInt(DEFAULT_SEGMENTATION_DURATION) * NANOS_PER_SECOND,
-    end: earliestEndFlow.timerange.end,
-  };
-
-  const windowSegments = await paginationFetcher(
-    `/flows/${
-      earliestEndFlow.id
-    }/segments?limit=300&timerange=${parseTimerangeObjBigInt(windowTimerange)}`
-  );
-
-  if (windowSegments.length === 0) {
-    return {
-      timerange: { start: null, end: null },
-      flowId: null,
-      segments: null,
-    };
-  }
-
-  if (windowSegments.length === 1) {
-    return {
-      timerange: parseTimerangeStrBigInt(windowSegments[0].timerange),
-      flowId: null,
-      segments: null,
-    };
-  }
-
   return {
     timerange: {
       start: parseTimerangeStrBigInt(windowSegments[0].timerange).start,

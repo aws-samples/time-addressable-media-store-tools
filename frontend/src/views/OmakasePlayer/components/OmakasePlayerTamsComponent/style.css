@@ -126,7 +126,6 @@ div.omakase-help
   background-image: url(/help.svg) !important;
 }
 
-#audio-dropdown-toggle,
-.omakase-player-text-toggle {
+#audio-dropdown-toggle, .omakase-player-text-toggle {
   display: none;
 }
