@@ -11,24 +11,20 @@ import {
   Button,
   Box,
 } from "@cloudscape-design/components";
-import {
-  executeExport,
-  createInitialFormData,
-} from "../views/OmakasePlayer/util/omakase-export-util";
 import useStore from "../stores/useStore";
+import useOmakaseStore from "../stores/useOmakaseStore";
+import { createInitialFormData, executeExport } from "../utils/omakase";
 
-export default function OmakaseModal({
-  flows,
-  source,
-  markerOffset,
-  exportDisabled,
-  omakasePlayer,
-  trigger,
-}) {
-  const [showModal, setShowModal] = useState(false);
+export default function OmakaseModal({ editTimeranges, flows }) {
   const [formData, setFormData] = useState(createInitialFormData(flows));
   const [isSpinnerVisible, setIsSpinnerVisible] = useState(false);
+  const [showAdvancedContent, setShowAdvancedContent] = useState(false);
   const addAlertItem = useStore((state) => state.addAlertItem);
+  const delAlertItem = useStore((state) => state.delAlertItem);
+
+  const { omakaseModalVisible, setOmakaseModalVisible } = useOmakaseStore(
+    (state) => state
+  );
 
   const operations = ["Segment Concatenation", "Flow Creation"];
   const formats = ["TS", "MP4"];
@@ -38,22 +34,28 @@ export default function OmakaseModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSpinnerVisible(true);
-
+    const id = crypto.randomUUID();
     try {
-      await executeExport(formData, flows, source, markerOffset, omakasePlayer);
+      await executeExport(formData, editTimeranges, flows);
       addAlertItem({
-        id: Date.now().toString(),
+        id,
         type: "success",
         content: "Export successful",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        onDismiss: () => delAlertItem(id),
       });
     } catch (error) {
       addAlertItem({
-        id: Date.now().toString(),
+        id,
         type: "error",
         content: "Export failed",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        onDismiss: () => delAlertItem(id),
       });
     } finally {
-      setShowModal(false);
+      setOmakaseModalVisible(false);
       setIsSpinnerVisible(false);
     }
   };
@@ -77,16 +79,11 @@ export default function OmakaseModal({
     });
   };
 
-  if (exportDisabled) {
-    return <div className="segmentation-export-disabled">{trigger}</div>;
-  }
-
   return (
     <>
-      <div onClick={() => setShowModal(true)}>{trigger}</div>
       <Modal
-        onDismiss={() => setShowModal(false)}
-        visible={showModal}
+        onDismiss={() => setOmakaseModalVisible(false)}
+        visible={omakaseModalVisible}
         header="Export"
       >
         <SpaceBetween direction="vertical" size="l">
@@ -159,7 +156,8 @@ export default function OmakaseModal({
           <ExpandableSection
             headerText="Advanced"
             variant="footer"
-            expanded={formData.operation === "Segment Concatenation"}
+            expanded={showAdvancedContent}
+            onChange={({ detail }) => setShowAdvancedContent(detail.expanded)}
           >
             <SpaceBetween direction="vertical" size="m">
               <FormField label="Bucket">
