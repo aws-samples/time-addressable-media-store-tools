@@ -7,7 +7,7 @@ import {
 import useStore from "@/stores/useStore";
 
 import { SEGMENT_COUNT, DATE_FORMAT } from "@/constants";
-import { parseTimerangeStr } from "@/utils/parseTimerange";
+import { parseTimerangeDateTime } from "@/utils/timerange";
 import { useLastN } from "@/hooks/useSegments";
 
 const SegmentsTab = ({ flowId }) => {
@@ -55,12 +55,12 @@ const SegmentsTab = ({ flowId }) => {
     {
       id: "timerange_start",
       header: "Timerange Start",
-      cell: (item) => item.localeTimerange.start?.toLocaleString(DATE_FORMAT),
+      cell: (item) => item.datetimeTimerange.start?.toLocaleString(DATE_FORMAT),
     },
     {
       id: "timerange_end",
       header: "Timerange End",
-      cell: (item) => item.localeTimerange.end?.toLocaleString(DATE_FORMAT),
+      cell: (item) => item.datetimeTimerange.end?.toLocaleString(DATE_FORMAT),
     },
   ];
   const collectionPreferencesProps = {
@@ -92,7 +92,7 @@ const SegmentsTab = ({ flowId }) => {
           segments &&
           segments.map((segment) => ({
             ...segment,
-            localeTimerange: parseTimerangeStr(segment.timerange),
+            datetimeTimerange: parseTimerangeDateTime(segment.timerange),
           }))
         }
         sortingDisabled

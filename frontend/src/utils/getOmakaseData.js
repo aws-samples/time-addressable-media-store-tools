@@ -1,7 +1,7 @@
 import {
-  parseTimerangeObjBigInt,
-  parseTimerangeStrBigInt,
-} from "@/utils/parseTimerange";
+  toTimerangeString,
+  parseTimerange,
+} from "@/utils/timerange";
 
 import paginationFetcher from "@/utils/paginationFetcher";
 import { useApi } from "@/hooks/useApi";
@@ -107,7 +107,7 @@ const parseAndFilterFlows = (flows) => {
     if (!validFormats.has(flow.format)) continue;
 
     try {
-      const parsedTimerange = parseTimerangeStrBigInt(flow.timerange);
+      const parsedTimerange = parseTimerange(flow.timerange);
       if (
         parsedTimerange.start !== undefined &&
         parsedTimerange.end !== undefined
@@ -154,7 +154,7 @@ const getSegmentationTimerange = async (flows) => {
   const windowSegments = await paginationFetcher(
     `/flows/${
       earliestEndFlow.id
-    }/segments?limit=300&timerange=${parseTimerangeObjBigInt(windowTimerange)}`
+    }/segments?limit=300&timerange=${toTimerangeString(windowTimerange)}`
   );
 
   if (windowSegments.length === 0) {
@@ -167,7 +167,7 @@ const getSegmentationTimerange = async (flows) => {
 
   if (windowSegments.length === 1) {
     return {
-      timerange: parseTimerangeStrBigInt(windowSegments[0].timerange),
+      timerange: parseTimerange(windowSegments[0].timerange),
       flowId: null,
       segments: null,
     };
@@ -175,8 +175,8 @@ const getSegmentationTimerange = async (flows) => {
 
   return {
     timerange: {
-      start: parseTimerangeStrBigInt(windowSegments[0].timerange).start,
-      end: parseTimerangeStrBigInt(
+      start: parseTimerange(windowSegments[0].timerange).start,
+      end: parseTimerange(
         windowSegments[windowSegments.length - 1].timerange
       ).end,
     },
@@ -190,7 +190,7 @@ const getOmakaseData = async ({ type, id, timerange }) => {
   const timerangeValidFlows = parseAndFilterFlows([flow, ...relatedFlows]);
 
   const maxTimerange = getMaxTimerange(timerangeValidFlows);
-  const parsedMaxTimerange = parseTimerangeObjBigInt(maxTimerange);
+  const parsedMaxTimerange = toTimerangeString(maxTimerange);
 
   const segmentsCache = {};
 
@@ -199,7 +199,7 @@ const getOmakaseData = async ({ type, id, timerange }) => {
 
   if (!timerange) {
     segmentationResult = await getSegmentationTimerange(timerangeValidFlows);
-    parsedTimerange = parseTimerangeObjBigInt(segmentationResult.timerange);
+    parsedTimerange = toTimerangeString(segmentationResult.timerange);
 
     // Cache the segments if they were fetched
     if (segmentationResult.flowId && segmentationResult.segments) {
