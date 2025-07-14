@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 
 const NANOS_PER_SECOND = 1_000_000_000n;
+// Regex expression used to valdiate and parse the timerange string into it's components
 const TIMERANGE_REGEX =
   /^(?<startInclusive>\[|\()?(?:(?<startSeconds>-?(?:0|[1-9][0-9]*)):(?<startNanos>0|[1-9][0-9]{0,8}))?(?:_(?:(?<endSeconds>-?(?:0|[1-9][0-9]*)):(?<endNanos>0|[1-9][0-9]{0,8}))?)?(?<endInclusive>\]|\))?$/;
 const INFINITE_PATTERNS = new Set([
