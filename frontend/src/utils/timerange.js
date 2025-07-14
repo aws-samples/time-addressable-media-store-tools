@@ -57,7 +57,6 @@ const secondsNanosToBigInt = (secondsStr, nanos) => {
  *
  * @param {string} timerange - The timerange string to parse
  * @returns {Object} Object with start and end as BigInt nanoseconds
- * @throws {Error} If the timerange string format is invalid
  */
 export const parseTimerange = (timerange) => {
   // Handle special case: infinite timerange
@@ -73,7 +72,9 @@ export const parseTimerange = (timerange) => {
   // Regular expression to match timerange components
   const match = timerange.match(TIMERANGE_REGEX);
   if (!match) {
-    throw new Error("Invalid timerange string format");
+    // Return empty timerange if string not matched
+    console.error("Timerange supplied does not match regex");
+    return createTimerangeResult(false, 0n, 0n, false);
   }
   const {
     startInclusive,
@@ -145,41 +146,51 @@ export const parseTimerange = (timerange) => {
  * @param {boolean} [obj.includesStart=true] - Whether the start value is inclusive
  * @param {boolean} [obj.includesEnd=false] - Whether the end value is inclusive
  * @returns {string} The formatted timerange string
- * @throws {Error} If the timerangeObj is invalid
  */
-export const toTimerangeString = ({ start, end, includesStart = true, includesEnd = false }) => {
-  // Handle special cases
-  if (start === null && end === null) {
-    if (includesStart === false && includesEnd === false) {
-      return "()";
+export const toTimerangeString = ({
+  start,
+  end,
+  includesStart = true,
+  includesEnd = false,
+}) => {
+  try {
+    // Handle special cases
+    if (start === null && end === null) {
+      if (includesStart === false && includesEnd === false) {
+        return "()";
+      }
+      return "_";
     }
-    return "_";
+
+    // Format BigInt value as "seconds:nanos"
+    const formatBigInt = (value) => {
+      const isNegative = value < 0n;
+      const absValue = isNegative ? -value : value;
+      const seconds = absValue / NANOS_PER_SECOND;
+      const nanos = absValue % NANOS_PER_SECOND;
+      return `${isNegative ? "-" : ""}${seconds}:${nanos}`;
+    };
+
+    let result = "";
+
+    if (start !== null) {
+      result += includesStart ? "[" : "(";
+      result += formatBigInt(start);
+    }
+
+    result += "_";
+
+    if (end !== null) {
+      result += formatBigInt(end);
+      result += includesEnd ? "]" : ")";
+    }
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    // Return empty timerange if error thrown
+    return "()";
   }
-
-  // Format BigInt value as "seconds:nanos"
-  const formatBigInt = (value) => {
-    const isNegative = value < 0n;
-    const absValue = isNegative ? -value : value;
-    const seconds = absValue / NANOS_PER_SECOND;
-    const nanos = absValue % NANOS_PER_SECOND;
-    return `${isNegative ? "-" : ""}${seconds}:${nanos}`;
-  };
-
-  let result = "";
-
-  if (start !== null) {
-    result += includesStart ? "[" : "(";
-    result += formatBigInt(start);
-  }
-
-  result += "_";
-
-  if (end !== null) {
-    result += formatBigInt(end);
-    result += includesEnd ? "]" : ")";
-  }
-
-  return result;
 };
 
 /**
@@ -187,14 +198,31 @@ export const toTimerangeString = ({ start, end, includesStart = true, includesEn
  *
  * @param {string} timerange - The timerange string to parse
  * @returns {Object} Object with start and end as Luxon DateTimes
- * @throws {Error} If the timerange string format is invalid
  */
 export const parseTimerangeDateTime = (timerange) => {
-  const { start, end, includesStart, includesEnd } = parseTimerange(timerange);
-  return {
-    start: start !== null ? DateTime.fromMillis(Number(start / 1_000_000n)) : undefined,
-    end: end !== null ? DateTime.fromMillis(Number(end / 1_000_000n)) : undefined,
-    includesStart,
-    includesEnd,
-  };
+  try {
+    const { start, end, includesStart, includesEnd } =
+      parseTimerange(timerange);
+    return {
+      start:
+        start !== null
+          ? DateTime.fromMillis(Number(start / 1_000_000n))
+          : undefined,
+      end:
+        end !== null
+          ? DateTime.fromMillis(Number(end / 1_000_000n))
+          : undefined,
+      includesStart,
+      includesEnd,
+    };
+  } catch (error) {
+    console.error(error);
+    // Return empty timerange if error thrown
+    return {
+      start: undefined,
+      end: undefined,
+      includesStart: false,
+      includesEnd: false,
+    };
+  }
 };
