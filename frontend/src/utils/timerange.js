@@ -140,12 +140,14 @@ export const parseTimerange = (timerange) => {
  * Converts a timerange object with BigInt values to a string
  *
  * @param {Object} obj - Object with start and end as BigInt nanoseconds
+ * @param {BigInt|null} obj.start - Start time as BigInt nanoseconds or null
+ * @param {BigInt|null} obj.end - End time as BigInt nanoseconds or null
+ * @param {boolean} [obj.includesStart=true] - Whether the start value is inclusive
+ * @param {boolean} [obj.includesEnd=false] - Whether the end value is inclusive
  * @returns {string} The formatted timerange string
  * @throws {Error} If the timerangeObj is invalid
  */
-export const toTimerangeString = (obj) => {
-  const { start, end, includesStart = true, includesEnd = false } = obj;
-
+export const toTimerangeString = ({ start, end, includesStart = true, includesEnd = false }) => {
   // Handle special cases
   if (start === null && end === null) {
     if (includesStart === false && includesEnd === false) {
