@@ -28,6 +28,7 @@ export const useOmakaseData = (type, id, timerange) => {
     }
   );
   return {
+    sourceId: type === "sources" ? id : response?.flow.source_id,
     flow: response?.flow,
     relatedFlows: response?.relatedFlows,
     flowSegments: response?.flowSegments,

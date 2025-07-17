@@ -13,7 +13,7 @@ import {
 import useAlertsStore from "@/stores/useAlertsStore";
 import { executeExport } from "@/utils/executeExport";
 
-export default function OmakaseExportModal({ editTimeranges, flows, onModalToggle, isModalOpen }) {
+export default function OmakaseExportModal({ sourceId, editTimeranges, flows, onModalToggle, isModalOpen }) {
   const [formData, setFormData] = useState({
     operation: "Segment Concatenation",
     format: "TS",
@@ -44,7 +44,7 @@ export default function OmakaseExportModal({ editTimeranges, flows, onModalToggl
     setIsLoading(true);
     const id = crypto.randomUUID();
     try {
-      await executeExport(formData, editTimeranges, flows);
+      await executeExport(formData, editTimeranges, flows, sourceId);
       addAlertItem({
         id,
         type: "success",

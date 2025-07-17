@@ -51,6 +51,7 @@ import { TimecodeUtil } from "../../util/timecode-util";
 import { TAMSThumbnailUtil } from "../../util/tams-thumbnail-util";
 
 type OmakasePlayerTamsComponentProps = {
+  sourceId: string;
   flow: Flow;
   childFlows: Flow[];
   flowsSegments: Map<string, FlowSegment[]>;
@@ -469,6 +470,7 @@ function findMarkerLane(markerLanes: MarkerLane[], markerId: string) {
 
 const OmakasePlayerTamsComponent = React.memo(
   ({
+    sourceId,
     flow,
     childFlows,
     flowsSegments,
@@ -637,6 +639,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     onSegementationClickCallback={onSegementationClickCallback}
                     omakasePlayer={omakasePlayer}
                     source={source}
+                    sourceId={sourceId}
                     flows={timelineBuilderFlows}
                     flowSegments={flowsSegments}
                     markerOffset={videoInfo.markerOffset}

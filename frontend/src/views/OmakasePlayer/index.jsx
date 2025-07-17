@@ -11,6 +11,7 @@ export const OmakaseHlsPlayer = () => {
   const [timerange, setTimerange] = useState();
 
   const {
+    sourceId,
     flow,
     relatedFlows: filteredChildFlows,
     flowSegments,
@@ -34,6 +35,7 @@ export const OmakaseHlsPlayer = () => {
 
   return !isLoading ? (
     <OmakasePlayerTamsComponent
+      sourceId={sourceId}
       flow={flow}
       childFlows={filteredChildFlows}
       flowsSegments={new Map(Object.entries(flowSegments))}

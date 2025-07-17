@@ -33,7 +33,7 @@ const getMaxBitRateVideoFlow = (flows) => {
   return videoFlows[0];
 };
 
-export const executeExport = async (formData, editTimeranges, flows) => {
+export const executeExport = async (formData, editTimeranges, flows, sourceId) => {
   const { credentials } = await fetchAuthSession();
 
   if (AWS_REGION === undefined) {
@@ -77,6 +77,7 @@ export const executeExport = async (formData, editTimeranges, flows) => {
         Source: "TAMS_UX",
         DetailType: "TAMS_PROCESSING_REQUEST",
         Detail: JSON.stringify({
+          sourceId,
           edit: editPayload,
           operation: operation,
           configuration: configuration,

@@ -15,6 +15,7 @@ type OmakaseSegmentationHeaderProps = {
   segmentationLanes: MarkerLane[];
   source: MarkerLane | undefined;
   onSegementationClickCallback: (markerLane: MarkerLane) => void;
+  sourceId: string,
   flows: Flow[];
   flowSegments: Map<string, FlowSegment[]>;
   markerOffset: number;
@@ -25,6 +26,7 @@ const OmakaseSegmentationHeader = ({
   segmentationLanes,
   source,
   onSegementationClickCallback,
+  sourceId,
   flows,
   markerOffset,
   omakasePlayer,
@@ -135,6 +137,7 @@ const OmakaseSegmentationHeader = ({
               EXPORT
             </div>
             <OmakaseExportModal
+              sourceId={sourceId}
               editTimeranges={editTimeranges}
               flows={flows}
               onModalToggle={setOmakaseModalVisible}
