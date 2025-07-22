@@ -12,7 +12,7 @@ States:
       ApiEndpoint: >-
         {% $states.input.sourceEndpoint & '/flows/' & $states.input.flowId %}
       QueryParameters:
-        include_timerange: 'true'
+        include_timerange: true
     Assign:
       flowId: >-
         {% $states.input.flowId %}
