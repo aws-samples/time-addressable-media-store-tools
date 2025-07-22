@@ -22,8 +22,6 @@ States:
         {% $states.input.sourceEndpoint %}
       sourceConnectionArn: >-
         {% $states.input.sourceConnectionArn %}
-      sourceRegion: >-
-        {% $states.input.sourceRegion %}
       flowId: >-
         {% $states.input.flowId %}
       timerange: >-
