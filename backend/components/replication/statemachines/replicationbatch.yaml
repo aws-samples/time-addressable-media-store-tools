@@ -1,0 +1,151 @@
+QueryLanguage: JSONata
+StartAt: CheckFlow
+States:
+  CheckFlow:
+    Type: Task
+    Resource: arn:aws:states:::states:startExecution.sync:2
+    Arguments:
+      StateMachineArn: ${ReplicationFlowArn}
+      Input:
+        AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID: >-
+          {% $states.context.Execution.Id %}
+        sourceConnectionArn: >-
+          {% $states.input.sourceConnectionArn %}
+        sourceEndpoint: >-
+          {% $states.input.sourceEndpoint %}
+        flowId: >-
+          {% $states.input.flowId %}
+        timerange: >-
+          {% $states.input.timerange %}
+    Assign:
+      sourceEndpoint: >-
+        {% $states.input.sourceEndpoint %}
+      sourceConnectionArn: >-
+        {% $states.input.sourceConnectionArn %}
+      sourceRegion: >-
+        {% $states.input.sourceRegion %}
+      flowId: >-
+        {% $states.input.flowId %}
+      timerange: >-
+        {% $states.result.Output.timerange %}
+    Next: GetSegments
+  GetSegments:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: >-
+          {% $sourceConnectionArn %}
+      ApiEndpoint: >-
+        {% $sourceEndpoint & '/flows/' & $flowId & '/segments' %}
+      QueryParameters:
+        limit: 10
+        presigned: true
+        timerange: >-
+          {% $timerange %}
+    Assign:
+      nextKey: >-
+        {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Output:
+      segments: >-
+        {% $states.result.ResponseBody %}
+    Next: SegmentsFound
+  SegmentsFound:
+    Type: Choice
+    Default: Success
+    Choices:
+      - Next: MapSegments
+        Condition: >-
+          {% $boolean($states.input.segments) %}
+  MapSegments:
+    Type: Map
+    Items: >-
+      {% [$map($states.input.segments, function($v, $i) {{"index": $i, "segment": $v}})] %}
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: MessageBody
+      States:
+        MessageBody:
+          Type: Pass
+          Output:
+            flowId: >-
+              {% $flowId %}
+            timerange: >-
+              {% $states.input.segment.timerange %}
+            uri: >-
+              {% $states.input.segment.get_urls[0].url %}
+            deleteSource: false
+            objectId: >-
+              {% $states.input.segment.object_id %}
+          Next: Entry
+          Assign:
+            index: >-
+              {% $states.input.index %}
+        Entry:
+          Type: Pass
+          End: true
+          Output:
+            Id: >-
+              {% $string($index) %}
+            MessageBody: >-
+              {% $string($states.input) %}
+    Next: SendMessageBatch
+  SendMessageBatch:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:sqs:sendMessageBatch
+    Arguments:
+      Entries: >-
+        {% $states.input %}
+      QueueUrl: ${QueueUrl}
+    Next: NextKeyExists
+  NextKeyExists:
+    Type: Choice
+    Default: Success
+    Choices:
+      - Next: GetSegmentsNextPage
+        Condition: >-
+          {% $boolean($nextKey) %}
+  GetSegmentsNextPage:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: >-
+          {% $sourceConnectionArn %}
+      ApiEndpoint: >-
+        {% $sourceEndpoint & '/flows/' & $flowId & '/segments' %}
+      QueryParameters:
+        limit: 10
+        presigned: true
+        timerange: >-
+          {% $timerange %}
+        page: >-
+          {% $nextKey %}
+    Assign:
+      nextKey: >-
+        {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Output:
+      segments: >-
+        {% $states.result.ResponseBody %}
+    Next: SegmentsFound
+  Success:
+    Type: Succeed
