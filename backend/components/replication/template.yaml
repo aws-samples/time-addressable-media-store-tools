@@ -1,7 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
+  UserPoolId:
+    Type: String
+
   ApiEndpoint:
+    Type: String
+
+  UserPoolClientId:
+    Type: String
+
+  TokenUrl:
+    Type: String
+
+  OpenIdAuthLayerArn:
     Type: String
 
   TamsConnectionArn:
@@ -73,6 +85,40 @@ Resources:
             Path: /
             Method: post
 
+  FlowHierachyResolverFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: Resource level permissions not possible
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      CodeUri: functions/flow-hierarchy-resolver/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
+        - !Ref OpenIdAuthLayerArn
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:DescribeConnection
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+
   ReplicationFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Metadata:
@@ -136,13 +182,15 @@ Resources:
               Action:
                 - events:RetrieveConnectionCredentials
               Resource:
-                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*/*
+                - !Ref TamsConnectionArn
             - Effect: Allow
               Action:
                 - secretsmanager:GetSecretValue
                 - secretsmanager:DescribeSecret
               Resource:
-                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+                - !Sub
+                  - arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/${TamsConnection}/*
+                  - TamsConnection: !Select [1, !Split [/, !Ref TamsConnectionArn]]
             - Effect: Allow
               Action:
                 - states:InvokeHTTPEndpoint
@@ -152,17 +200,6 @@ Resources:
                 StringEquals:
                   states:HTTPMethod:
                     - GET
-                StringLike:
-                  states:HTTPEndpoint:
-                    - "*/flows/*"
-            - Effect: Allow
-              Action:
-                - states:InvokeHTTPEndpoint
-              Resource:
-                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
-              Condition:
-                StringEquals:
-                  states:HTTPMethod:
                     - PUT
                 StringLike:
                   states:HTTPEndpoint:
@@ -173,6 +210,7 @@ Resources:
     Properties:
       DefinitionUri: statemachines/replicationbatch.yaml
       DefinitionSubstitutions:
+        FlowHierachyResolverFunctionArn: !GetAtt FlowHierachyResolverFunction.Arn
         ReplicationFlowArn: !Ref ReplicationFlow
         ConnectionArn: !Ref TamsConnectionArn
         TamsEndpoint: !Ref ApiEndpoint
@@ -180,6 +218,10 @@ Resources:
       Policies:
         - Version: "2012-10-17"
           Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt FlowHierachyResolverFunction.Arn
             - Effect: Allow
               Action:
                 - states:StartExecution

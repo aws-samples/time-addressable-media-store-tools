@@ -429,8 +429,15 @@ Resources:
     Properties:
       TemplateURL: components/replication/template.yaml
       Parameters:
+        UserPoolId: !ImportValue
+          Fn::Sub: ${ApiStackName}-UserPoolId
         ApiEndpoint: !ImportValue
           Fn::Sub: ${ApiStackName}-ApiEndpoint
+        UserPoolClientId: !ImportValue
+          Fn::Sub: ${ApiStackName}-UserPoolClientId
+        TokenUrl: !ImportValue
+          Fn::Sub: ${ApiStackName}-TokenUrl
+        OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         TamsConnectionArn: !GetAtt TamsConnection.Arn
         SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
         SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
