@@ -1,33 +1,15 @@
 QueryLanguage: JSONata
-StartAt: GetFlow
+StartAt: SetVariables
 States:
-  GetFlow:
-    Type: Task
-    Resource: arn:aws:states:::http:invoke
-    Arguments:
-      Method: GET
-      InvocationConfig:
-        ConnectionArn: >-
-          {% $states.input.sourceConnectionArn %}
-      ApiEndpoint: >-
-        {% $states.input.sourceEndpoint & '/flows/' & $states.input.flowId %}
-      QueryParameters:
-        include_timerange: true
+  SetVariables:
+    Type: Pass
     Assign:
       flowId: >-
-        {% $states.input.flowId %}
+        {% $states.input.flow.id %}
       timerange: >-
-        {% $boolean($states.input.timerange) ? $states.input.timerange: $states.result.ResponseBody.timerange %}
+        {% $boolean($states.input.timerange) ? $states.input.timerange: $states.input.flow.timerange %}
       flow: >-
-        {% $states.result.ResponseBody %}
-    Retry:
-      - ErrorEquals:
-          - Events.ConnectionResource.InvalidConnectionState
-          - Events.ConnectionResource.AuthInProgress
-          - Events.ConnectionResource.ConcurrentModification
-        IntervalSeconds: 1
-        BackoffRate: 2
-        MaxAttempts: 3
+        {% $states.input.flow %}
     Next: CheckFlow
   CheckFlow:
     Type: Task
