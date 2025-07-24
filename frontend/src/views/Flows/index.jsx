@@ -1,6 +1,7 @@
 import { AWS_FFMPEG_ENDPOINT, PAGE_SIZE_PREFERENCE } from "@/constants";
 import {
   Box,
+  Button,
   ButtonDropdown,
   CollectionPreferences,
   CopyToClipboard,
@@ -21,6 +22,7 @@ import usePreferencesStore from "@/stores/usePreferencesStore";
 import CreateExportModal from "./components/CreateExportModal";
 import CreateRuleModal from "./components/CreateRuleModal";
 import CreateJobModal from "./components/CreateJobModal";
+import ReplicationModal from "./components/ReplicationModal";
 
 const columnDefinitions = [
   {
@@ -169,9 +171,15 @@ const collectionPreferencesProps = {
 
 const Flows = () => {
   const preferences = usePreferencesStore((state) => state.flowsPreferences);
-  const setPreferences = usePreferencesStore((state) => state.setFlowsPreferences);
-  const showHierarchy = usePreferencesStore((state) => state.flowsShowHierarchy);
-  const setShowHierarchy = usePreferencesStore((state) => state.setFlowsShowHierarchy);
+  const setPreferences = usePreferencesStore(
+    (state) => state.setFlowsPreferences
+  );
+  const showHierarchy = usePreferencesStore(
+    (state) => state.flowsShowHierarchy
+  );
+  const setShowHierarchy = usePreferencesStore(
+    (state) => state.setFlowsShowHierarchy
+  );
   const { flows, isLoading } = useFlows();
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
@@ -198,7 +206,7 @@ const Flows = () => {
       sorting: {
         defaultState: {
           sortingColumn: columnDefinitions.find((col) => col.id === "created"),
-          isDescending: true
+          isDescending: true,
         },
       },
       selection: {},
@@ -221,6 +229,14 @@ const Flows = () => {
                 direction="horizontal"
                 alignItems="center"
               >
+                <Button
+                  onClick={() =>
+                    handleOnClick({ detail: { id: "replication" } })
+                  }
+                  disabled={selectedItems.length !== 0}
+                >
+                  Replication
+                </Button>
                 <ButtonDropdown
                   onItemClick={handleOnClick}
                   disabled={selectedItems.length === 0}
@@ -339,6 +355,12 @@ const Flows = () => {
               selectedFlowId={
                 selectedItems.length > 0 ? selectedItems[0].id : ""
               }
+            />
+          ),
+          replication: (
+            <ReplicationModal
+              modalVisible={modalVisible}
+              setModalVisible={setModalVisible}
             />
           ),
         }[actionId]

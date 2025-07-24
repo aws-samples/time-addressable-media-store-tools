@@ -437,6 +437,8 @@ Resources:
           Fn::Sub: ${ApiStackName}-UserPoolClientId
         TokenUrl: !ImportValue
           Fn::Sub: ${ApiStackName}-TokenUrl
+        AuthRoleName: !ImportValue
+          Fn::Sub: ${ApiStackName}-AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         TamsConnectionArn: !GetAtt TamsConnection.Arn
         SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
@@ -503,4 +505,28 @@ Outputs:
     Value: !If
       - DeployIngestFfmpeg
       - !GetAtt IngestFfmpegStack.Outputs.FfmpegExportArn
+      - ""
+
+  ReplicationConnectionsParameter:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ParameterName
+      - ""
+
+  ReplicationBatchArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationBatchArn
+      - ""
+
+  ReplicationCreateRuleArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationCreateRuleArn
+      - ""
+
+  ReplicationDeleteRuleArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationDeleteRuleArn
       - ""

@@ -13,6 +13,9 @@ Parameters:
   TokenUrl:
     Type: String
 
+  AuthRoleName:
+    Type: String
+
   OpenIdAuthLayerArn:
     Type: String
 
@@ -41,6 +44,27 @@ Globals:
       - arm64
 
 Resources:
+  AuthRolePolicyReplication:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref AuthRoleName
+      PolicyName: !Ref AWS::StackName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ConnectionsParameter}
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${ReplicationBatch.Name}
+              - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${ReplicationCreateRule.Name}
+              - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${ReplicationDeleteRule.Name}
+
   Api:
     Type: AWS::Serverless::Api
     Properties:
@@ -118,6 +142,15 @@ Resources:
                 - secretsmanager:GetSecretValue
               Resource:
                 - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+
+  ConnectionsParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-connections
+      Type: String
+      DataType: text
+      Description: TAMS Replication connections
+      Value: "{}"
 
   ReplicationFlowLogGroup:
     Type: AWS::Logs::LogGroup
@@ -368,11 +401,8 @@ Resources:
                     - "*/service/webhooks"
 
 Outputs:
-  ApiEndpoint:
-    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
-
-  ApiKeyId:
-    Value: !Ref Api.ApiKey
+  ParameterName:
+    Value: !Ref ConnectionsParameter
 
   ReplicationBatchArn:
     Value: !Ref ReplicationBatch
