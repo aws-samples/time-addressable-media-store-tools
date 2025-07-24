@@ -4,7 +4,7 @@ import boto3
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import APIGatewayRestResolver
-from aws_lambda_powertools.event_handler.openapi.params import Body
+from aws_lambda_powertools.event_handler.openapi.params import Path, Body
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from typing_extensions import Annotated
@@ -17,9 +17,11 @@ sqs = boto3.client("sqs")
 queue_url = os.environ["QUEUE_URL"]
 
 
-@app.post("/")
+@app.post("/<id>")
 @tracer.capture_method(capture_response=False)
-def process_webhook_event(payload: Annotated[dict, Body()]):
+def process_webhook_event(
+    payload: Annotated[dict, Body()], _: Annotated[str, Path(alias="id")]
+):
     if payload["event_type"] != "flows/segments_added":
         # Only process segments_added events received
         return

@@ -82,7 +82,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref Api
-            Path: /
+            Path: /{id}
             Method: post
 
   FlowHierachyResolverFunction:
