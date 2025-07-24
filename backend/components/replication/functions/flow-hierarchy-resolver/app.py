@@ -149,6 +149,50 @@ def get_connection_secret_values(connection_arn: str) -> dict[str, str]:
     }
 
 
+@tracer.capture_method(capture_response=False)
+def topological_sort_flows(flows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Sort flows in topological order based on their dependencies.
+
+    Flows with flow_collection depend on their child flows and are ordered after them.
+    Handles circular dependencies by including remaining flows at the end.
+
+    Args:
+        flows: List of flow dictionaries
+
+    Returns:
+        List of flows ordered so dependencies come before dependents
+    """
+    pending_flows = []
+    ordered_flows = []
+    processed_ids = set()
+    # Split flows on whether flow_collection is present or not
+    for flow in flows:
+        if flow.get("flow_collection"):
+            pending_flows.append(flow)
+        else:
+            ordered_flows.append(flow)
+            processed_ids.add(flow["id"])
+    # Process parent flows
+    while pending_flows:
+        ready_flows = []
+        remaining_flows = []
+        for flow in pending_flows:
+            dependencies = set(fc["id"] for fc in flow["flow_collection"])
+            # Check if all children are present to allow parent to be added
+            if dependencies.issubset(processed_ids):
+                ready_flows.append(flow)
+                processed_ids.add(flow["id"])
+            else:
+                remaining_flows.append(flow)
+        if not ready_flows:  # No progress made
+            ordered_flows.extend(remaining_flows)
+            break
+        ordered_flows.extend(ready_flows)
+        pending_flows = remaining_flows
+    return ordered_flows
+
+
 @logger.inject_lambda_context(log_event=True)
 @tracer.capture_lambda_handler
 # pylint: disable=unused-argument
@@ -169,9 +213,9 @@ def lambda_handler(
 
     flows = {}
     if source_id:
-        flows = get_flows_by_source(creds, endpoint, source_id)
-        for flow in flows:
+        flow_list = get_flows_by_source(creds, endpoint, source_id)
+        for flow in flow_list:
             flows.update(resolve_flow_hierarchy(creds, endpoint, flow["id"], flows))
     elif flow_id:
         flows = resolve_flow_hierarchy(creds, endpoint, flow_id)
-    return {**event, "flows": list(flows.values())}
+    return {**event, "flows": topological_sort_flows(flows.values())}

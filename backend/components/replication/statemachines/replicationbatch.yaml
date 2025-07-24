@@ -14,7 +14,7 @@ States:
   MapFlows:
     Type: Map
     Items: >-
-      {% $sort($map($states.input.flows, function($v) {{"originConnectionArn": $states.input.originConnectionArn,  "originEndpoint": $states.input.originEndpoint, "flow": $v, "timerange": $states.input.timerange}}), function($l, $r) {$count($l.flow.flow_collection) > $count($r.flow.flow_collection)}) %}
+      {% $map($states.input.flows, function($v) {{"originConnectionArn": $states.input.originConnectionArn,  "originEndpoint": $states.input.originEndpoint, "flow": $v, "timerange": $exists($states.input.timerange) ? $states.input.timerange : null}}) %}
     MaxConcurrency: 1
     ItemProcessor:
       ProcessorConfig:
