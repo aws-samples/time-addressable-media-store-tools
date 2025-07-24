@@ -269,6 +269,104 @@ Resources:
               Resource:
                 - !Ref SegmentIngestQueueArn
 
+  ReplicationCreateRule:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/replicationcreaterule.yaml
+      DefinitionSubstitutions:
+        FlowHierachyResolverFunctionArn: !GetAtt FlowHierachyResolverFunction.Arn
+        ReplicationFlowArn: !Ref ReplicationFlow
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        ApiEndpoint: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
+        ApiKey: !Ref ApiApiKey
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !GetAtt FlowHierachyResolverFunction.Arn
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${ReplicationFlow.Name}
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+                - states:StopExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${ReplicationFlow.Name}:*
+            - Effect: Allow
+              Action:
+                - events:PutTargets
+                - events:PutRule
+                - events:DescribeRule
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - POST
+                StringLike:
+                  states:HTTPEndpoint:
+                    - "*/service/webhooks"
+
+  ReplicationDeleteRule:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/replicationdeleterule.yaml
+      DefinitionSubstitutions:
+        FlowHierachyResolverFunctionArn: !GetAtt FlowHierachyResolverFunction.Arn
+        ReplicationFlowArn: !Ref ReplicationFlow
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        ApiEndpoint: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
+        ApiKey: !Ref ApiApiKey
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:connection/*/*
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - POST
+                StringLike:
+                  states:HTTPEndpoint:
+                    - "*/service/webhooks"
+
 Outputs:
   ApiEndpoint:
     Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${Api.Stage}
@@ -276,8 +374,11 @@ Outputs:
   ApiKeyId:
     Value: !Ref Api.ApiKey
 
-  ReplicationFlowArn:
-    Value: !Ref ReplicationFlow
-
   ReplicationBatchArn:
     Value: !Ref ReplicationBatch
+
+  ReplicationCreateRuleArn:
+    Value: !Ref ReplicationCreateRule
+
+  ReplicationDeleteRuleArn:
+    Value: !Ref ReplicationDeleteRule

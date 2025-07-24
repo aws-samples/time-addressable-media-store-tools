@@ -1,0 +1,77 @@
+QueryLanguage: JSONata
+StartAt: GetFlows
+States:
+  GetFlows:
+    Type: Task
+    Resource: arn:aws:states:::lambda:invoke
+    Arguments:
+      FunctionName: ${FlowHierachyResolverFunctionArn}
+      Payload: >-
+        {% $states.input %}
+    Assign:
+      id: >-
+        {% $exists($states.input.sourceId) ? $states.input.sourceId : $states.input.flowId %}
+      originEndpoint: >-
+        {% $states.input.originEndpoint %}
+      originConnectionArn: >-
+        {% $states.input.originConnectionArn %}
+    Output: >-
+      {% $states.result.Payload %}
+    Next: MapFlows
+  MapFlows:
+    Type: Map
+    Items: >-
+      {% $map($states.input.flows, function($v) {{"originConnectionArn": $states.input.originConnectionArn,  "originEndpoint": $states.input.originEndpoint, "flow": $v}}) %}
+    MaxConcurrency: 1
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: CheckFlow
+      States:
+        CheckFlow:
+          Type: Task
+          Resource: arn:aws:states:::states:startExecution.sync:2
+          Arguments:
+            StateMachineArn: ${ReplicationFlowArn}
+            Input:
+              AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID: >-
+                {% $states.context.Execution.Id %}
+              originConnectionArn: >-
+                {% $states.input.originConnectionArn %}
+              originEndpoint: >-
+                {% $states.input.originEndpoint %}
+              flow: >-
+                {% $states.input.flow %}
+          Output: >-
+            {% $states.input.flow.id %}
+          End: True
+    Next: PostWebhook
+  PostWebhook:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      InvocationConfig:
+        ConnectionArn: >-
+          {% $originConnectionArn %}
+      ApiEndpoint: >-
+        {% $originEndpoint & '/service/webhooks' %}
+      Method: POST
+      RequestBody:
+        url: >-
+          {% '${ApiEndpoint}' & '/' & $id %}
+        api_key_name: x-api-key
+        api_key_value: ${ApiKey}
+        events:
+          - flows/segments_added
+        flow_ids: >-
+          {% $states.input %}
+        presigned: true
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    End: True

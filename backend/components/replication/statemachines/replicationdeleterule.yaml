@@ -1,0 +1,27 @@
+QueryLanguage: JSONata
+StartAt: PostWebhook
+States:
+  PostWebhook:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      InvocationConfig:
+        ConnectionArn: >-
+          {% $states.input.originConnectionArn %}
+      ApiEndpoint: >-
+        {% $states.input.originEndpoint & '/service/webhooks' %}
+      Method: POST
+      RequestBody:
+        url: >-
+          {% '${ApiEndpoint}' & '/' & ($exists($states.input.sourceId) ? $states.input.sourceId : $states.input.flowId) %}
+        events: []
+        presigned: true
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    End: True
