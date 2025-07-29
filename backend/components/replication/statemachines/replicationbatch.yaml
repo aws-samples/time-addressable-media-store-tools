@@ -10,8 +10,8 @@ States:
         {% $states.input %}
     Output: >-
       {% $states.result.Payload %}
-    Next: MapFlows
-  MapFlows:
+    Next: MapFlowCreation
+  MapFlowCreation:
     Type: Map
     Items: >-
       {% $map($states.input.flows, function($v) {{"originConnectionArn": $states.input.originConnectionArn,  "originEndpoint": $states.input.originEndpoint, "flow": $v, "timerange": $exists($states.input.timerange) ? $states.input.timerange : null}}) %}
@@ -37,7 +37,7 @@ States:
                 {% $states.input.flow %}
               timerange: >-
                 {% $states.input.timerange %}
-          Assign:
+          Output:
             originEndpoint: >-
               {% $states.input.originEndpoint %}
             originConnectionArn: >-
@@ -45,8 +45,18 @@ States:
             flowId: >-
               {% $states.input.flow.id %}
             timerange: >-
-              {% $states.result.Output.timerange %}
-          Next: GetSegments
+              {% $exists($states.input.timerange) ? $states.input.timerange : $states.result.Output.timerange %}
+          End: True
+    Next: MapFlowSegments
+  MapFlowSegments:
+    Type: Map
+    Items: >-
+      {% $states.input %}
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: GetSegments
+      States:
         GetSegments:
           Type: Task
           Resource: arn:aws:states:::http:invoke
@@ -54,15 +64,24 @@ States:
             Method: GET
             InvocationConfig:
               ConnectionArn: >-
-                {% $originConnectionArn %}
+                {% $states.input.originConnectionArn %}
             ApiEndpoint: >-
-              {% $originEndpoint & '/flows/' & $flowId & '/segments' %}
+              {% $states.input.originEndpoint & '/flows/' & $states.input.flowId & '/segments' %}
             QueryParameters:
               limit: 10
               presigned: true
+              reverse_order: true
               timerange: >-
-                {% $timerange %}
+                {% $states.input.timerange %}
           Assign:
+            originEndpoint: >-
+              {% $states.input.originEndpoint %}
+            originConnectionArn: >-
+              {% $states.input.originConnectionArn %}
+            flowId: >-
+              {% $states.input.flowId %}
+            timerange: >-
+              {% $states.input.timerange %}
             nextKey: >-
               {% $states.result.Headers.`x-paging-nextkey` ? $states.result.Headers.`x-paging-nextkey`[0] : null %}
           Retry:
@@ -73,9 +92,8 @@ States:
               IntervalSeconds: 1
               BackoffRate: 2
               MaxAttempts: 3
-          Output:
-            segments: >-
-              {% $states.result.ResponseBody %}
+          Output: >-
+            {% $states.result.ResponseBody %}
           Next: SegmentsFound
         SegmentsFound:
           Type: Choice
@@ -83,11 +101,11 @@ States:
           Choices:
             - Next: MapSegments
               Condition: >-
-                {% $boolean($states.input.segments) %}
+                {% $boolean($states.input) %}
         MapSegments:
           Type: Map
           Items: >-
-            {% [$map($states.input.segments, function($v, $i) {{"index": $i, "segment": $v}})] %}
+            {% [$map($states.input, function($v, $i) {{"index": $i, "segment": $v}})] %}
           ItemProcessor:
             ProcessorConfig:
               Mode: INLINE
@@ -146,6 +164,7 @@ States:
             QueryParameters:
               limit: 10
               presigned: true
+              reverse_order: true
               timerange: >-
                 {% $timerange %}
               page: >-
@@ -161,9 +180,8 @@ States:
               IntervalSeconds: 1
               BackoffRate: 2
               MaxAttempts: 3
-          Output:
-            segments: >-
-              {% $states.result.ResponseBody %}
+          Output: >-
+            {% $states.result.ResponseBody %}
           Next: SegmentsFound
         Success:
           Type: Succeed
