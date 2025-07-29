@@ -351,6 +351,11 @@ Resources:
                 - !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/*/*
             - Effect: Allow
               Action:
+                - apigateway:GET
+              Resource:
+                - !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/apikeys/${ApiApiKey}
+            - Effect: Allow
+              Action:
                 - states:InvokeHTTPEndpoint
               Resource:
                 - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*

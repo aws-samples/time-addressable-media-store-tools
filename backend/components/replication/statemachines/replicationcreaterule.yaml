@@ -45,6 +45,18 @@ States:
           Output: >-
             {% $states.input.flow.id %}
           End: True
+    Next: GetApiKeyValue
+  GetApiKeyValue:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:apigateway:getApiKey
+    Arguments:
+      ApiKey: ${ApiKey}
+      IncludeValue: True
+    Assign:
+      ApiKeyValue: >-
+        {% $states.result.Value %}
+    Output: >-
+      {% $states.input %}
     Next: PostWebhook
   PostWebhook:
     Type: Task
@@ -60,7 +72,8 @@ States:
         url: >-
           {% '${ApiEndpoint}' & '/' & $id %}
         api_key_name: x-api-key
-        api_key_value: ${ApiKey}
+        api_key_value: >-
+          {% $ApiKeyValue %}
         events:
           - flows/segments_added
         flow_ids: >-
