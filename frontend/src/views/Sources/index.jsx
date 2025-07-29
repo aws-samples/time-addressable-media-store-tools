@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Box,
+  Button,
   ButtonDropdown,
   CollectionPreferences,
   CopyToClipboard,
@@ -16,8 +17,9 @@ import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useSources } from "@/hooks/useSources";
 import usePreferencesStore from "@/stores/usePreferencesStore";
-import { PAGE_SIZE_PREFERENCE } from "@/constants";
+import ReplicationModal from "@/components/ReplicationModal";
 import CreateExportModal from "./components/CreateExportModal";
+import { PAGE_SIZE_PREFERENCE } from "@/constants";
 
 const columnDefinitions = [
   {
@@ -170,6 +172,14 @@ const Sources = () => {
                 direction="horizontal"
                 alignItems="center"
               >
+                <Button
+                  onClick={() =>
+                    handleOnClick({ detail: { id: "replication" } })
+                  }
+                  disabled={selectedItems.length !== 0}
+                >
+                  Replication
+                </Button>
                 <ButtonDropdown
                   onItemClick={handleOnClick}
                   disabled={selectedItems.length === 0}
@@ -225,6 +235,13 @@ const Sources = () => {
               selectedSourceId={
                 selectedItems.length > 0 ? selectedItems[0].id : ""
               }
+            />
+          ),
+          replication: (
+            <ReplicationModal
+              originType="Source"
+              modalVisible={modalVisible}
+              setModalVisible={setModalVisible}
             />
           ),
         }[actionId]

@@ -22,10 +22,10 @@ import {
 import { useStateMachine } from "@/hooks/useStateMachine";
 import { useParameter } from "@/hooks/useParameters";
 
-const ReplicationModal = ({ modalVisible, setModalVisible }) => {
+const ReplicationModal = ({ originType, modalVisible, setModalVisible }) => {
   const [action, setAction] = useState(AWS_REPLICATION_BATCH_ARN);
   const [timerange, setTimerange] = useState("");
-  const [originFlow, setOriginFlow] = useState("");
+  const [originId, setOriginId] = useState("");
   const [originStore, setOriginStore] = useState();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { execute } = useStateMachine();
@@ -61,7 +61,7 @@ const ReplicationModal = ({ modalVisible, setModalVisible }) => {
   const handleDismiss = () => {
     setModalVisible(false);
     setTimerange("");
-    setOriginFlow("");
+    setOriginId("");
     setOriginStore();
     setIsSubmitting(false);
   };
@@ -87,7 +87,7 @@ const ReplicationModal = ({ modalVisible, setModalVisible }) => {
       input: stringify({
         originConnectionArn: originStore.connectionArn,
         originEndpoint: originStore.endpoint,
-        flowId: originFlow,
+        [`${originType.toLowerCase()}Id`]: originId,
         timerange: timerange,
       }),
       traceHeader: id,
@@ -163,13 +163,13 @@ const ReplicationModal = ({ modalVisible, setModalVisible }) => {
           </Container>
         )}
         <FormField
-          description="Specify the ID for an existing Flow to replicate."
-          label="Origin Flow Id"
+          description={`Specify the ID for an existing ${originType} to replicate.`}
+          label={`Origin ${originType} Id`}
         >
           <Input
-            value={originFlow}
+            value={originId}
             onChange={({ detail }) => {
-              setOriginFlow(detail.value);
+              setOriginId(detail.value);
             }}
           />
         </FormField>

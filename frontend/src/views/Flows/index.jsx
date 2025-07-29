@@ -19,10 +19,10 @@ import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useState } from "react";
 import usePreferencesStore from "@/stores/usePreferencesStore";
+import ReplicationModal from "@/components/ReplicationModal";
 import CreateExportModal from "./components/CreateExportModal";
 import CreateRuleModal from "./components/CreateRuleModal";
 import CreateJobModal from "./components/CreateJobModal";
-import ReplicationModal from "./components/ReplicationModal";
 
 const columnDefinitions = [
   {
@@ -359,6 +359,7 @@ const Flows = () => {
           ),
           replication: (
             <ReplicationModal
+              originType="Flow"
               modalVisible={modalVisible}
               setModalVisible={setModalVisible}
             />
