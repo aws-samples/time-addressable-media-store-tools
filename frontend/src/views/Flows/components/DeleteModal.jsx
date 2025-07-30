@@ -28,11 +28,7 @@ const DeleteModal = ({
         type: "success",
         dismissible: true,
         dismissLabel: "Dismiss message",
-        content: (
-          <TextContent>
-            Flow {flow.id} is being deleted. This will happen asynchronously.
-          </TextContent>
-        ),
+        content: `Flow ${flow.id} is being deleted. This will happen asynchronously`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
       }))

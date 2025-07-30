@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import {
+  Header,
+  Container,
   FormField,
   Input,
   Select,
@@ -9,6 +11,10 @@ import {
 } from "@cloudscape-design/components";
 
 const DynamicForm = ({ schema, formData, onChange }) => {
+  if (!schema.properties) {
+    return <></>;
+  }
+
   const renderField = useCallback(
     (fieldName, fieldSchema) => {
       const value = formData[fieldName] || "";
@@ -24,12 +30,12 @@ const DynamicForm = ({ schema, formData, onChange }) => {
       };
 
       if (fieldSchema.enum) {
-        const options = fieldSchema.enum.map((enumValue, index) => ({
-          value: enumValue,
-          label: fieldSchema.enumNames
-            ? fieldSchema.enumNames[index]
-            : enumValue,
-        }));
+        const options = Object.entries(fieldSchema.enum).map(
+          ([value, label]) => ({
+            value,
+            label,
+          })
+        );
         const selectedOption = options.find((opt) => opt.value === value);
 
         return (
@@ -120,11 +126,13 @@ const DynamicForm = ({ schema, formData, onChange }) => {
   );
 
   return (
-    <SpaceBetween direction="vertical" size="l">
-      {Object.entries(schema.properties).map(([fieldName, fieldSchema]) =>
-        renderField(fieldName, fieldSchema)
-      )}
-    </SpaceBetween>
+    <Container header={<Header variant="h3">Configuration</Header>}>
+      <SpaceBetween direction="vertical" size="xs">
+        {Object.entries(schema.properties).map(([fieldName, fieldSchema]) =>
+          renderField(fieldName, fieldSchema)
+        )}
+      </SpaceBetween>
+    </Container>
   );
 };
 

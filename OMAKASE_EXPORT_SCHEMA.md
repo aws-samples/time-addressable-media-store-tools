@@ -14,7 +14,6 @@ The root JSON object contains operation definitions as key-value pairs:
 {
   "operation_name": {
     "title": "Display Name",
-    "type": "object",
     "properties": {
       "field_name": {
         "type": "string|number|boolean",
@@ -95,8 +94,11 @@ The root JSON object contains operation definitions as key-value pairs:
 "field_name": {
   "type": "string",
   "title": "Field Label",
-  "enum": ["option1", "option2", "option3"],
-  "enumNames": ["Option 1", "Option 2", "Option 3"],
+  "enum": {
+    "option1": "Option 1",
+    "option2": "Option 2",
+    "option3": "Option 3"
+  },
   "default": "option1",
   "placeholder": "Select an option"
 }

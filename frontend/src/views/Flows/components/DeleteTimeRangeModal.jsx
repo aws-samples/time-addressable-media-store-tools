@@ -6,7 +6,6 @@ import {
   Input,
   Modal,
   SpaceBetween,
-  TextContent,
 } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useDeleteTimerange } from "@/hooks/useFlows";
@@ -31,12 +30,7 @@ const DeleteTimeRangeModal = ({
         type: "success",
         dismissible: true,
         dismissLabel: "Dismiss message",
-        content: (
-          <TextContent>
-            Flow segments on flow {flow.id} within the timerange {timerange} are
-            being deleted. This will happen asynchronously.
-          </TextContent>
-        ),
+        content: `Flow segments on flow ${flow.id} within the timerange ${timerange} are being deleted. This will happen asynchronously.`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
       }))

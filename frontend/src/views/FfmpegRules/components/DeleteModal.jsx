@@ -21,7 +21,7 @@ const DeleteModal = ({ modalVisible, setModalVisible, selectedKey, setSelectedKe
       type: "success",
       dismissible: true,
       dismissLabel: "Dismiss message",
-      content: <TextContent>The Rule is being deleted...</TextContent>,
+      content: "The Rule is being deleted...",
       id: id,
       onDismiss: () => delAlertItem(id),
     });

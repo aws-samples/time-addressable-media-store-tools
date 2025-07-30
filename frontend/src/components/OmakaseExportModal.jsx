@@ -2,20 +2,27 @@ import { useState, useMemo, useEffect } from "react";
 import {
   Button,
   FormField,
+  Input,
   Select,
   Modal,
   SpaceBetween,
   Multiselect,
-  Header,
   Box,
-  Container,
+  Textarea,
 } from "@cloudscape-design/components";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import DynamicForm from "@/components/DynamicForm";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { executeExport } from "@/utils/executeExport";
+import validateJson from "@/utils/validateJson";
+import { getMediaConvertJobSpec } from "@/utils/getMediaConvertJobSpec";
+import { useStartJob } from "@/hooks/useMediaConvert";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { AWS_REGION, OMAKASE_EXPORT_EVENT_PARAMETER } from "@/constants";
+
+const STATIC_OPERATIONS = {
+  MEDIACONVERT_EXPORT: { title: "MediaConvert Export", schema: null },
+};
 
 const initializeFormData = (operation, schema) => {
   const formData = { operation };
@@ -43,7 +50,10 @@ const OmakaseExportModal = ({
       })) ?? [],
     [flows]
   );
+  const baseJobSpec = getMediaConvertJobSpec(sourceId, "mp4H264AAC");
 
+  const { start, isStarting } = useStartJob();
+  const [jobSpec, setJobSpec] = useState(JSON.stringify(baseJobSpec, null, 2));
   const [operationSchemas, setOperationSchemas] = useState({});
   const [formData, setFormData] = useState({});
   const [formSchema, setFormSchema] = useState(null);
@@ -52,14 +62,21 @@ const OmakaseExportModal = ({
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
-  const operations = useMemo(
-    () =>
-      Object.entries(operationSchemas).map(([key, { title }]) => ({
+  const operations = useMemo(() => {
+    const staticOptions = Object.entries(STATIC_OPERATIONS).map(
+      ([key, { title }]) => ({
         value: key,
         label: title,
-      })),
-    [operationSchemas]
-  );
+      })
+    );
+    const dynamicOptions = Object.entries(operationSchemas).map(
+      ([key, { title }]) => ({
+        value: key,
+        label: title,
+      })
+    );
+    return [...staticOptions, ...dynamicOptions];
+  }, [operationSchemas]);
 
   useEffect(() => {
     const fetchOperationSchemas = async () => {
@@ -73,13 +90,6 @@ const OmakaseExportModal = ({
       try {
         const data = JSON.parse(parameterValue);
         setOperationSchemas(data);
-        // Initialize with first operation
-        const firstOperation = Object.keys(data)[0];
-        if (firstOperation) {
-          const schema = data[firstOperation];
-          setFormSchema(schema);
-          setFormData(initializeFormData(firstOperation, schema));
-        }
       } catch (error) {
         const id = crypto.randomUUID();
         addAlertItem({
@@ -92,6 +102,14 @@ const OmakaseExportModal = ({
         });
       }
     };
+
+    // Initialize with first operation
+    const firstOperation = Object.keys(STATIC_OPERATIONS)[0];
+    if (firstOperation) {
+      setFormSchema(STATIC_OPERATIONS[firstOperation].schema);
+      setFormData({ operation: firstOperation });
+    }
+
     fetchOperationSchemas();
   }, []);
 
@@ -101,18 +119,23 @@ const OmakaseExportModal = ({
 
   const handleOperationChange = (event) => {
     const operation = event.detail.selectedOption.value;
-    const schema = operationSchemas[operation];
-    setFormSchema(schema);
-    setFormData(initializeFormData(operation, schema));
+    const staticOperation = STATIC_OPERATIONS[operation];
+
+    if (staticOperation) {
+      setFormSchema(staticOperation.schema);
+      setFormData(initializeFormData(operation, staticOperation.schema));
+    } else {
+      const schema = operationSchemas[operation];
+      setFormSchema(schema);
+      setFormData(initializeFormData(operation, schema));
+    }
   };
 
   const resetForm = () => {
-    const firstOperation = Object.keys(operationSchemas)[0];
+    const firstOperation = Object.keys(STATIC_OPERATIONS)[0];
     if (firstOperation) {
-      setFormSchema(operationSchemas[firstOperation]);
-      setFormData(
-        initializeFormData(firstOperation, operationSchemas[firstOperation])
-      );
+      setFormSchema(STATIC_OPERATIONS[firstOperation].schema);
+      setFormData({ operation: firstOperation });
     }
   };
 
@@ -147,16 +170,94 @@ const OmakaseExportModal = ({
     );
   }, [selectedFlows.length, formSchema?.required, formData]);
 
+  const handleDismiss = () => {
+    onModalToggle(false);
+    resetForm();
+    setJobSpec(JSON.stringify(baseJobSpec, null, 2));
+  };
+
+  const createJob = async () => {
+    const id = crypto.randomUUID();
+    start(
+      {
+        spec: jobSpec,
+        sourceId,
+        timeranges: editTimeranges.join(","),
+      },
+      {
+        onSuccess: (jobId) => {
+          addAlertItem({
+            type: "success",
+            dismissible: true,
+            dismissLabel: "Dismiss message",
+            content: `MediaConvert Job: ${jobId} is being submitted...`,
+            id: id,
+            onDismiss: () => delAlertItem(id),
+          });
+          handleDismiss();
+        },
+        onError: (err) => {
+          addAlertItem({
+            type: "error",
+            dismissible: true,
+            dismissLabel: "Dismiss message",
+            content: `MediaConvert Job Error: ${err.message}`,
+            id: id,
+            onDismiss: () => delAlertItem(id),
+          });
+          handleDismiss();
+        },
+      }
+    );
+  };
+
   return (
     <Modal
-      onDismiss={() => {
-        onModalToggle(false);
-        resetForm();
-      }}
+      onDismiss={handleDismiss}
       visible={isModalOpen}
       header="Export"
+      footer={
+        <Box float="right">
+          <SpaceBetween direction="horizontal" size="xs">
+            <Button
+              variant="link"
+              disabled={isStarting}
+              loading={isStarting || isLoading}
+              onClick={handleDismiss}
+            >
+              Cancel
+            </Button>
+
+            {formSchema ? (
+              <Box float="right">
+                <Button
+                  variant="primary"
+                  disabled={isExportButtonDisabled}
+                  onClick={handleSubmit}
+                  loading={isLoading}
+                >
+                  Export
+                </Button>
+              </Box>
+            ) : (
+              <Button
+                variant="primary"
+                loading={isStarting}
+                disabled={
+                  isStarting ||
+                  !editTimeranges ||
+                  !validateJson(jobSpec).isValid
+                }
+                onClick={createJob}
+              >
+                Export
+              </Button>
+            )}
+          </SpaceBetween>
+        </Box>
+      }
     >
-      <SpaceBetween direction="vertical" size="l">
+      <SpaceBetween direction="vertical" size="xs">
         <FormField label="Flows">
           <Multiselect
             selectedOptions={selectedFlows}
@@ -177,26 +278,35 @@ const OmakaseExportModal = ({
           />
         </FormField>
 
-        <Container header={<Header variant="h3">Configuration</Header>}>
-          {formSchema && (
-            <DynamicForm
-              schema={formSchema}
-              formData={formData}
-              onChange={({ formData }) => setFormData(formData)}
-            ></DynamicForm>
-          )}
-        </Container>
+        {formSchema && (
+          <DynamicForm
+            schema={formSchema}
+            formData={formData}
+            onChange={({ formData }) => setFormData(formData)}
+          ></DynamicForm>
+        )}
 
-        <Box float="right">
-          <Button
-            variant="primary"
-            disabled={isExportButtonDisabled}
-            onClick={handleSubmit}
-            loading={isLoading}
-          >
-            Export
-          </Button>
-        </Box>
+        {formData.operation === "MEDIACONVERT_EXPORT" && (
+          <SpaceBetween size="xs">
+            <FormField label="Timerange">
+              <Input value={editTimeranges.join(",")} readOnly />
+            </FormField>
+            <FormField
+              label="Job Specification"
+              warningText={validateJson(jobSpec).error?.message}
+            >
+              <Textarea
+                rows={20}
+                disableBrowserAutocorrect
+                spellcheck={false}
+                value={jobSpec}
+                onChange={({ detail }) => {
+                  setJobSpec(detail.value);
+                }}
+              />
+            </FormField>
+          </SpaceBetween>
+        )}
       </SpaceBetween>
     </Modal>
   );

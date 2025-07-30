@@ -7,7 +7,6 @@ import {
   Modal,
   SpaceBetween,
   Textarea,
-  TextContent,
 } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import validateJson from "@/utils/validateJson";
@@ -50,11 +49,7 @@ const CreateExportModal = ({
             type: "success",
             dismissible: true,
             dismissLabel: "Dismiss message",
-            content: (
-              <TextContent>
-                <p>MediaConvert Job: {jobId} is being submitted...</p>
-              </TextContent>
-            ),
+            content: `MediaConvert Job: ${jobId} is being submitted...`,
             id: id,
             onDismiss: () => delAlertItem(id),
           });
@@ -65,11 +60,7 @@ const CreateExportModal = ({
             type: "error",
             dismissible: true,
             dismissLabel: "Dismiss message",
-            content: (
-              <TextContent>
-                <p>MediaConvert Job Error: {err.message}</p>
-              </TextContent>
-            ),
+            content: `MediaConvert Job Error: ${err.message}`,
             id: id,
             onDismiss: () => delAlertItem(id),
           });

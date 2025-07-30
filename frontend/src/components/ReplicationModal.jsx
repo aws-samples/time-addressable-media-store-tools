@@ -9,7 +9,6 @@ import {
   Modal,
   Select,
   SpaceBetween,
-  TextContent,
 } from "@cloudscape-design/components";
 import stringify from "json-stable-stringify";
 import useAlertsStore from "@/stores/useAlertsStore";
@@ -73,11 +72,7 @@ const ReplicationModal = ({ originType, modalVisible, setModalVisible }) => {
       type: "success",
       dismissible: true,
       dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          <p>The requested operation has been submitted...</p>
-        </TextContent>
-      ),
+      content: "The requested operation has been submitted...",
       id: id,
       onDismiss: () => delAlertItem(id),
     });

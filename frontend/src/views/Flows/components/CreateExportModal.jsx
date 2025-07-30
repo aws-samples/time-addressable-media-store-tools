@@ -8,7 +8,6 @@ import {
   Modal,
   Select,
   SpaceBetween,
-  TextContent,
 } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { AWS_FFMPEG_COMMANDS_PARAMETER } from "@/constants";
@@ -49,11 +48,7 @@ const CreateExportModal = ({
       type: "success",
       dismissible: true,
       dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          <p>The Export is being started...</p>
-        </TextContent>
-      ),
+      content: "The Export is being started...",
       id: id,
       onDismiss: () => delAlertItem(id),
     });

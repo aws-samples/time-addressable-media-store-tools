@@ -1,7 +1,9 @@
 {
+    "BASIC_EVENT": {
+        "title": "Basic Event"
+    },
     "FLOW_CREATION": {
         "title": "Flow Creation",
-        "type": "object",
         "required": [
             "label"
         ],

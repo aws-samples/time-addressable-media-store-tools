@@ -43,11 +43,7 @@ const StartIngestModal = ({
       type: "success",
       dismissible: true,
       dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          A new ingestion process: {id} has been started...
-        </TextContent>
-      ),
+      content: `A new ingestion process: ${id} has been started...`,
       id: id,
       onDismiss: () => delAlertItem(id),
     });

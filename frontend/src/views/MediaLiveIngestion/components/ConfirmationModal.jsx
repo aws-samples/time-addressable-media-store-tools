@@ -38,11 +38,7 @@ const ConfirmationModal = ({
       type: "success",
       dismissible: true,
       dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          The channel <b>{channelId}</b> is being {actionId}ed...
-        </TextContent>
-      ),
+      content: `The channel ${channelId} is being ${actionId}ed...`,
       id: id,
       onDismiss: () => delAlertItem(id),
     });
@@ -77,11 +73,9 @@ const ConfirmationModal = ({
       }
       header="Confirmation"
     >
-      <SpaceBetween size="xs">
-        <TextContent>
-          Are you sure you wish to {actionId.toUpperCase()} the Channel?
-        </TextContent>
-      </SpaceBetween>
+      <TextContent>
+        Are you sure you wish to {actionId.toUpperCase()} the Channel?
+      </TextContent>
     </Modal>
   );
 };
