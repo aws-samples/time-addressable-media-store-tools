@@ -202,7 +202,7 @@ def initialize_flow_data(
             **flow_data,
             "id": str(uuid.uuid4()),
             "source_id": updated_format_source_ids[flow_data["format"]],
-            "label": f'EditByReference - {edit_payload["configuration"].get("label", "")}',
+            "label": edit_payload["configuration"].get("label", ""),
             "description": DEFAULT_DESCRIPTION,
         }
 
@@ -428,7 +428,7 @@ def create_multi_flow(
     return {
         "id": str(uuid.uuid4()),
         "source_id": str(uuid.uuid4()),
-        "label": f"EditByReference - {label}",
+        "label": label,
         "description": DEFAULT_DESCRIPTION,
         "format": FORMAT_MULTI,
         "flow_collection": [
