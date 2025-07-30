@@ -1,5 +1,5 @@
 {
-    "Segment Concatenation": {
+    "SEGMENT_CONCATENATION": {
         "title": "Segment Concatenation",
         "type": "object",
         "required": [
@@ -33,7 +33,7 @@
             }
         }
     },
-    "Flow Creation": {
+    "FLOW_CREATION": {
         "title": "Flow Creation",
         "type": "object",
         "required": [
