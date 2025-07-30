@@ -70,7 +70,10 @@ Conditions:
 
   DeployIngest: !Or [!Condition DeployIngestHls, !Condition DeployIngestFfmpeg, !Condition DeployReplication]
 
-Transform: AWS::Serverless-2016-10-31
+Transform:
+  - AWS::LanguageExtensions
+
+  - AWS::Serverless-2016-10-31
 
 Globals:
   Function:
@@ -260,6 +263,20 @@ Resources:
                 Resource:
                   - !Sub ${MediaConvertBucket.Arn}/*
 
+  OmakaseExportEventParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-export-events
+      Type: String
+      DataType: text
+      Description: Omakase Export Modal Options
+      Value:
+        Fn::ToJsonString:
+          Fn::Transform:
+            Name: AWS::Include
+            Parameters:
+              Location: export-events.json
+
   AuthRolePolicyTools:
     Type: AWS::IAM::RolePolicy
     Properties:
@@ -284,6 +301,11 @@ Resources:
               - iam:PassRole
             Resource:
               - !GetAtt MediaConvertRole.Arn
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${OmakaseExportEventParameter}
 
   EditByReferenceFunction:
     Type: AWS::Serverless::Function
@@ -458,6 +480,9 @@ Outputs:
 
   MediaConvertBucket:
     Value: !Ref MediaConvertBucket
+
+  OmakaseExportEventParameter:
+    Value: !Ref OmakaseExportEventParameter
 
   HlsApiEndpoint:
     Value: !If

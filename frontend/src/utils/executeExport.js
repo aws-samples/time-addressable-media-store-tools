@@ -35,41 +35,15 @@ const getMaxBitRateVideoFlow = (flows) => {
 
 export const executeExport = async (formData, editTimeranges, flows, sourceId) => {
   const { credentials } = await fetchAuthSession();
-
-  if (AWS_REGION === undefined) {
-    console.error("AWS_REGION is not defined");
-  }
-
   const client = new EventBridgeClient({
     region: AWS_REGION,
     credentials: credentials,
   });
-  let configuration = {};
 
-  if (formData.operation === "Segment Concatenation") {
-    configuration.format = formData.format;
-    configuration.output = {
-      bucket: formData.bucket !== "" ? formData.bucket : undefined,
-      path: formData.path !== "" ? formData.path : undefined,
-      filename: formData.filename !== "" ? formData.filename : undefined,
-    };
-  } else if (formData.operation === "Flow Creation") {
-    configuration.label = formData.label;
-  }
-
-  const operation = formData.operation.replaceAll(" ", "_").toUpperCase();
-
-  const editFlows = Object.keys(formData.flows).filter(
-    (key) => formData.flows[key]
-  );
-  const videoFlow = getMaxBitRateVideoFlow(flows);
-  if (videoFlow) {
-    editFlows.push(videoFlow.id);
-  }
-
-  const editPayload = editTimeranges.map((timeRange) => ({
-    timerange: timeRange,
-    flows: editFlows,
+  const { operation, ...configuration } = formData;
+  const editPayload = editTimeranges.map((timerange) => ({
+    timerange,
+    flows,
   }));
   const params = {
     Entries: [
@@ -86,6 +60,11 @@ export const executeExport = async (formData, editTimeranges, flows, sourceId) =
       },
     ],
   };
-
-  await client.send(new PutEventsCommand(params));
-};
+  try {
+    await client.send(new PutEventsCommand(params));
+    return "success";
+  } catch (error) {
+    console.log(error);
+    return "error";
+  }
+}

@@ -32,7 +32,6 @@ const OmakaseSegmentationHeader = ({
   omakasePlayer,
 }: OmakaseSegmentationHeaderProps) => {
   const [editTimeranges, setEditTimeranges] = useState();
-  // @ts-ignore
   const [omakaseModalVisible, setOmakaseModalVisible] = useState(false);
   const segmentationNamesClassName =
     segmentationLanes.length < 3
