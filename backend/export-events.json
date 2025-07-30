@@ -1,38 +1,4 @@
 {
-    "SEGMENT_CONCATENATION": {
-        "title": "Segment Concatenation",
-        "type": "object",
-        "required": [
-            "format"
-        ],
-        "properties": {
-            "format": {
-                "type": "string",
-                "title": "Format",
-                "enum": [
-                    "TS",
-                    "MP4"
-                ],
-                "enumNames": [
-                    "TS",
-                    "MP4"
-                ],
-                "default": "TS"
-            },
-            "bucket": {
-                "type": "string",
-                "title": "Bucket"
-            },
-            "path": {
-                "type": "string",
-                "title": "Path"
-            },
-            "filename": {
-                "type": "string",
-                "title": "Filename"
-            }
-        }
-    },
     "FLOW_CREATION": {
         "title": "Flow Creation",
         "type": "object",
