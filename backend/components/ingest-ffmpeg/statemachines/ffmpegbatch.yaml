@@ -12,6 +12,27 @@ States:
         {% $states.input.ffmpeg %}
       outputFlow: >-
         {% $states.input.outputFlow %}
+    Next: GetFlow
+  GetFlow:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: ${ConnectionArn}
+      ApiEndpoint: >-
+        {% '${TamsEndpoint}/flows/' & $inputFlow %}
+    Assign:
+      flow: >-
+        {% $states.result.ResponseBody %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
     Next: GetSegments
   GetSegments:
     Type: Task
@@ -61,6 +82,8 @@ States:
         MessageBody:
           Type: Pass
           Output:
+            flow: >-
+              {% $flow %}
             segments: >-
               {% [$states.input.segment] %}
             outputBucket: ${BucketName}

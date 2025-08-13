@@ -1,7 +1,6 @@
 {
     "Thumbnail size image": {
         "command": {
-            "-ss": "00:00:00",
             "-frames:v": "1",
             "-vf": "scale=320:180",
             "-qscale:v": "2",

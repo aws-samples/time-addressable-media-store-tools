@@ -455,6 +455,7 @@ Resources:
         EventBusName: !Ref ApiStackName
         TamsMediaBucket: !ImportValue
           Fn::Sub: ${ApiStackName}-MediaStorageBucket
+        ParentStackName: !Ref AWS::StackName
     Condition: DeployIngestFfmpeg
 
   ReplicationStack:

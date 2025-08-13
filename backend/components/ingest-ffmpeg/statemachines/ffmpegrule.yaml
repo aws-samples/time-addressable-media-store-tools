@@ -1,0 +1,91 @@
+QueryLanguage: JSONata
+StartAt: GetFlow
+States:
+  GetFlow:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    Arguments:
+      Method: GET
+      InvocationConfig:
+        ConnectionArn: ${ConnectionArn}
+      ApiEndpoint: >-
+        {% '${TamsEndpoint}/flows/' & $states.input.inputFlow %}
+    Assign:
+      createRule: >-
+        {% $states.input.createRule %}
+      ruleName: >-
+        {% $states.input.ruleName %}
+      outputFlowId: >-
+        {% $states.input.outputFlowId %}
+      requestBody: >-
+        {% $states.input.requestBody %}
+      flow: >-
+        {% $states.result.ResponseBody %}
+    Retry:
+      - ErrorEquals:
+          - Events.ConnectionResource.InvalidConnectionState
+          - Events.ConnectionResource.AuthInProgress
+          - Events.ConnectionResource.ConcurrentModification
+        IntervalSeconds: 1
+        BackoffRate: 2
+        MaxAttempts: 3
+    Next: CheckCreateRule
+  CheckCreateRule:
+    Type: Choice
+    Default: PutTargets
+    Choices:
+      - Condition: >-
+          {% $createRule %}
+        Next: PutRule
+  PutRule:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putRule
+    Arguments:
+      Name: >-
+        {% $ruleName %}
+      EventPattern: >-
+        {%
+          $string(
+            {
+              "detail-type": ["flows/segments_added"],
+              "source": ["tams.api"],
+              "resources": ["tams:flow:" & $flow.id]
+            }
+          )
+        %}
+      State: ENABLED
+      EventBusName: ${EventBusName}
+    Next: PutTargets
+  PutTargets:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putTargets
+    Arguments:
+      Rule: >-
+        {% $ruleName %}
+      EventBusName: ${EventBusName}
+      Targets:
+        - Id: >-
+            {% $outputFlowId %}
+          Arn: ${QueueArn}
+          RoleArn: ${EventRuleRoleArn}
+          InputTransformer:
+              InputPathsMap:
+                segments: $.detail.segments
+              InputTemplate: >-
+                {%
+                  $replace(
+                    $string(
+                      {
+                          "flow": $flow,
+                          "segments": "<segments>",
+                          "outputBucket": '${OutputBucket}',
+                          "outputPrefix": "ffmpeg/",
+                          "ffmpeg": $requestBody,
+                          "outputFlow": $outputFlowId
+                      }
+                    ),
+                    "\"<segments>\"",
+                    "<segments>"
+                  )
+                %}
+    End: True

@@ -16,10 +16,9 @@ app = APIGatewayHttpResolver(cors=CORSConfig())
 events = boto3.client("events")
 sfn = boto3.client("stepfunctions")
 queue_arn = os.environ["QUEUE_ARN"]
-output_bucket = os.environ["OUTPUT_BUCKET"]
-event_rule_role_arn = os.environ["EVENT_RULE_ROLE_ARN"]
 ffmpeg_batch_arn = os.environ["FFMPEG_BATCH_ARN"]
 ffmpeg_export_arn = os.environ["FFMPEG_EXPORT_ARN"]
+ffmpeg_rule_arn = os.environ["FFMPEG_RULE_ARN"]
 event_bus_name = os.environ["EVENT_BUS_NAME"]
 rule_id_prefix = "ffmpeg-flow-segments-"
 
@@ -44,42 +43,19 @@ def put_ffmpeg_rule(flowId: str, outputFlowId: str):
     requestBody = json.loads(app.current_event.body)
     rule_name = f"{rule_id_prefix}{flowId}"
     rules = get_rule_names()
-    if rule_name not in rules:
-        events.put_rule(
-            Name=rule_name,
-            EventPattern=json.dumps(
-                {
-                    "detail-type": ["flows/segments_added"],
-                    "source": ["tams.api"],
-                    "resources": [f"tams:flow:{flowId}"],
-                }
-            ),
-            State="ENABLED",
-            EventBusName=event_bus_name,
-        )
-    events.put_targets(
-        Rule=rule_name,
-        EventBusName=event_bus_name,
-        Targets=[
+    start_execution = sfn.start_sync_execution(
+        stateMachineArn=ffmpeg_rule_arn,
+        input=json.dumps(
             {
-                "Id": outputFlowId,
-                "Arn": queue_arn,
-                "RoleArn": event_rule_role_arn,
-                "InputTransformer": {
-                    "InputPathsMap": {"segments": "$.detail.segments"},
-                    "InputTemplate": json.dumps(
-                        {
-                            "segments": "<segments>",
-                            "outputBucket": output_bucket,
-                            "outputPrefix": "ffmpeg/",
-                            "ffmpeg": requestBody,
-                            "outputFlow": outputFlowId,
-                        }
-                    ).replace('"<segments>"', "<segments>"),
-                },
+                "inputFlow": flowId,
+                "createRule": rule_name not in rules,
+                "ruleName": rule_name,
+                "outputFlowId": outputFlowId,
+                "requestBody": requestBody,
             }
-        ],
+        ),
     )
+    print(start_execution)
     return None, HTTPStatus.CREATED.value
 
 
