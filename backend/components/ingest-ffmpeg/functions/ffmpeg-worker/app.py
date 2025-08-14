@@ -14,7 +14,7 @@ from aws_lambda_powertools.utilities.batch import (
 )
 from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSRecord
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from mediatimestamp.immutable import TimeRange, Timestamp
+from mediatimestamp.immutable import TimeRange
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -52,17 +52,21 @@ def calculate_ffmpeg_timing(segment, rate):
         segment_timerange = TimeRange.from_str(segment["timerange"])
         timing_args = {"-t": segment_timerange.length.to_unix_float()}
 
-        # Use ts_offset for output timing adjustment
-        output_ts_offset = None
+        # Default timing to copy unless ts_offset is provided
+        output_args = {"-copyts": None}
         if segment.get("ts_offset"):
-            ts_offset_str = segment["ts_offset"]
-            output_ts_offset = -Timestamp.from_str(ts_offset_str).to_unix_float()
+            output_args = {
+                "-muxpreload": 0,
+                "-muxdelay": 0,
+                # Use ts_offset for output timing adjustment
+                "-output_ts_offset": segment_timerange.start.to_unix_float(),
+            }
 
         # Use sample_offset for file position (only if rate is available)
         if rate is not None and segment.get("sample_offset"):
             timing_args["-ss"] = segment["sample_offset"] / rate
 
-        return timing_args, {"-output_ts_offset": output_ts_offset}
+        return timing_args, output_args
     except (KeyError, ValueError, ZeroDivisionError):
         return {}, {}
 
