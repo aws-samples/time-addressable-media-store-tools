@@ -50,12 +50,12 @@ def calculate_ffmpeg_timing(segment, rate):
     try:
         # Parse segment timerange for duration
         segment_timerange = TimeRange.from_str(segment["timerange"])
-        timing_args = {"-t": segment_timerange.length.to_unix_float()}
+        input_timing = {"-t": segment_timerange.length.to_unix_float()}
 
         # Default timing to copy unless ts_offset is provided
-        output_args = {"-copyts": None}
+        output_timing = {"-copyts": None}
         if segment.get("ts_offset"):
-            output_args = {
+            output_timing = {
                 "-muxpreload": 0,
                 "-muxdelay": 0,
                 # Use ts_offset for output timing adjustment
@@ -64,11 +64,11 @@ def calculate_ffmpeg_timing(segment, rate):
 
         # Use sample_offset for file position (only if rate is available)
         if rate is not None and segment.get("sample_offset"):
-            timing_args["-ss"] = segment["sample_offset"] / rate
+            input_timing["-ss"] = segment["sample_offset"] / rate
 
-        return timing_args, output_args
+        return {"input": input_timing, "output": output_timing}
     except (KeyError, ValueError, ZeroDivisionError):
-        return {}, {}
+        return {"input": {}, "output": {}}
 
 
 @tracer.capture_method(capture_response=False)
@@ -148,14 +148,14 @@ def s3_upload(data, bucket, prefix):
 
 
 @tracer.capture_method(capture_response=False)
-def execute_ffmpeg_memory(input_bytes, ffmpeg_command, timing_args, output_ts_offset):
+def execute_ffmpeg_memory(input_bytes, ffmpeg_command, timing_args):
     args_list = [
         "/opt/bin/ffmpeg",
         "-hide_banner",
-        *[str(a) for k, v in timing_args.items() for a in [k, v] if v],
+        *[str(a) for k, v in timing_args["input"].items() for a in [k, v] if a],
         "-i",
         "pipe:0",
-        *[str(a) for k, v in output_ts_offset.items() for a in [k, v] if v],
+        *[str(a) for k, v in timing_args["output"].items() for a in [k, v] if a],
         *[str(a) for k, v in ffmpeg_command.items() for a in [k, v] if a],
         "pipe:1",
     ]
@@ -219,13 +219,12 @@ def process_message(message):
 
     for segment in message.get("segments", []):
         logger.info(f'Processing Object Id: {segment["object_id"]}...')
-        timing_args, output_ts_offset = calculate_ffmpeg_timing(segment, flow_rate)
+        timing_args = calculate_ffmpeg_timing(segment, flow_rate)
         get_segment = s3.get_object(Bucket=TAMS_MEDIA_BUCKET, Key=segment["object_id"])
         output = execute_ffmpeg_memory(
             get_segment["Body"].read(),
             message["ffmpeg"]["command"],
-            timing_args=timing_args,
-            output_ts_offset=output_ts_offset,
+            timing_args,
         )
         logger.info("Uploading output to S3...")
         key = s3_upload(output, message["outputBucket"], message["outputPrefix"])
