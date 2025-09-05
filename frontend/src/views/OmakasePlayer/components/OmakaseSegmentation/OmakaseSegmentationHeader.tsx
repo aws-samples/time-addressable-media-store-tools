@@ -1,5 +1,6 @@
 import {
   MarkerLane,
+  MarkerListApi,
   OmakasePlayer,
   PeriodMarker,
 } from "@byomakase/omakase-player";
@@ -14,8 +15,9 @@ import { createEditTimeranges } from "../../util/export-util";
 type OmakaseSegmentationHeaderProps = {
   segmentationLanes: MarkerLane[];
   source: MarkerLane | undefined;
+  sourceMarkerList: MarkerListApi | undefined;
   onSegementationClickCallback: (markerLane: MarkerLane) => void;
-  sourceId: string,
+  sourceId: string;
   flows: Flow[];
   flowSegments: Map<string, FlowSegment[]>;
   markerOffset: number;
@@ -25,6 +27,7 @@ type OmakaseSegmentationHeaderProps = {
 const OmakaseSegmentationHeader = ({
   segmentationLanes,
   source,
+  sourceMarkerList,
   onSegementationClickCallback,
   sourceId,
   flows,
@@ -96,7 +99,7 @@ const OmakaseSegmentationHeader = ({
   const handleExportModal = () => {
     setEditTimeranges(
       // @ts-ignore
-      createEditTimeranges(source, markerOffset, omakasePlayer)
+      createEditTimeranges(sourceMarkerList, markerOffset, omakasePlayer)
     );
     setOmakaseModalVisible(true);
   };

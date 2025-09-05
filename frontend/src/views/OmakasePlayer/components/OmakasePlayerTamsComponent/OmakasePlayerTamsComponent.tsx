@@ -639,6 +639,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     onSegementationClickCallback={onSegementationClickCallback}
                     omakasePlayer={omakasePlayer}
                     source={source}
+                    sourceMarkerList={markerList}
                     sourceId={sourceId}
                     flows={timelineBuilderFlows}
                     flowSegments={flowsSegments}
@@ -650,6 +651,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     config={{
                       ...MARKER_LIST_CONFIG,
                       source: source,
+                      mode: "CUTLIST",
                       thumbnailVttFile:
                         omakasePlayer.timeline!.thumbnailVttFile,
                     }}
@@ -700,8 +702,11 @@ const OmakasePlayerTamsComponent = React.memo(
                   setOmakasePlayer((prev) => prev ?? omakasePlayer)
                 }
                 config={{
-                  mediaChrome: {
-                    visibility: "enabled",
+                  playerChroming: {
+                    theme: "DEFAULT",
+                    themeConfig: {
+                      controlBarVisibility: "ENABLED",
+                    },
                   },
                 }}
                 timerange={timeRange}
