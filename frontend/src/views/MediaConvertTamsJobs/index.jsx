@@ -39,6 +39,7 @@ const MediaConvertTamsJobs = () => {
   const preferences = {
     pageSize: PAGE_SIZE,
     contentDisplay: [
+      { id: "filename", visible: true },
       { id: "id", visible: true },
       { id: "submitTime", visible: true },
       { id: "startTime", visible: true },
@@ -67,6 +68,15 @@ const MediaConvertTamsJobs = () => {
     });
 
   const columnDefinitions = [
+    {
+      id: "filename",
+      header: "Output Filename",
+      cell: (item) =>
+        item.Settings.OutputGroups[0].OutputGroupSettings.FileGroupSettings
+          .Destination.split("/").slice(-1),
+      sortingField: "filename",
+      isRowHeader: true,
+    },
     {
       id: "id",
       header: "Job Id",
@@ -157,7 +167,7 @@ const MediaConvertTamsJobs = () => {
         columnDefinitions={columnDefinitions}
         columnDisplay={preferences.contentDisplay}
         contentDensity="compact"
-        stickyColumns={{ first: 0, last: 1 }}
+        stickyColumns={{ first: 0, last: 2 }}
         items={items}
         pagination={<Pagination {...paginationProps} />}
         filter={<TextFilter {...filterProps} />}
