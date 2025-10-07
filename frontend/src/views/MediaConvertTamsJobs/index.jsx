@@ -15,6 +15,21 @@ import JobDetailModal from "./components/JobDetailModal";
 
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useTamsJobs } from "@/hooks/useMediaConvert";
+import getPresignedUrl from "@/utils/getPresignedUrl";
+
+const handleDownload = async (destination) => {
+  const s3Uri_parts = destination.split("/");
+  const bucket = s3Uri_parts[2];
+  const key = s3Uri_parts.slice(3).join("/");
+  const fileName = s3Uri_parts[s3Uri_parts.length - 1];
+  const url = await getPresignedUrl({
+    bucket,
+    key,
+    expiry: 300,
+    ResponseContentDisposition: `attachment; filename="${fileName}"`,
+  });
+  window.open(url, "_blank");
+};
 
 const MediaConvertTamsJobs = () => {
   const { jobs, isLoading } = useTamsJobs();
@@ -28,6 +43,7 @@ const MediaConvertTamsJobs = () => {
       { id: "submitTime", visible: true },
       { id: "startTime", visible: true },
       { id: "finishTime", visible: true },
+      { id: "output", visible: true },
       { id: "status", visible: true },
     ],
   };
@@ -49,6 +65,7 @@ const MediaConvertTamsJobs = () => {
       sorting: {},
       selection: {},
     });
+
   const columnDefinitions = [
     {
       id: "id",
@@ -80,6 +97,25 @@ const MediaConvertTamsJobs = () => {
         item.Timing.FinishTime &&
         DateTime.fromJSDate(item.Timing.FinishTime).toLocaleString(DATE_FORMAT),
       sortingField: "finishTime",
+    },
+    {
+      id: "output",
+      header: "Output",
+      cell: (item) =>
+        item.Status == "COMPLETE" && (
+          <Button
+            onClick={() =>
+              handleDownload(
+                item.Settings.OutputGroups[0].OutputGroupSettings
+                  .FileGroupSettings.Destination
+              )
+            }
+            iconName="download"
+            variant="icon"
+          />
+        ),
+      sortingField: "output",
+      width: 80,
     },
     {
       id: "status",
