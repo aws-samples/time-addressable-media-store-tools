@@ -9,6 +9,8 @@ import validateJson from "@/utils/validateJson";
 const MediaConvertExportForm = ({
   timeranges,
   onTimerangesChange,
+  fileName,
+  setFileName,
   jobSpec,
   onJobSpecChange,
   timerangeProps = {},
@@ -32,6 +34,14 @@ const MediaConvertExportForm = ({
           {...(timerangeProps.inputProps || {})}
         />
       </FormField>
+
+      <FormField label="Output Filename" description="Provide the output filename. Folders are supported using '/'">
+        <Input
+          value={fileName}
+          onChange={({ detail }) => setFileName(detail.value)}
+        />
+      </FormField>
+
       <FormField
         label="Job Specification"
         warningText={validateJson(jobSpec).error?.message}

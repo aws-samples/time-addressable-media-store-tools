@@ -23,9 +23,10 @@ const OmakaseExportModal = ({
   const handleDismiss = () => {
     onModalToggle(false);
     resetForm();
+    setFileName(sourceId);
     resetJobSpec();
   };
-  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec(sourceId);
+  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
   const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
   const { operations, getOperationSchema } = useExportOperations();
   const {
@@ -49,6 +50,7 @@ const OmakaseExportModal = ({
 
   const [selectedFlows, setSelectedFlows] = useState(flowOptions);
   const [isLoading, setIsLoading] = useState(false);
+  const [fileName, setFileName] = useState(sourceId);
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
@@ -83,7 +85,7 @@ const OmakaseExportModal = ({
   }, [selectedFlows.length, isFormValid]);
 
   const handleCreateJob = () => {
-    createJob({ jobSpec, sourceId, timeranges: editTimeranges });
+    createJob({ jobSpec, sourceId, fileName, timeranges: editTimeranges });
   };
 
   return (
@@ -140,6 +142,8 @@ const OmakaseExportModal = ({
         {formData.operation === "MEDIACONVERT_EXPORT" && (
           <MediaConvertExportForm
             timeranges={editTimeranges}
+            fileName={fileName}
+            setFileName={setFileName}
             jobSpec={jobSpec}
             onJobSpecChange={setJobSpec}
             readOnly={true}
