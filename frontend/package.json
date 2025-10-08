@@ -18,8 +18,8 @@
     "@aws-sdk/client-sfn": "^3.787.0",
     "@aws-sdk/client-ssm": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
-    "@byomakase/omakase-player": "^0.20.1-SNAPSHOT.1755517090",
-    "@byomakase/omakase-react-components": "1.1.0-SNAPSHOT.1755610417",
+    "@byomakase/omakase-player": "0.21.1",
+    "@byomakase/omakase-react-components": "1.1.0",
     "@cloudscape-design/collection-hooks": "^1.0.71",
     "@cloudscape-design/components": "^3.0.948",
     "@cloudscape-design/design-tokens": "^3.0.55",
@@ -46,6 +46,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.28.0",
     "vite": "^6.3.2"
   },

@@ -1,15 +1,38 @@
 import {
   ConfigWithOptionalStyle,
+  DefaultThemeControl,
   ImageButtonConfig,
   MarkerLaneConfig,
   MarkerListConfig,
   PeriodMarkerStyle,
+  PlayerChroming,
+  PlayerChromingTheme,
   ScrubberLaneStyle,
   TextLabelStyle,
   TimelineConfig,
   TimelineLaneStyle,
   TimelineStyle,
 } from "@byomakase/omakase-player";
+
+export const PLAYER_CHROMING: PlayerChroming = {
+  theme: PlayerChromingTheme.Default,
+  themeConfig: {
+    controlBar: [
+      DefaultThemeControl.Bitc,
+      DefaultThemeControl.Detach,
+      DefaultThemeControl.FrameBackward,
+      DefaultThemeControl.FrameForward,
+      DefaultThemeControl.Fullscreen,
+      DefaultThemeControl.Play,
+      DefaultThemeControl.PlaybackRate,
+      DefaultThemeControl.Scrubber,
+      DefaultThemeControl.TenFramesBackward,
+      DefaultThemeControl.TenFramesForward,
+      DefaultThemeControl.Trackselector,
+      DefaultThemeControl.Volume,
+    ],
+  },
+};
 
 export const VARIABLES = {
   text: {

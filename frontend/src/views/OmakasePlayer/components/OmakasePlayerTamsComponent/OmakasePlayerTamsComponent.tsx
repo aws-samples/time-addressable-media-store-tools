@@ -34,6 +34,7 @@ import {
   MARKER_LANE_TEXT_LABEL_STYLE,
   MARKER_LIST_CONFIG,
   PERIOD_MARKER_STYLE,
+  PLAYER_CHROMING,
   SCRUBBER_LANE_STYLE,
   SEGMENT_PERIOD_MARKER_STYLE,
   SOUND_BUTTON_CONFIG,
@@ -702,12 +703,7 @@ const OmakasePlayerTamsComponent = React.memo(
                   setOmakasePlayer((prev) => prev ?? omakasePlayer)
                 }
                 config={{
-                  playerChroming: {
-                    theme: "DEFAULT",
-                    themeConfig: {
-                      controlBarVisibility: "ENABLED",
-                    },
-                  },
+                  playerChroming: PLAYER_CHROMING,
                 }}
                 timerange={timeRange}
                 enableHotkey={true}
