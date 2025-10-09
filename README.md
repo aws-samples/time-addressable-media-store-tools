@@ -50,15 +50,17 @@ The deployment will only take a short time as with all the components set to No 
 ```bash
 cd ../frontend
 npm ci
-cp .env.template .env.local
+npm run envLocal
 ```
 
-Open the newly created `env.local` file in your preferred text editor and set the values for the non-commented out variables, leave the commented out lines for now. The values for these variables are provided as outputs from two different CloudFormation stacks:
+The `npm run envLocal` command will create an automatically populated `.env.local` file for you. The values for these variables are retrieved from outputs of two different CloudFormation stacks:
 
 1. **TAMS API stack** - The CloudFormation stack from the separate [TAMS API project](https://github.com/awslabs/time-addressable-media-store) that you deployed as a prerequisite
 2. **TAMS Tools stack** - The CloudFormation stack created when you deployed this tools project
 
-The variable names in the template file show the corresponding CloudFormation output names between `<` and `>` brackets as placeholders (for example, `<UserPoolId>` corresponds to the `UserPoolId` output from the TAMS API stack).
+Any optional components not deployed will result in commented out lines and lay also have placeholders for the CloudFormation output names.
+
+The placeholder names in the `.env.template` file show the corresponding CloudFormation output names between `<` and `>` brackets as placeholders (for example, `<UserPoolId>` corresponds to the `UserPoolId` output from the TAMS API stack).
 
 ### Required Environment Variables
 
@@ -75,7 +77,7 @@ The following variables must be configured for basic functionality. Values come 
 - **VITE_APP_AWS_MEDIACONVERT_ROLE_ARN**: From **TAMS Tools stack** output `MediaConvertRoleArn`
 - **VITE_APP_AWS_MEDIACONVERT_BUCKET**: From **TAMS Tools stack** output `MediaConvertBucket`
 
-Once you have set these values save the changes to the file. You now have 2 choices:
+Once you have the `.env.local` file populated. You now have 2 choices:
 
 ### Run the web app locally in dev mode
 
