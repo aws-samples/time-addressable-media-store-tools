@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { PAGE_SIZE, STATUS_MAPPINGS, DATE_FORMAT } from "@/constants";
+import {
+  PAGE_SIZE,
+  STATUS_MAPPINGS,
+  DATE_FORMAT,
+  CONTAINER_FILE_EXTENSION,
+} from "@/constants";
 import {
   Box,
   Button,
@@ -17,11 +22,17 @@ import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useTamsJobs } from "@/hooks/useMediaConvert";
 import getPresignedUrl from "@/utils/getPresignedUrl";
 
-const handleDownload = async (destination) => {
+const handleDownload = async (outputGroup) => {
+  const destination =
+    outputGroup.OutputGroupSettings.FileGroupSettings.Destination;
+  const fileExtension =
+    CONTAINER_FILE_EXTENSION[
+      outputGroup.Outputs[0].ContainerSettings.Container
+    ];
   const s3Uri_parts = destination.split("/");
   const bucket = s3Uri_parts[2];
-  const key = s3Uri_parts.slice(3).join("/");
-  const fileName = s3Uri_parts[s3Uri_parts.length - 1];
+  const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
+  const fileName = `${s3Uri_parts[s3Uri_parts.length - 1]}.${fileExtension}`;
   const url = await getPresignedUrl({
     bucket,
     key,
@@ -72,8 +83,9 @@ const MediaConvertTamsJobs = () => {
       id: "filename",
       header: "Output Filename",
       cell: (item) =>
-        item.Settings.OutputGroups[0].OutputGroupSettings.FileGroupSettings
-          .Destination.split("/").slice(-1),
+        item.Settings.OutputGroups[0].OutputGroupSettings.FileGroupSettings.Destination.split(
+          "/"
+        ).slice(-1),
       sortingField: "filename",
       isRowHeader: true,
     },
@@ -114,12 +126,7 @@ const MediaConvertTamsJobs = () => {
       cell: (item) =>
         item.Status == "COMPLETE" && (
           <Button
-            onClick={() =>
-              handleDownload(
-                item.Settings.OutputGroups[0].OutputGroupSettings
-                  .FileGroupSettings.Destination
-              )
-            }
+            onClick={() => handleDownload(item.Settings.OutputGroups[0])}
             iconName="download"
             variant="icon"
           />
