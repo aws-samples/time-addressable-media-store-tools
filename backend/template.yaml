@@ -306,6 +306,12 @@ Resources:
               - ssm:GetParameter
             Resource:
               - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${OmakaseExportEventParameter}
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub ${MediaConvertBucket.Arn}/*
+
 
   EditByReferenceFunction:
     Type: AWS::Serverless::Function
