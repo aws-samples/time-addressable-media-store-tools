@@ -47,15 +47,13 @@ export const useTamsJobs = () => {
 
 const createFinalJobSpec = ({ spec, sourceId, fileName, timeranges }) => {
   const parsedJobSpec = JSON.parse(spec);
-  const fileExtension =
-    parsedJobSpec.Settings.OutputGroups[0].Outputs[0].ContainerSettings.Container.toLowerCase();
   parsedJobSpec.Settings.OutputGroups[0] = {
     ...parsedJobSpec.Settings.OutputGroups[0],
     Name: "File Group",
     OutputGroupSettings: {
       Type: "FILE_GROUP_SETTINGS",
       FileGroupSettings: {
-        Destination: `s3://${MEDIACONVERT_BUCKET}/${fileName}.${fileExtension}`,
+        Destination: `s3://${MEDIACONVERT_BUCKET}/${fileName}`,
       },
     },
   };
