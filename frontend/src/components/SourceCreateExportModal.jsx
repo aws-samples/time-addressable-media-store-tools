@@ -14,16 +14,18 @@ const SourceCreateExportModal = ({
   const handleDismiss = () => {
     setModalVisible(false);
     setTimeranges("");
+    setFileName(selectedSourceId);
     resetJobSpec();
   };
 
-  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec(selectedSourceId);
+  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
   const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
   const [timeranges, setTimeranges] = useState("");
   const [timerangeError, setTimerangeError] = useState("");
+  const [fileName, setFileName] = useState(selectedSourceId);
 
   const handleCreateJob = () => {
-    createJob({ jobSpec, sourceId: selectedSourceId, timeranges });
+    createJob({ jobSpec, sourceId: selectedSourceId, fileName, timeranges });
   };
 
   const validateTimerange = (value) => {
@@ -64,6 +66,8 @@ const SourceCreateExportModal = ({
       <MediaConvertExportForm
         timeranges={timeranges}
         onTimerangesChange={handleTimerangeChange}
+        fileName={fileName}
+        setFileName={setFileName}
         jobSpec={jobSpec}
         onJobSpecChange={setJobSpec}
         timerangeProps={{

@@ -3,14 +3,14 @@ import {
   CreateJobCommand,
   paginateListJobs,
 } from "@aws-sdk/client-mediaconvert";
-import { AWS_REGION } from "@/constants";
+import { AWS_REGION, MEDIACONVERT_BUCKET } from "@/constants";
 import { fetchAuthSession } from "aws-amplify/auth";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { AWS_TAMS_ENDPOINT, TAMS_AUTH_CONNECTION_ARN } from "@/constants";
 
 const isTamsJob = (job) => {
-  return job.Settings?.Inputs?.some(input => input.TamsSettings);
+  return job.Settings?.Inputs?.some((input) => input.TamsSettings);
 };
 
 const mediaConvertFetcher = async () => {
@@ -25,7 +25,7 @@ const mediaConvertFetcher = async () => {
   for await (const page of paginateListJobs({ client }, {})) {
     allJobs.push(...page.Jobs);
   }
-  return allJobs.filter(isTamsJob);;
+  return allJobs.filter(isTamsJob);
 };
 
 export const useTamsJobs = () => {
@@ -45,8 +45,18 @@ export const useTamsJobs = () => {
   };
 };
 
-const createFinalJobSpec = ({ spec, sourceId, timeranges }) => {
+const createFinalJobSpec = ({ spec, sourceId, fileName, timeranges }) => {
   const parsedJobSpec = JSON.parse(spec);
+  parsedJobSpec.Settings.OutputGroups[0] = {
+    ...parsedJobSpec.Settings.OutputGroups[0],
+    Name: "File Group",
+    OutputGroupSettings: {
+      Type: "FILE_GROUP_SETTINGS",
+      FileGroupSettings: {
+        Destination: `s3://${MEDIACONVERT_BUCKET}/${fileName}`,
+      },
+    },
+  };
   parsedJobSpec.Settings.Inputs = timeranges.split(",").map((timerange) => ({
     AudioSelectors: {
       "Audio Selector 1": {

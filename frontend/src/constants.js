@@ -67,3 +67,7 @@ export const DATE_FORMAT = {
   minute: "2-digit",
   second: "2-digit",
 };
+export const CONTAINER_FILE_EXTENSION = {
+  "MP4": "mp4",
+  "M2TS": "ts",
+}

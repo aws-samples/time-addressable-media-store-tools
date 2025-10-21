@@ -25,9 +25,9 @@ const handleDownload = async (item) => {
     expiry: 300,
     ResponseContentDisposition: `attachment; filename="${
       item.executionArn.split(":")[7]
-    }.mp4"`,
+    }"`,
   });
-  window.location.href = url;
+  window.open(url, "_blank");
 };
 
 const columnDefinitions = [

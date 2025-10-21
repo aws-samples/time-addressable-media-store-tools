@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { PAGE_SIZE, STATUS_MAPPINGS, DATE_FORMAT } from "@/constants";
+import {
+  PAGE_SIZE,
+  STATUS_MAPPINGS,
+  DATE_FORMAT,
+  CONTAINER_FILE_EXTENSION,
+} from "@/constants";
 import {
   Box,
   Button,
@@ -15,6 +20,27 @@ import JobDetailModal from "./components/JobDetailModal";
 
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useTamsJobs } from "@/hooks/useMediaConvert";
+import getPresignedUrl from "@/utils/getPresignedUrl";
+
+const handleDownload = async (outputGroup) => {
+  const destination =
+    outputGroup.OutputGroupSettings.FileGroupSettings.Destination;
+  const fileExtension =
+    CONTAINER_FILE_EXTENSION[
+      outputGroup.Outputs[0].ContainerSettings.Container
+    ];
+  const s3Uri_parts = destination.split("/");
+  const bucket = s3Uri_parts[2];
+  const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
+  const fileName = `${s3Uri_parts[s3Uri_parts.length - 1]}.${fileExtension}`;
+  const url = await getPresignedUrl({
+    bucket,
+    key,
+    expiry: 300,
+    ResponseContentDisposition: `attachment; filename="${fileName}"`,
+  });
+  window.open(url, "_blank");
+};
 
 const MediaConvertTamsJobs = () => {
   const { jobs, isLoading } = useTamsJobs();
@@ -24,10 +50,12 @@ const MediaConvertTamsJobs = () => {
   const preferences = {
     pageSize: PAGE_SIZE,
     contentDisplay: [
+      { id: "filename", visible: true },
       { id: "id", visible: true },
       { id: "submitTime", visible: true },
       { id: "startTime", visible: true },
       { id: "finishTime", visible: true },
+      { id: "output", visible: true },
       { id: "status", visible: true },
     ],
   };
@@ -49,7 +77,18 @@ const MediaConvertTamsJobs = () => {
       sorting: {},
       selection: {},
     });
+
   const columnDefinitions = [
+    {
+      id: "filename",
+      header: "Output Filename",
+      cell: (item) =>
+        item.Settings.OutputGroups[0].OutputGroupSettings.FileGroupSettings.Destination.split(
+          "/"
+        ).slice(-1),
+      sortingField: "filename",
+      isRowHeader: true,
+    },
     {
       id: "id",
       header: "Job Id",
@@ -80,6 +119,20 @@ const MediaConvertTamsJobs = () => {
         item.Timing.FinishTime &&
         DateTime.fromJSDate(item.Timing.FinishTime).toLocaleString(DATE_FORMAT),
       sortingField: "finishTime",
+    },
+    {
+      id: "output",
+      header: "Output",
+      cell: (item) =>
+        item.Status == "COMPLETE" && (
+          <Button
+            onClick={() => handleDownload(item.Settings.OutputGroups[0])}
+            iconName="download"
+            variant="icon"
+          />
+        ),
+      sortingField: "output",
+      width: 80,
     },
     {
       id: "status",
@@ -121,7 +174,7 @@ const MediaConvertTamsJobs = () => {
         columnDefinitions={columnDefinitions}
         columnDisplay={preferences.contentDisplay}
         contentDensity="compact"
-        stickyColumns={{ first: 0, last: 1 }}
+        stickyColumns={{ first: 0, last: 2 }}
         items={items}
         pagination={<Pagination {...paginationProps} />}
         filter={<TextFilter {...filterProps} />}

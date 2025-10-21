@@ -6,7 +6,7 @@ export const useMediaConvertJob = (onSuccess) => {
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
-  const createJob = async ({ jobSpec, sourceId, timeranges }) => {
+  const createJob = async ({ jobSpec, sourceId, fileName, timeranges }) => {
     const id = crypto.randomUUID();
     const timerangeValue = Array.isArray(timeranges)
       ? timeranges.join(",")
@@ -16,6 +16,7 @@ export const useMediaConvertJob = (onSuccess) => {
       {
         spec: jobSpec,
         sourceId,
+        fileName,
         timeranges: timerangeValue,
       },
       {
