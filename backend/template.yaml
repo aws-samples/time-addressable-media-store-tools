@@ -325,6 +325,8 @@ Resources:
           - id: W92
             reason: ReservedConcurrentExecutions not required
     Properties:
+      Timeout: 900
+      MemorySize: 1024
       CodeUri: functions/edit-by-reference/
       Layers:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
