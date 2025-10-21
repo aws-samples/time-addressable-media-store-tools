@@ -35,7 +35,7 @@
     "react-router-dom": "^7.5.2",
     "remark-gfm": "^4.0.1",
     "swr": "^2.3.3",
-    "video.js": "^8.22.0",
+    "video.js": "^8.23.4",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
