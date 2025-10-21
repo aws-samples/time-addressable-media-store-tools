@@ -1,13 +1,12 @@
-import { AWS_HLS_API_ENDPOINT } from "@/constants";
+import { useRef } from "react";
 import { Box } from "@cloudscape-design/components";
 import VideoJS from "./components/VideoJS";
 import { useParams } from "react-router-dom";
-import { useRef } from "react";
+import { usePresignedUrl } from "@/hooks/usePresignedUrl";
 
 export const HlsPlayer = () => {
   const { type, id } = useParams();
-  const url = `${AWS_HLS_API_ENDPOINT}/${type}/${id}/manifest.m3u8`;
-
+  const { url, isLoading } = usePresignedUrl(type, id);
   const playerRef = useRef(null);
 
   const videoJsOptions = {
@@ -37,7 +36,7 @@ export const HlsPlayer = () => {
 
   return (
     <Box textAlign="center">
-      <VideoJS options={videoJsOptions} onReady={playerReady} />
+      {!isLoading && <VideoJS options={videoJsOptions} onReady={playerReady} />}
     </Box>
   );
 };

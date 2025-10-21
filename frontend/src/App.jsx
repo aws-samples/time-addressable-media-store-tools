@@ -1,5 +1,5 @@
 import {
-  AWS_HLS_API_ENDPOINT,
+  AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
   AWS_HLS_INGEST_ENDPOINT,
   AWS_IDENTITY_POOL_ID,
   AWS_FFMPEG_ENDPOINT,
@@ -73,7 +73,7 @@ const App = () => {
             <Route path=":flowId" element={<Flow />} />
           </Route>
           <Route path="diagram/:type/:id" element={<Diagram />} />
-          {AWS_HLS_API_ENDPOINT && (
+          {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
             <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
           )}
           <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />

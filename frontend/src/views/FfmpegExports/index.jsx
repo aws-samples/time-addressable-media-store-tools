@@ -12,34 +12,21 @@ import {
   Table,
   TextFilter,
 } from "@cloudscape-design/components";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useExports } from "@/hooks/useFfmpeg";
-import { fetchAuthSession } from "aws-amplify/auth";
-
-const getPresignedUrl = (bucket, key, id) =>
-  fetchAuthSession().then((session) => {
-    const s3Client = new S3Client({
-      region: AWS_REGION,
-      credentials: session.credentials,
-    });
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ResponseContentDisposition: `attachment; filename="${id}.mp4"`,
-    });
-    return getSignedUrl(s3Client, command, { expiresIn: 300 });
-  });
+import getPresignedUrl from "@/utils/getPresignedUrl";
 
 const handleDownload = async (item) => {
-  const url = await getPresignedUrl(
-    item.output.bucket,
-    item.output.key,
-    item.executionArn.split(":")[7]
-  );
+  const url = await getPresignedUrl({
+    bucket: item.output.bucket,
+    key: item.output.key,
+    expiry: 300,
+    ResponseContentDisposition: `attachment; filename="${
+      item.executionArn.split(":")[7]
+    }.mp4"`,
+  });
   window.location.href = url;
 };
 
@@ -83,7 +70,11 @@ const columnDefinitions = [
   {
     id: "command",
     header: "FFmpeg Command",
-    cell: (item) =>  item.ffmpeg && Object.entries(item.ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
+    cell: (item) =>
+      item.ffmpeg &&
+      Object.entries(item.ffmpeg?.command)
+        .map((arg) => arg.join(" "))
+        .join(" "),
     sortingField: "command",
     maxWidth: 200,
   },
@@ -142,8 +133,12 @@ const collectionPreferencesProps = {
 };
 
 const FfmpegExports = () => {
-  const preferences = usePreferencesStore((state) => state.ffmpegExportsPreferences);
-  const setPreferences = usePreferencesStore((state) => state.setFfmpegExportsPreferences);
+  const preferences = usePreferencesStore(
+    (state) => state.ffmpegExportsPreferences
+  );
+  const setPreferences = usePreferencesStore(
+    (state) => state.setFfmpegExportsPreferences
+  );
   const { exports, isLoading } = useExports();
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : exports, {
@@ -162,8 +157,10 @@ const FfmpegExports = () => {
       pagination: { pageSize: preferences.pageSize },
       sorting: {
         defaultState: {
-          sortingColumn: columnDefinitions.find((col) => col.id === "startDate"),
-          isDescending: true
+          sortingColumn: columnDefinitions.find(
+            (col) => col.id === "startDate"
+          ),
+          isDescending: true,
         },
       },
       selection: {},

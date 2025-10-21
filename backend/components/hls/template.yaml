@@ -22,6 +22,12 @@ Parameters:
   CodecsParameterName:
     Type: String
 
+  ApiStackName:
+    Type: String
+
+  ParentStackName:
+    Type: String
+
 Transform: AWS::Serverless-2016-10-31
 
 Globals:
@@ -34,11 +40,6 @@ Globals:
     Architectures:
       - arm64
 
-  HttpApi:
-    AccessLogSettings:
-      DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiLogGroup}
-      Format: $context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId $context.extendedRequestId
-
 Resources:
   AuthRolePolicyHls:
     Type: AWS::IAM::RolePolicy
@@ -50,37 +51,39 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
+              - s3-object-lambda:GetObject
+            Resource:
+              - !GetAtt ObjectLambdaAccessPoint.Arn
+          - Effect: Allow
+            Action:
               - lambda:InvokeFunction
             Resource:
-              - !GetAtt ApiHlsFunction.Arn
+              - !GetAtt ObjectLambdaFunction.Arn
+            Condition:
+              ForAnyValue:StringEquals:
+                "aws:CalledVia":
+                  - s3-object-lambda.amazonaws.com
 
-  ApiLogGroup:
-    Type: AWS::Logs::LogGroup
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W84
-            reason: Encryption not required
+  S3AccessPoint:
+    Type: AWS::S3::AccessPoint
     Properties:
-      LogGroupName: !Sub /aws/vendedlogs/api/${AWS::StackName}
-      RetentionInDays: 30
+      Bucket: !ImportValue
+        Fn::Sub: ${ApiStackName}-MediaStorageBucket
 
-  Api:
-    Type: AWS::Serverless::HttpApi
+  ObjectLambdaAccessPoint:
+    Type: AWS::S3ObjectLambda::AccessPoint
     Properties:
-      CorsConfiguration:
-        AllowMethods:
-          - '*'
-        AllowHeaders:
-          - Content-Type
-          - X-Amz-Date
-          - Authorization
-          - X-Api-Key
-          - X-Amz-Security-Token
-        AllowOrigins:
-          - '*'
+      Name: !Ref ParentStackName
+      ObjectLambdaConfiguration:
+        SupportingAccessPoint: !GetAtt S3AccessPoint.Arn
+        TransformationConfigurations:
+          - Actions:
+              - GetObject
+            ContentTransformation:
+              AwsLambda:
+                FunctionArn: !GetAtt ObjectLambdaFunction.Arn
 
-  ApiHlsFunction:
+  ObjectLambdaFunction:
     Type: AWS::Serverless::Function
     Metadata:
       cfn_nag:
@@ -90,7 +93,7 @@ Resources:
           - id: W92
             reason: ReservedConcurrentExecutions not required
     Properties:
-      CodeUri: functions/api-hls/
+      CodeUri: functions/object-lambda/
       Layers:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
         - !Ref OpenIdAuthLayerArn
@@ -104,6 +107,7 @@ Resources:
           CLIENT_ID: !Ref UserPoolClientId
           DEFAULT_HLS_SEGMENTS: 150
           CODEC_PARAMETER: !Ref CodecsParameterName
+          OBJECT_LAMBDA_ACCESS_POINT_ARN: !Sub arn:${AWS::Partition}:s3-object-lambda:${AWS::Region}:${AWS::AccountId}:accesspoint/${ParentStackName}
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -116,26 +120,22 @@ Resources:
                 - ssm:GetParameter
               Resource:
                 - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameterName}
-      Events:
-        getSourceHls:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref Api
-            Path: /sources/{sourceId}/manifest.m3u8
-            Method: get
-        getFlowHls:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref Api
-            Path: /flows/{flowId}/manifest.m3u8
-            Method: get
-        getSegmentsHls:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref Api
-            Path: /flows/{flowId}/segments/manifest.m3u8
-            Method: get
+            - Effect: Allow
+              Action:
+                - s3-object-lambda:WriteGetObjectResponse
+                - s3-object-lambda:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3-object-lambda:${AWS::Region}:${AWS::AccountId}:accesspoint/${ParentStackName}
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${ParentStackName}-*
+              Condition:
+                ForAnyValue:StringEquals:
+                  "aws:CalledVia":
+                    - s3-object-lambda.amazonaws.com
 
 Outputs:
-  ApiEndpoint:
-    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com
+  ObjectLambdaAccessPointArn:
+    Value: !GetAtt ObjectLambdaAccessPoint.Arn

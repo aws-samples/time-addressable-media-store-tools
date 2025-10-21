@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  AWS_HLS_API_ENDPOINT,
+  AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
   AWS_HLS_INGEST_ENDPOINT,
   AWS_HLS_INGEST_ARN,
   AWS_INGEST_CREATE_NEW_FLOW_ARN,
@@ -50,7 +50,7 @@ const Home = () => {
 
   On each of these pages you can access:
   - **Diagram View** - Visual representation of TAMS entities and their relationships${
-    AWS_HLS_API_ENDPOINT
+    AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN
       ? `
   - **HLS Player** - Basic HLS video player and HLS Manifest API`
       : ""

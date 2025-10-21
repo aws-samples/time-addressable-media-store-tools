@@ -387,6 +387,8 @@ Resources:
           Fn::Sub: ${ApiStackName}-AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         CodecsParameterName: !Ref CodecsParameter
+        ApiStackName: !Ref ApiStackName
+        ParentStackName: !Ref AWS::StackName
     Condition: DeployHlsApi
 
   IngestStack:
@@ -503,10 +505,10 @@ Outputs:
       - !Ref CodecsParameter
       - ""
 
-  HlsApiEndpoint:
+  HlsObjectLambdaAccessPointArn:
     Value: !If
       - DeployHlsApi
-      - !GetAtt HlsApiStack.Outputs.ApiEndpoint
+      - !GetAtt HlsApiStack.Outputs.ObjectLambdaAccessPointArn
       - ""
 
   IngestCreateNewFlowArn:

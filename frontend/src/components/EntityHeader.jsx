@@ -1,17 +1,28 @@
 import {
   Button,
-  CopyToClipboard,
   SpaceBetween,
+  Popover,
+  StatusIndicator,
 } from "@cloudscape-design/components";
 import { useNavigate } from "react-router-dom";
 
-import { AWS_HLS_API_ENDPOINT } from "@/constants";
+import { AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
+import getPresignedUrl from "@/utils/getPresignedUrl";
 
 const EntityHeader = ({ type, entity }) => {
   const entityType = `${type.toLowerCase()}s`;
   const navigate = useNavigate();
+
+  const handleCopyClick = async () => {
+    const url = await getPresignedUrl({
+      bucket: AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
+      key: `${entityType}/${entity.id}/manifest.m3u8`,
+      expiry: 3600,
+    });
+    navigator.clipboard.writeText(url);
+  };
 
   const followLink = (e) => {
     e.preventDefault();
@@ -21,7 +32,7 @@ const EntityHeader = ({ type, entity }) => {
   return (
     <SpaceBetween size="xl" direction="horizontal">
       <span>{type} details</span>
-      {AWS_HLS_API_ENDPOINT && (
+      {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
         <span>
           <Button
             href={`/hlsplayer/${entityType}/${entity.id}`}
@@ -30,13 +41,22 @@ const EntityHeader = ({ type, entity }) => {
           >
             View HLS
           </Button>
-          <CopyToClipboard
-            copyButtonAriaLabel="Copy Manifest link"
-            copyErrorText="Link failed to copy"
-            copySuccessText="Link copied"
-            textToCopy={`${AWS_HLS_API_ENDPOINT}/${entityType}/${entity.id}/manifest.m3u8`}
-            variant="icon"
-          />
+          <Popover
+            dismissButton={false}
+            position="top"
+            size="small"
+            triggerType="custom"
+            content={
+              <StatusIndicator type="success">Link copied</StatusIndicator>
+            }
+          >
+            <Button
+              iconName="copy"
+              variant="icon"
+              onClick={handleCopyClick}
+              ariaLabel="Copy Manifest link"
+            />
+          </Popover>
         </span>
       )}
       <Button

@@ -131,7 +131,7 @@ This will deploy a HLS API endpoint to the solution and enable a basic Video pla
 
 **Required Environment Variable:**
 
-- `VITE_APP_AWS_HLS_API_ENDPOINT` = **TAMS Tools stack** output `HlsApiEndpoint`
+- `VITE_APP_AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN` = **TAMS Tools stack** output `HlsObjectLambdaAccessPointArn`
 
 #### DeployIngestHls
 

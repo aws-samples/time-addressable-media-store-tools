@@ -8,23 +8,28 @@ from http import HTTPStatus
 import boto3
 import m3u8
 import requests
+from botocore.config import Config
 from aws_lambda_powertools import Logger, Tracer
-from aws_lambda_powertools.event_handler import (
-    APIGatewayHttpResolver,
-    CORSConfig,
-    Response,
-)
+from aws_lambda_powertools.event_handler import Response
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from s3_object_lambda import S3ObjectLambdaResolver
 from mediatimestamp.immutable import TimeRange
 from openid_auth import Credentials
 
 tracer = Tracer()
 logger = Logger()
-app = APIGatewayHttpResolver(cors=CORSConfig())
+app = S3ObjectLambdaResolver()
 
 ssm = boto3.client("ssm")
+s3 = boto3.client(
+    "s3",
+    region_name=os.environ["AWS_REGION"],
+    config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+)
+
 endpoint = os.environ["TAMS_ENDPOINT"]
+object_lambda_access_point_arn = os.environ["OBJECT_LAMBDA_ACCESS_POINT_ARN"]
 creds = Credentials(
     token_url=os.environ["TOKEN_URL"],
     user_pool_id=os.environ["USER_POOL_ID"],
@@ -33,6 +38,16 @@ creds = Credentials(
 )
 default_hls_segments = os.environ["DEFAULT_HLS_SEGMENTS"]
 codec_parameter = os.environ["CODEC_PARAMETER"]
+
+
+@tracer.capture_method(capture_response=False)
+def get_signed_url(obj, expires_in=60):
+    presigned_url = s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": object_lambda_access_point_arn, "Key": obj},
+        ExpiresIn=expires_in,
+    )
+    return presigned_url
 
 
 @lru_cache()
@@ -195,7 +210,6 @@ def get_collected_flows(flows):
 
 @tracer.capture_method(capture_response=False)
 def get_collection_hls(video_flows, audio_flows, subtitle_flows):
-    domain_name = app.current_event.request_context.domain_name
     video_flows.sort(key=lambda k: k["max_bit_rate"], reverse=True)
     manifest = m3u8.M3U8()
     manifest.version = 4
@@ -210,7 +224,7 @@ def get_collection_hls(video_flows, audio_flows, subtitle_flows):
                         "average_bandwidth": flow["avg_bit_rate"],
                         "codecs": map_codec(flow),
                     },
-                    uri=f'https://{domain_name}/flows/{flow["id"]}/segments/manifest.m3u8',
+                    uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
                     media=m3u8.MediaList([]),
                     base_uri=None,
                 )
@@ -223,7 +237,7 @@ def get_collection_hls(video_flows, audio_flows, subtitle_flows):
             **get_hls_props(flow, i),
             type="SUBTITLES",
             group_id="subs",
-            uri=f'https://{domain_name}/flows/{flow["id"]}/segments/manifest.m3u8',
+            uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
         )
         if i == 0:
             first_subtitle = media
@@ -236,7 +250,7 @@ def get_collection_hls(video_flows, audio_flows, subtitle_flows):
             type="AUDIO",
             group_id="audio",
             channels=flow["essence_parameters"]["channels"],
-            uri=f'https://{domain_name}/flows/{flow["id"]}/segments/manifest.m3u8',
+            uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
             codecs=map_codec(flow),
         )
         if i == 0:
@@ -262,7 +276,7 @@ def get_collection_hls(video_flows, audio_flows, subtitle_flows):
                     "audio": first_audio.group_id if first_audio else None,
                     "subtitles": first_subtitle.group_id if first_subtitle else None,
                 },
-                uri=f'https://{domain_name}/flows/{flow["id"]}/segments/manifest.m3u8',
+                uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
                 media=m3u8.MediaList(
                     [media for media in [first_audio, first_subtitle] if media]
                 ),
@@ -272,7 +286,7 @@ def get_collection_hls(video_flows, audio_flows, subtitle_flows):
     return manifest.dumps()
 
 
-@app.get("/sources/<sourceId>/manifest.m3u8")
+@app.key("/sources/<sourceId>/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_source_hls(sourceId: str):
     manifest = m3u8.M3U8()
@@ -298,7 +312,7 @@ def get_source_hls(sourceId: str):
     )
 
 
-@app.get("/flows/<flowId>/manifest.m3u8")
+@app.key("/flows/<flowId>/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_flow_hls(flowId: str):
     manifest = m3u8.M3U8()
@@ -331,7 +345,7 @@ def get_flow_hls(flowId: str):
     )
 
 
-@app.get("/flows/<flowId>/segments/manifest.m3u8")
+@app.key("/flows/<flowId>/segments/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
 def get_segments_hls(flowId: str):
     manifest = m3u8.M3U8()
@@ -400,8 +414,9 @@ def get_segments_hls(flowId: str):
 
 
 @logger.inject_lambda_context(
-    log_event=True, correlation_id_path=correlation_paths.API_GATEWAY_HTTP
+    log_event=True, correlation_id_path=correlation_paths.S3_OBJECT_LAMBDA
 )
 @tracer.capture_lambda_handler(capture_response=False)
-def lambda_handler(event: dict, context: LambdaContext) -> dict:
+# pylint: disable=unused-argument
+def lambda_handler(event, context: LambdaContext) -> dict:
     return app.resolve(event, context)

@@ -1,7 +1,7 @@
 QueryLanguage: JSONata
-StartAt: GetFlow
+StartAt: GetFlows
 States:
-  GetFlow:
+  GetFlows:
     Type: Task
     Resource: arn:aws:states:::http:invoke
     Arguments:
@@ -9,26 +9,9 @@ States:
       InvocationConfig:
         ConnectionArn: ${ConnectionArn}
       ApiEndpoint: >-
-        {% '${TamsEndpoint}/flows/' & $states.input.detail.flow_id %}
+        {% '${TamsEndpoint}/flows/' %}
       QueryParameters:
-        include_timerange: True
-    Assign:
-      flowId: >-
-        {% $states.input.detail.flow_id %}
-      tags: >-
-        {% $exists($states.result.ResponseBody.tags) ? $states.result.ResponseBody.tags : {} %}
-      timerange: >-
-        {% $states.result.ResponseBody.timerange %}
-      flow_duration: >-
-        {%
-          (
-            $trimmed := $substring($states.result.ResponseBody.timerange, 1, $length($states.result.ResponseBody.timerange) - 2);
-            $parts := $split($trimmed, '_');
-            $start := $split($parts[0], ':');
-            $end := $split($parts[1], ':');
-            ($number($end[0]) - $number($start[0])) + ($number($end[1]) - $number($start[1])) / 1000000000
-          )
-        %}
+        tag_exists.loop_recorder_duration: True
     Retry:
       - ErrorEquals:
           - Events.ConnectionResource.InvalidConnectionState
@@ -37,55 +20,97 @@ States:
         IntervalSeconds: 1
         BackoffRate: 2
         MaxAttempts: 3
-    Next: CheckIfTagIsPresent
-  CheckIfTagIsPresent:
-    Type: Choice
-    Choices:
-      - Next: CheckDuration
-        Condition: >-
-          {% $exists($tags.loop_recorder_duration) %}
-    Default: End
-  CheckDuration:
-    Type: Choice
-    Choices:
-      - Next: DeleteSegments
-        Condition: >-
-          {% $flow_duration > $number($tags.loop_recorder_duration) %}
-    Default: End
-  DeleteSegments:
-    Type: Task
-    Resource: arn:aws:states:::http:invoke
-    Arguments:
-      Method: DELETE
-      InvocationConfig:
-        ConnectionArn: ${ConnectionArn}
-      ApiEndpoint: >-
-        {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
-      QueryParameters:
-        timerange: >-
-          {%
-            (
-              $trimmed := $substring($timerange, 1, $length($timerange) - 2);
-              $parts := $split($trimmed, '_');
-              $end := $split($parts[1], ':');
-              $endSeconds := $number($end[0]);
-              $endNanos := $number($end[1]);
-              $totalEndNanos := $endSeconds * 1000000000 + $endNanos;
-              $loopDurationNanos := $number($tags.loop_recorder_duration) * 1000000000;
-              $newEndNanos := $totalEndNanos - $loopDurationNanos;
-              $newEndSeconds := $floor($newEndNanos / 1000000000);
-              $newEndNanosRemainder := $newEndNanos - ($newEndSeconds * 1000000000);
-              '_' & $newEndSeconds & ':' & $newEndNanosRemainder & ')'
-            )
-          %}
-    Retry:
-      - ErrorEquals:
-          - Events.ConnectionResource.InvalidConnectionState
-          - Events.ConnectionResource.AuthInProgress
-          - Events.ConnectionResource.ConcurrentModification
-        IntervalSeconds: 1
-        BackoffRate: 2
-        MaxAttempts: 3
+    Output: >-
+      {% $states.result.ResponseBody %}
+    Next: MapFlows
+  MapFlows:
+    Type: Map
+    Items: >-
+      {% $states.input %}
+    ItemProcessor:
+      ProcessorConfig:
+        Mode: INLINE
+      StartAt: GetFlow
+      States:
+        GetFlow:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: GET
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $states.input.id %}
+            QueryParameters:
+              include_timerange: True
+          Assign:
+            flowId: >-
+              {% $states.input.id %}
+            tags: >-
+              {% $exists($states.result.ResponseBody.tags) ? $states.result.ResponseBody.tags : {} %}
+            timerange: >-
+              {% $states.result.ResponseBody.timerange %}
+            flow_duration: >-
+              {%
+                (
+                  $trimmed := $substring($states.result.ResponseBody.timerange, 1, $length($states.result.ResponseBody.timerange) - 2);
+                  $parts := $split($trimmed, '_');
+                  $start := $split($parts[0], ':');
+                  $end := $split($parts[1], ':');
+                  ($number($end[0]) - $number($start[0])) + ($number($end[1]) - $number($start[1])) / 1000000000
+                )
+              %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          Next: CheckDuration
+        CheckDuration:
+          Type: Choice
+          Default: NoActionRequired
+          Choices:
+            - Next: DeleteSegments
+              Condition: >-
+                {% $flow_duration > $number($tags.loop_recorder_duration) %}
+        DeleteSegments:
+          Type: Task
+          Resource: arn:aws:states:::http:invoke
+          Arguments:
+            Method: DELETE
+            InvocationConfig:
+              ConnectionArn: ${ConnectionArn}
+            ApiEndpoint: >-
+              {% '${TamsEndpoint}/flows/' & $flowId & '/segments' %}
+            QueryParameters:
+              timerange: >-
+                {%
+                  (
+                    $trimmed := $substring($timerange, 1, $length($timerange) - 2);
+                    $parts := $split($trimmed, '_');
+                    $end := $split($parts[1], ':');
+                    $endSeconds := $number($end[0]);
+                    $endNanos := $number($end[1]);
+                    $totalEndNanos := $endSeconds * 1000000000 + $endNanos;
+                    $loopDurationNanos := $number($tags.loop_recorder_duration) * 1000000000;
+                    $newEndNanos := $totalEndNanos - $loopDurationNanos;
+                    $newEndSeconds := $floor($newEndNanos / 1000000000);
+                    $newEndNanosRemainder := $newEndNanos - ($newEndSeconds * 1000000000);
+                    '_' & $newEndSeconds & ':' & $newEndNanosRemainder & ')'
+                  )
+                %}
+          Retry:
+            - ErrorEquals:
+                - Events.ConnectionResource.InvalidConnectionState
+                - Events.ConnectionResource.AuthInProgress
+                - Events.ConnectionResource.ConcurrentModification
+              IntervalSeconds: 1
+              BackoffRate: 2
+              MaxAttempts: 3
+          End: True
+        NoActionRequired:
+          Type: Succeed
     End: True
-  End:
-    Type: Succeed
