@@ -104,15 +104,6 @@ const OmakaseSegmentationHeader = ({
     setOmakaseModalVisible(true);
   };
 
-  if (exportDisabled) {
-    return (
-      <div className="segmentation-export-disabled">
-        <PopUpIcon />
-        EXPORT
-      </div>
-    );
-  }
-
   return (
     <div className={segmentationHeaderClassName}>
       {segmentationLanes.length > 1 && (
@@ -134,17 +125,30 @@ const OmakaseSegmentationHeader = ({
       {source &&
         flows.find((flow) => flow.format === "urn:x-nmos:format:video") && (
           <>
-            <div className="segmentation-export" onClick={handleExportModal}>
-              <PopUpIcon />
-              EXPORT
-            </div>
-            <OmakaseExportModal
-              sourceId={sourceId}
-              editTimeranges={editTimeranges}
-              flows={flows}
-              onModalToggle={setOmakaseModalVisible}
-              isModalOpen={omakaseModalVisible}
-            />
+            {!exportDisabled ? (
+              <>
+                <div
+                  className="segmentation-export"
+                  onClick={handleExportModal}
+                >
+                  <PopUpIcon />
+                  EXPORT
+                </div>
+
+                <OmakaseExportModal
+                  sourceId={sourceId}
+                  editTimeranges={editTimeranges}
+                  flows={flows}
+                  onModalToggle={setOmakaseModalVisible}
+                  isModalOpen={omakaseModalVisible}
+                />
+              </>
+            ) : (
+              <div className="segmentation-export-disabled">
+                <PopUpIcon />
+                EXPORT
+              </div>
+            )}
           </>
         )}
     </div>
