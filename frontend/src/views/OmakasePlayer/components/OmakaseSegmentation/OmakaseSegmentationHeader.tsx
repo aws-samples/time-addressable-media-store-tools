@@ -1,5 +1,6 @@
 import {
   MarkerLane,
+  MarkerListApi,
   OmakasePlayer,
   PeriodMarker,
 } from "@byomakase/omakase-player";
@@ -14,8 +15,9 @@ import { createEditTimeranges } from "../../util/export-util";
 type OmakaseSegmentationHeaderProps = {
   segmentationLanes: MarkerLane[];
   source: MarkerLane | undefined;
+  sourceMarkerList: MarkerListApi | undefined;
   onSegementationClickCallback: (markerLane: MarkerLane) => void;
-  sourceId: string,
+  sourceId: string;
   flows: Flow[];
   flowSegments: Map<string, FlowSegment[]>;
   markerOffset: number;
@@ -25,6 +27,7 @@ type OmakaseSegmentationHeaderProps = {
 const OmakaseSegmentationHeader = ({
   segmentationLanes,
   source,
+  sourceMarkerList,
   onSegementationClickCallback,
   sourceId,
   flows,
@@ -96,19 +99,10 @@ const OmakaseSegmentationHeader = ({
   const handleExportModal = () => {
     setEditTimeranges(
       // @ts-ignore
-      createEditTimeranges(source, markerOffset, omakasePlayer)
+      createEditTimeranges(sourceMarkerList, markerOffset, omakasePlayer)
     );
     setOmakaseModalVisible(true);
   };
-
-  if (exportDisabled) {
-    return (
-      <div className="segmentation-export-disabled">
-        <PopUpIcon />
-        EXPORT
-      </div>
-    );
-  }
 
   return (
     <div className={segmentationHeaderClassName}>
@@ -131,17 +125,30 @@ const OmakaseSegmentationHeader = ({
       {source &&
         flows.find((flow) => flow.format === "urn:x-nmos:format:video") && (
           <>
-            <div className="segmentation-export" onClick={handleExportModal}>
-              <PopUpIcon />
-              EXPORT
-            </div>
-            <OmakaseExportModal
-              sourceId={sourceId}
-              editTimeranges={editTimeranges}
-              flows={flows}
-              onModalToggle={setOmakaseModalVisible}
-              isModalOpen={omakaseModalVisible}
-            />
+            {!exportDisabled ? (
+              <>
+                <div
+                  className="segmentation-export"
+                  onClick={handleExportModal}
+                >
+                  <PopUpIcon />
+                  EXPORT
+                </div>
+
+                <OmakaseExportModal
+                  sourceId={sourceId}
+                  editTimeranges={editTimeranges}
+                  flows={flows}
+                  onModalToggle={setOmakaseModalVisible}
+                  isModalOpen={omakaseModalVisible}
+                />
+              </>
+            ) : (
+              <div className="segmentation-export-disabled">
+                <PopUpIcon />
+                EXPORT
+              </div>
+            )}
           </>
         )}
     </div>

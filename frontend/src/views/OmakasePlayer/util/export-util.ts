@@ -1,5 +1,6 @@
 import {
   MarkerApi,
+  MarkerAwareApi,
   MarkerLane,
   OmakasePlayer,
   PeriodMarker,
@@ -53,7 +54,7 @@ function resolveMaxBitRateVideoFlow(flows: Flow[]) {
 }
 
 export const createEditTimeranges = (
-  source: MarkerLane,
+  source: MarkerAwareApi,
   markerOffset: number,
   omakasePlayer: OmakasePlayer
 ) => {
