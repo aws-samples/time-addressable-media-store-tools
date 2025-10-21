@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "envLocal": "node ./scripts/envValues.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.13.0",
@@ -19,8 +18,8 @@
     "@aws-sdk/client-sfn": "^3.906.0",
     "@aws-sdk/client-ssm": "^3.906.0",
     "@aws-sdk/s3-request-presigner": "^3.906.0",
-    "@byomakase/omakase-player": "0.18.0",
-    "@byomakase/omakase-react-components": "1.0.4",
+    "@byomakase/omakase-player": "0.22.1",
+    "@byomakase/omakase-react-components": "1.1.1",
     "@cloudscape-design/collection-hooks": "^1.0.76",
     "@cloudscape-design/components": "^3.0.1108",
     "@cloudscape-design/design-tokens": "^3.0.62",
@@ -55,6 +54,7 @@
     "mime": "^4.1.0",
     "npm-run-all": "^4.1.5",
     "toml": "^3.0.0",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.46.0",
     "vite": "^6.3.6"
   },
