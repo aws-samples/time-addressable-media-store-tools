@@ -3,6 +3,7 @@ export const APP_TITLE = import.meta.env.VITE_APP_TITLE;
 export const APP_TITLE_LOGO = import.meta.env.VITE_APP_TITLE_LOGO;
 export const AWS_REGION = import.meta.env.VITE_APP_AWS_REGION;
 export const AWS_USER_POOL_ID = import.meta.env.VITE_APP_AWS_USER_POOL_ID;
+export const AWS_TOKEN_URL = import.meta.env.VITE_APP_AWS_TOKEN_URL;
 export const AWS_USER_POOL_CLIENT_WEB_ID = import.meta.env.VITE_APP_AWS_USER_POOL_CLIENT_WEB_ID;
 export const AWS_IDENTITY_POOL_ID = import.meta.env.VITE_APP_AWS_IDENTITY_POOL_ID;
 export const AWS_TAMS_ENDPOINT = import.meta.env.VITE_APP_AWS_API_ENDPOINT;
@@ -24,6 +25,7 @@ export const MEDIACONVERT_ROLE_ARN = import.meta.env.VITE_APP_AWS_MEDIACONVERT_R
 export const MEDIACONVERT_BUCKET = import.meta.env.VITE_APP_AWS_MEDIACONVERT_BUCKET;
 export const OMAKASE_EXPORT_EVENT_PARAMETER = import.meta.env.VITE_APP_OMAKASE_EXPORT_EVENT_PARAMETER
 /************* END OF ENVIRONMENT VARIABLES **************/
+export const COGNITO_DOMAIN = (new URL(AWS_TOKEN_URL)).hostname;
 export const PAGE_SIZE = 20;
 export const PAGE_SIZE_PREFERENCE = {
   title: "Select page size",
