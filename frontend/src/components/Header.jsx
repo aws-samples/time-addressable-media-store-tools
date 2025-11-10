@@ -1,19 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TopNavigation } from "@cloudscape-design/components";
-import { useAuthenticator } from "@aws-amplify/ui-react";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { Mode, applyMode } from "@cloudscape-design/global-styles";
 import { APP_TITLE, APP_TITLE_LOGO } from "@/constants";
 import "./Header.css";
 
 const Header = () => {
   const [mode, setMode] = useState(Mode.Dark);
-  const { user, signOut } = useAuthenticator((context) => [context.user]);
+  const user = useAuthStore((state) => state.user);
+  const userEmail = useAuthStore((state) => state.userEmail);
+  const signOut = useAuthStore((state) => state.signOut);
 
   applyMode(mode);
 
-  const handleDropdownClick = ({ detail }) => {
+  const handleDropdownClick = async ({ detail }) => {
     if (detail.id === "signout") {
-      signOut();
+      await signOut();
     }
     if (detail.id === "dark") {
       setMode(Mode.Dark);
@@ -33,7 +35,7 @@ const Header = () => {
       utilities={[
         {
           type: "menu-dropdown",
-          text: user.signInDetails.loginId,
+          text: userEmail || user?.username || "User",
           iconName: "user-profile",
           onItemClick: handleDropdownClick,
           items: [

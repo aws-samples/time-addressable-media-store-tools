@@ -7,8 +7,10 @@ import {
   AWS_TAMS_ENDPOINT,
   AWS_USER_POOL_CLIENT_WEB_ID,
   AWS_USER_POOL_ID,
+  COGNITO_DOMAIN,
 } from "@/constants";
 import { HashRouter, Route, Routes } from "react-router-dom";
+import AuthWrapper from "@/components/AuthWrapper";
 
 import { Amplify } from "aws-amplify";
 import { ConsoleLogger } from "aws-amplify/utils";
@@ -29,7 +31,6 @@ import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
 import React from "react";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
-import { withAuthenticator } from "@aws-amplify/ui-react";
 
 ConsoleLogger.LOG_LEVEL = "INFO";
 Amplify.configure({
@@ -38,6 +39,21 @@ Amplify.configure({
       userPoolId: AWS_USER_POOL_ID,
       userPoolClientId: AWS_USER_POOL_CLIENT_WEB_ID,
       identityPoolId: AWS_IDENTITY_POOL_ID,
+      loginWith: {
+        oauth: {
+          domain: COGNITO_DOMAIN,
+          responseType: "code",
+          scopes: [
+            "openid",
+            "tams-api/admin",
+            "tams-api/read",
+            "tams-api/write",
+            "tams-api/delete",
+          ],
+          redirectSignIn: [window.location.origin],
+          redirectSignOut: [window.location.origin],
+        },
+      },
     },
   },
   API: {
@@ -60,46 +76,49 @@ Amplify.configure({
 
 const App = () => {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="sources">
-            <Route index element={<Sources />} />
-            <Route path=":sourceId" element={<Source />} />
+    <AuthWrapper>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="sources">
+              <Route index element={<Sources />} />
+              <Route path=":sourceId" element={<Source />} />
+            </Route>
+            <Route path="flows">
+              <Route index element={<Flows />} />
+              <Route path=":flowId" element={<Flow />} />
+            </Route>
+            <Route path="diagram/:type/:id" element={<Diagram />} />
+            {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
+              <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
+            )}
+            <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
+            {AWS_HLS_INGEST_ENDPOINT && (
+              <>
+                <Route path="workflows" element={<HlsIngestion />} />
+                <Route
+                  path="hls-channels"
+                  element={<MediaLiveHlsIngestion />}
+                />
+                <Route path="hls-jobs" element={<MediaConvertHlsIngestion />} />
+              </>
+            )}
+            {AWS_FFMPEG_ENDPOINT && (
+              <>
+                <Route path="ffmpeg-exports" element={<FfmpegExports />} />
+                <Route path="ffmpeg-rules" element={<FfmpegRules />} />
+                <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
+              </>
+            )}
+            <Route path="mediaconvert-tams-jobs">
+              <Route index element={<MediaConvertTamsJobs />} />
+            </Route>
           </Route>
-          <Route path="flows">
-            <Route index element={<Flows />} />
-            <Route path=":flowId" element={<Flow />} />
-          </Route>
-          <Route path="diagram/:type/:id" element={<Diagram />} />
-          {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
-            <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
-          )}
-          <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
-          {AWS_HLS_INGEST_ENDPOINT && (
-            <>
-              <Route path="workflows" element={<HlsIngestion />} />
-              <Route path="hls-channels" element={<MediaLiveHlsIngestion />} />
-              <Route path="hls-jobs" element={<MediaConvertHlsIngestion />} />
-            </>
-          )}
-          {AWS_FFMPEG_ENDPOINT && (
-            <>
-              <Route path="ffmpeg-exports" element={<FfmpegExports />} />
-              <Route path="ffmpeg-rules" element={<FfmpegRules />} />
-              <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
-            </>
-          )}
-          <Route path="mediaconvert-tams-jobs">
-            <Route index element={<MediaConvertTamsJobs />} />
-          </Route>
-        </Route>
-      </Routes>
-    </HashRouter>
+        </Routes>
+      </HashRouter>
+    </AuthWrapper>
   );
 };
 
-const AuthApp = withAuthenticator(App, { hideSignUp: true });
-
-export default AuthApp;
+export default App;
