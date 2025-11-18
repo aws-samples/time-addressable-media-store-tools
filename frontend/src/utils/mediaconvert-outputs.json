@@ -19,7 +19,7 @@
                     "CodecSettings": {
                         "Codec": "AAC",
                         "AacSettings": {
-                            "Bitrate": 96000,
+                            "Bitrate": 256000,
                             "CodingMode": "CODING_MODE_2_0",
                             "SampleRate": 48000
                         }
