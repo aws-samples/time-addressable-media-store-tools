@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-import { fetchAuthSession } from "aws-amplify/auth";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import {
   AWS_REGION,
   OMAKASE_EXPORT_EVENT_PARAMETER,
@@ -14,6 +14,7 @@ const STATIC_OPERATIONS = {
 
 export const useExportOperations = () => {
   const [operationSchemas, setOperationSchemas] = useState({});
+  const credentials = useAwsCredentials();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
@@ -33,17 +34,14 @@ export const useExportOperations = () => {
     }
     const fetchOperationSchemas = async () => {
       try {
-        const session = await fetchAuthSession();
-        const parameterValue = await new SSMClient({
+        const client = new SSMClient({
           region: AWS_REGION,
-          credentials: session.credentials,
-        })
-          .send(
-            new GetParameterCommand({ Name: OMAKASE_EXPORT_EVENT_PARAMETER })
-          )
-          .then((response) => response.Parameter.Value);
-
-        setOperationSchemas(JSON.parse(parameterValue));
+          credentials,
+        });
+        const response = await client.send(
+          new GetParameterCommand({ Name: OMAKASE_EXPORT_EVENT_PARAMETER })
+        );
+        setOperationSchemas(JSON.parse(response.Parameter.Value));
       } catch (error) {
         const id = crypto.randomUUID();
         addAlertItem({
@@ -58,7 +56,7 @@ export const useExportOperations = () => {
     };
 
     fetchOperationSchemas();
-  }, [addAlertItem, delAlertItem]);
+  }, [credentials, addAlertItem, delAlertItem]);
 
   const getOperationSchema = (operation) => {
     return STATIC_OPERATIONS[operation]?.schema || operationSchemas[operation];

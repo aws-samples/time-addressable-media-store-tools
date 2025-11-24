@@ -1,4 +1,3 @@
-import { fetchAuthSession } from "aws-amplify/auth";
 import {
   EventBridgeClient,
   PutEventsCommand,
@@ -33,8 +32,13 @@ const getMaxBitRateVideoFlow = (flows) => {
   return videoFlows[0];
 };
 
-export const executeExport = async (formData, editTimeranges, flows, sourceId) => {
-  const { credentials } = await fetchAuthSession();
+export const executeExport = async (
+  formData,
+  editTimeranges,
+  flows,
+  sourceId,
+  credentials
+) => {
   const client = new EventBridgeClient({
     region: AWS_REGION,
     credentials: credentials,
@@ -67,4 +71,4 @@ export const executeExport = async (formData, editTimeranges, flows, sourceId) =
     console.log(error);
     return "error";
   }
-}
+};

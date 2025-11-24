@@ -4,7 +4,7 @@ import {
   paginateListJobs,
 } from "@aws-sdk/client-mediaconvert";
 import { AWS_REGION, MEDIACONVERT_BUCKET } from "@/constants";
-import { fetchAuthSession } from "aws-amplify/auth";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import { AWS_TAMS_ENDPOINT, TAMS_AUTH_CONNECTION_ARN } from "@/constants";
@@ -13,14 +13,11 @@ const isTamsJob = (job) => {
   return job.Settings?.Inputs?.some((input) => input.TamsSettings);
 };
 
-const mediaConvertFetcher = async () => {
-  const client = await fetchAuthSession().then(
-    (session) =>
-      new MediaConvertClient({
-        region: AWS_REGION,
-        credentials: session.credentials,
-      })
-  );
+const mediaConvertFetcher = async (credentials) => {
+  const client = new MediaConvertClient({
+    region: AWS_REGION,
+    credentials,
+  });
   const allJobs = [];
   for await (const page of paginateListJobs({ client }, {})) {
     allJobs.push(...page.Jobs);
@@ -29,9 +26,10 @@ const mediaConvertFetcher = async () => {
 };
 
 export const useTamsJobs = () => {
+  const credentials = useAwsCredentials();
   const { data, mutate, error, isLoading } = useSWR(
     "mediaconvert-jobs",
-    mediaConvertFetcher,
+    () => mediaConvertFetcher(credentials),
     {
       refreshInterval: 3000,
     }
@@ -77,18 +75,16 @@ const createFinalJobSpec = ({ spec, sourceId, fileName, timeranges }) => {
 };
 
 export const useStartJob = () => {
+  const credentials = useAwsCredentials();
   const { trigger, isMutating } = useSWRMutation(
     "mediaconvert-jobs",
     async (_, { arg }) => {
       const finalJobSpec = createFinalJobSpec(arg);
-      const response = await fetchAuthSession().then((session) =>
-        new MediaConvertClient({
-          region: AWS_REGION,
-          credentials: session.credentials,
-        })
-          .send(new CreateJobCommand(finalJobSpec))
-          .then((response) => response)
-      );
+      const client = new MediaConvertClient({
+        region: AWS_REGION,
+        credentials,
+      });
+      const response = await client.send(new CreateJobCommand(finalJobSpec));
       return response.Job.Id;
     }
   );

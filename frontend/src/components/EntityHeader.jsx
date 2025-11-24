@@ -9,17 +9,20 @@ import { useNavigate } from "react-router-dom";
 import { IS_HLS_DEPLOYED, AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import getPresignedUrl from "@/utils/getPresignedUrl";
 
 const EntityHeader = ({ type, entity }) => {
   const entityType = `${type.toLowerCase()}s`;
   const navigate = useNavigate();
+  const credentials = useAwsCredentials();
 
   const handleCopyClick = async () => {
     const url = await getPresignedUrl({
       bucket: AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
       key: `${entityType}/${entity.id}/manifest.m3u8`,
       expiry: 3600,
+      credentials,
     });
     navigator.clipboard.writeText(url);
   };
