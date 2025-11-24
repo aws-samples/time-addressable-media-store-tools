@@ -3,9 +3,10 @@ import useSWR from "swr";
 import paginationFetcher from "@/utils/paginationFetcher";
 
 export const useSources = () => {
+  const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/sources?limit=300",
-    paginationFetcher,
+    (path) => paginationFetcher(path, null, api),
     {
       refreshInterval: 3000,
     }

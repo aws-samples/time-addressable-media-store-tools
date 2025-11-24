@@ -1,11 +1,13 @@
+import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import paginationFetcher from "@/utils/paginationFetcher";
 
 export const useLastN = (flowId, n) => {
+  const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     `/flows/${flowId}/segments`,
     (path) =>
-      paginationFetcher(`${path}?accept_get_urls=&reverse_order=true`, n),
+      paginationFetcher(`${path}?accept_get_urls=&reverse_order=true`, n, api),
     {
       refreshInterval: 3000,
     }
@@ -21,6 +23,7 @@ export const useLastN = (flowId, n) => {
 };
 
 export const useSegments = (flowId, timerange, maxResults = 3000) => {
+  const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     `/flows/${flowId}/segments`,
     (path) =>
@@ -28,7 +31,8 @@ export const useSegments = (flowId, timerange, maxResults = 3000) => {
         `${path}${
           timerange ? `?timerange=${timerange}` : ""
         }&reverse_order=false&limit=300`,
-        maxResults
+        maxResults,
+        api
       )
   );
 
@@ -42,6 +46,7 @@ export const useSegments = (flowId, timerange, maxResults = 3000) => {
 };
 
 export const useFlowsSegments = (flows, timerange, maxResults = 3000) => {
+  const api = useApi();
   const params = timerange
     ? `?timerange=${timerange}&reverse_order=false&limit=300`
     : `?reverse_order=false&limit=300`;
@@ -52,10 +57,10 @@ export const useFlowsSegments = (flows, timerange, maxResults = 3000) => {
       : null,
     async (paths) => {
       const responses = await Promise.all(
-        paths.map((path) => paginationFetcher(path, maxResults))
+        paths.map((path) => paginationFetcher(path, maxResults, api))
       );
       return responses;
-    },
+    }
   );
 
   return {

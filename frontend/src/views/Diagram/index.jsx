@@ -13,17 +13,19 @@ import Legend from "./components/Legend";
 import { buildStylesheet } from "./constants.js";
 import { getElements } from "./utils";
 import { useEffect } from "react";
+import { useApi } from "@/hooks/useApi";
 
 const Diagram = () => {
   const { type, id } = useParams();
   const navigate = useNavigate();
   const cyRef = useRef();
   const [elements, setElements] = useState([]);
+  const api = useApi();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const elems = await getElements(`/${type}/${id}`);
+        const elems = await getElements(api, `/${type}/${id}`);
         setElements(elems);
         cyRef.current?.fit();
       } catch (err) {
@@ -33,7 +35,7 @@ const Diagram = () => {
     loadData();
 
     return () => cyRef.current?.removeAllListeners();
-  }, [type, id]);
+  }, [type, id, api]);
 
   const handleZoom = (action) => {
     const zoom = cyRef.current?.zoom();
