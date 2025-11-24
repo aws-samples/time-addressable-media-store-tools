@@ -1,38 +1,34 @@
-import { get, del, put } from "aws-amplify/api";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import {
   AWS_REGION,
   AWS_FFMPEG_BATCH_ARN,
   AWS_FFMPEG_EXPORT_ARN,
+  AWS_FFMPEG_ENDPOINT,
 } from "@/constants";
-import { fetchAuthSession } from "aws-amplify/auth";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
+import useIamApi from "@/hooks/useIamApi";
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 
-const fetcher = async (path) =>
-  get({ apiName: "Ffmpeg", path })
-    .response.then((res) => res.body)
-    .then((body) => body.json());
-
-const hierachyFetcher = async (path) =>
-  get({ apiName: "Ffmpeg", path })
-    .response.then((res) => res.body)
-    .then((body) => body.json())
-    .then((data) => [
-      ...data.map(({ id }) => ({ key: id, id, parentId: null })),
-      ...data.flatMap(({ id, targets }) =>
-        targets.map((target) => ({
-          key: target.executionArn ?? `${id}_${target.outputFlow}`,
-          parentId: id,
-          ...target,
-        }))
-      ),
-    ]);
+const hierachyFetcher = async (api, path) => {
+  const data = await api.get(path);
+  return [
+    ...data.map(({ id }) => ({ key: id, id, parentId: null })),
+    ...data.flatMap(({ id, targets }) =>
+      targets.map((target) => ({
+        key: target.executionArn ?? `${id}_${target.outputFlow}`,
+        parentId: id,
+        ...target,
+      }))
+    ),
+  ];
+};
 
 export const useRules = () => {
+  const api = useIamApi(AWS_FFMPEG_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/ffmpeg-rules",
-    hierachyFetcher,
+    (path) => hierachyFetcher(api, path),
     {
       refreshInterval: 3000,
     }
@@ -48,18 +44,13 @@ export const useRules = () => {
 };
 
 export const useCreateRule = () => {
+  const api = useIamApi(AWS_FFMPEG_ENDPOINT);
   const { trigger, isMutating } = useSWRMutation(
     "/ffmpeg-rules",
-    (path, { arg }) =>
-      put({
-        apiName: "Ffmpeg",
-        path: `${path}/${arg.flowId}/${arg.outputFlowId}`,
-        options: {
-          body: arg.payload,
-        },
-      })
-        .response.then((res) => res.statusCode)
-        .then((response) => setTimeout(response, 1000)) // setTimeout used to artificially wait until basic puts are complete.
+    async (path, { arg }) => {
+      await api.put(`${path}/${arg.flowId}/${arg.outputFlowId}`, arg.payload);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // setTimeout used to artificially wait until basic puts are complete.
+    }
   );
 
   return {
@@ -69,15 +60,13 @@ export const useCreateRule = () => {
 };
 
 export const useDeleteRule = () => {
+  const api = useIamApi(AWS_FFMPEG_ENDPOINT);
   const { trigger, isMutating } = useSWRMutation(
     "/ffmpeg-rules",
-    (path, { arg }) =>
-      del({
-        apiName: "Ffmpeg",
-        path: `${path}/${arg.flowId}/${arg.outputFlowId}`,
-      })
-        .response.then((res) => res.statusCode)
-        .then((response) => setTimeout(response, 1000)) // setTimeout used to artificially wait until basic deletes are complete.
+    async (path, { arg }) => {
+      await api.del(`${path}/${arg.flowId}/${arg.outputFlowId}`);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // setTimeout used to artificially wait until basic deletes are complete.
+    }
   );
 
   return {
@@ -87,20 +76,21 @@ export const useDeleteRule = () => {
 };
 
 export const useJobStart = () => {
-  const { trigger, isMutating } = useSWRMutation("/ffmpeg-jobs", (_, { arg }) =>
-    fetchAuthSession().then((session) =>
-      new SFNClient({
+  const credentials = useAwsCredentials();
+  const { trigger, isMutating } = useSWRMutation(
+    "/ffmpeg-jobs",
+    async (_, { arg }) => {
+      const client = new SFNClient({
         region: AWS_REGION,
-        credentials: session.credentials,
-      })
-        .send(
-          new StartExecutionCommand({
-            stateMachineArn: AWS_FFMPEG_BATCH_ARN,
-            input: JSON.stringify(arg),
-          })
-        )
-        .then((response) => response)
-    )
+        credentials,
+      });
+      return client.send(
+        new StartExecutionCommand({
+          stateMachineArn: AWS_FFMPEG_BATCH_ARN,
+          input: JSON.stringify(arg),
+        })
+      );
+    }
   );
 
   return {
@@ -110,9 +100,10 @@ export const useJobStart = () => {
 };
 
 export const useJobs = () => {
+  const api = useIamApi(AWS_FFMPEG_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/ffmpeg-jobs",
-    hierachyFetcher,
+    (path) => hierachyFetcher(api, path),
     {
       refreshInterval: 3000,
     }
@@ -128,9 +119,10 @@ export const useJobs = () => {
 };
 
 export const useExports = () => {
+  const api = useIamApi(AWS_FFMPEG_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/ffmpeg-exports",
-    fetcher,
+    (path) => api.get(path),
     {
       refreshInterval: 3000,
     }
@@ -146,22 +138,21 @@ export const useExports = () => {
 };
 
 export const useExportStart = () => {
+  const credentials = useAwsCredentials();
   const { trigger, isMutating } = useSWRMutation(
     "/ffmpeg-exports",
-    (_, { arg }) =>
-      fetchAuthSession().then((session) =>
-        new SFNClient({
-          region: AWS_REGION,
-          credentials: session.credentials,
+    async (_, { arg }) => {
+      const client = new SFNClient({
+        region: AWS_REGION,
+        credentials,
+      });
+      return client.send(
+        new StartExecutionCommand({
+          stateMachineArn: AWS_FFMPEG_EXPORT_ARN,
+          input: JSON.stringify(arg),
         })
-          .send(
-            new StartExecutionCommand({
-              stateMachineArn: AWS_FFMPEG_EXPORT_ARN,
-              input: JSON.stringify(arg),
-            })
-          )
-          .then((response) => response)
-      )
+      );
+    }
   );
 
   return {

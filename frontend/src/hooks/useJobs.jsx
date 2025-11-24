@@ -1,15 +1,12 @@
-import { get } from "aws-amplify/api";
+import useIamApi from "@/hooks/useIamApi";
+import { AWS_HLS_INGEST_ENDPOINT } from "@/constants";
 import useSWR from "swr";
 
-const fetcher = (path, apiName = "HlsIngest") =>
-  get({ apiName, path })
-    .response.then((res) => res.body)
-    .then((body) => body.json());
-
 const useJobs = () => {
+  const api = useIamApi(AWS_HLS_INGEST_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/job-ingestion",
-    fetcher,
+    (path) => api.get(path),
     {
       refreshInterval: 3000,
     }
