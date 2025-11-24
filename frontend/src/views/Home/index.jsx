@@ -1,33 +1,15 @@
 import ReactMarkdown from "react-markdown";
+import { TextContent } from "@cloudscape-design/components";
 import remarkGfm from "remark-gfm";
 import {
-  AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
-  AWS_HLS_INGEST_ENDPOINT,
-  AWS_HLS_INGEST_ARN,
-  AWS_INGEST_CREATE_NEW_FLOW_ARN,
-  AWS_FFMPEG_ENDPOINT,
-  AWS_FFMPEG_COMMANDS_PARAMETER,
-  AWS_FFMPEG_BATCH_ARN,
-  AWS_FFMPEG_EXPORT_ARN,
-  AWS_REPLICATION_CONNECTIONS_PARAMETER,
-  AWS_REPLICATION_BATCH_ARN,
-  AWS_REPLICATION_CREATE_RULE_ARN,
-  AWS_REPLICATION_DELETE_RULE_ARN,
+  IS_HLS_DEPLOYED,
+  IS_HLS_INGEST_DEPLOYED,
+  IS_FFMPEG_DEPLOYED,
+  IS_REPLICATION_DEPLOYED,
 } from "@/constants";
 
+
 const Home = () => {
-  const isHlsIngestDeployed =
-    AWS_HLS_INGEST_ENDPOINT && AWS_HLS_INGEST_ARN && AWS_INGEST_CREATE_NEW_FLOW_ARN;
-  const isFfmpegDeployed =
-    AWS_FFMPEG_ENDPOINT &&
-    AWS_FFMPEG_COMMANDS_PARAMETER &&
-    AWS_FFMPEG_BATCH_ARN &&
-    AWS_FFMPEG_EXPORT_ARN;
-  const isReplicationDeployed =
-    AWS_REPLICATION_CONNECTIONS_PARAMETER &&
-    AWS_REPLICATION_BATCH_ARN &&
-    AWS_REPLICATION_CREATE_RULE_ARN &&
-    AWS_REPLICATION_DELETE_RULE_ARN;
   const markdown = `
   # TAMS UI
 
@@ -38,31 +20,31 @@ const Home = () => {
   ## Core Features
 
   - **Sources** shows the current sources in the TAMS store. You can select individual items to view more details${
-    isReplicationDeployed
+    IS_REPLICATION_DEPLOYED
       ? ", create MediaConvert jobs, and access replication functionality"
       : " and create MediaConvert jobs"
   }.
   - **Flows** shows the current flows in the TAMS store. You can select individual items to view more details${
-    isReplicationDeployed
+    IS_REPLICATION_DEPLOYED
       ? ", create exports, and manage replication workflows"
       : " and create exports"
   }.
 
   On each of these pages you can access:
   - **Diagram View** - Visual representation of TAMS entities and their relationships${
-    AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN
+    IS_HLS_DEPLOYED
       ? `
   - **HLS Player** - Basic HLS video player and HLS Manifest API`
       : ""
   }
   - **Omakase Player** - Advanced video player with timeline, markers, and export capabilities${
-    isReplicationDeployed
+    IS_REPLICATION_DEPLOYED
       ? `
   - **Replication** - Copy sources/flows between different TAMS stores`
       : ""
   }
 ${
-  isHlsIngestDeployed
+  IS_HLS_INGEST_DEPLOYED
     ? `
   ## Ingest Components
 
@@ -73,7 +55,7 @@ ${
   > **NOTE**: The Ingest workflow for both MediaLive and MediaConvert uses the HLS manifest file produced by those services to determine how and what to ingest. Therefore only output types of HLS for Channels and Jobs will support ingest.`
     : ""
 }${
-    isFfmpegDeployed
+    IS_FFMPEG_DEPLOYED
       ? `
 
   ## FFmpeg Components
@@ -93,12 +75,12 @@ ${
 
   ### Export Operations
   ${
-    isFfmpegDeployed
+    IS_FFMPEG_DEPLOYED
       ? "Export operations are dynamically configurable through AWS Systems Manager Parameter Store. "
       : ""
   }The system supports:
   - **MediaConvert Export** - Create MediaConvert jobs directly from TAMS content${
-    isFfmpegDeployed
+    IS_FFMPEG_DEPLOYED
       ? `
   - **Custom Export Operations** - Configurable FFmpeg-based export workflows defined in SSM parameters`
       : ""
@@ -108,7 +90,7 @@ ${
   The solution supports non-destructive editing workflows, allowing you to work with TAMS content without modifying the original media.
 
 ${
-  isReplicationDeployed
+  IS_REPLICATION_DEPLOYED
     ? `  ### Replication
   Replicate sources and flows between different TAMS stores with support for:
   - One-off batch replication
@@ -135,7 +117,7 @@ ${
   | ***hls_exclude***        | _bool_   | Used to indicate the source should be excluded from HLS manifest generation. This option includes exclusion from the Omakase Player. **Note: Only works when HLS API component is deployed.** |
   `;
 
-  return <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>;
+  return <TextContent><ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown></TextContent>;
 };
 
 export default Home;

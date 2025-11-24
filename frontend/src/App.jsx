@@ -1,5 +1,4 @@
 import {
-  AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
   AWS_HLS_INGEST_ENDPOINT,
   AWS_IDENTITY_POOL_ID,
   AWS_FFMPEG_ENDPOINT,
@@ -7,6 +6,9 @@ import {
   AWS_TAMS_ENDPOINT,
   AWS_USER_POOL_CLIENT_WEB_ID,
   AWS_USER_POOL_ID,
+  IS_HLS_DEPLOYED,
+  IS_HLS_INGEST_DEPLOYED,
+  IS_FFMPEG_DEPLOYED,
 } from "@/constants";
 import { HashRouter, Route, Routes } from "react-router-dom";
 
@@ -73,27 +75,37 @@ const App = () => {
             <Route path=":flowId" element={<Flow />} />
           </Route>
           <Route path="diagram/:type/:id" element={<Diagram />} />
-          {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
-            <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
-          )}
           <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
-          {AWS_HLS_INGEST_ENDPOINT && (
+          {AWS_IDENTITY_POOL_ID && (
             <>
-              <Route path="workflows" element={<HlsIngestion />} />
-              <Route path="hls-channels" element={<MediaLiveHlsIngestion />} />
-              <Route path="hls-jobs" element={<MediaConvertHlsIngestion />} />
+              {IS_HLS_DEPLOYED && (
+                <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
+              )}
+              {IS_HLS_INGEST_DEPLOYED && (
+                <>
+                  <Route path="workflows" element={<HlsIngestion />} />
+                  <Route
+                    path="hls-channels"
+                    element={<MediaLiveHlsIngestion />}
+                  />
+                  <Route
+                    path="hls-jobs"
+                    element={<MediaConvertHlsIngestion />}
+                  />
+                </>
+              )}
+              {IS_FFMPEG_DEPLOYED && (
+                <>
+                  <Route path="ffmpeg-exports" element={<FfmpegExports />} />
+                  <Route path="ffmpeg-rules" element={<FfmpegRules />} />
+                  <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
+                </>
+              )}
+              <Route path="mediaconvert-tams-jobs">
+                <Route index element={<MediaConvertTamsJobs />} />
+              </Route>
             </>
           )}
-          {AWS_FFMPEG_ENDPOINT && (
-            <>
-              <Route path="ffmpeg-exports" element={<FfmpegExports />} />
-              <Route path="ffmpeg-rules" element={<FfmpegRules />} />
-              <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
-            </>
-          )}
-          <Route path="mediaconvert-tams-jobs">
-            <Route index element={<MediaConvertTamsJobs />} />
-          </Route>
         </Route>
       </Routes>
     </HashRouter>
@@ -102,4 +114,4 @@ const App = () => {
 
 const AuthApp = withAuthenticator(App, { hideSignUp: true });
 
-export default AuthApp;
+export default App;

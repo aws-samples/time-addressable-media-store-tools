@@ -1,4 +1,8 @@
-import { AWS_FFMPEG_ENDPOINT, AWS_HLS_INGEST_ENDPOINT } from "@/constants";
+import {
+  AWS_IDENTITY_POOL_ID,
+  IS_HLS_INGEST_DEPLOYED,
+  IS_FFMPEG_DEPLOYED,
+} from "@/constants";
 import {
   AppLayout,
   BreadcrumbGroup,
@@ -55,6 +59,59 @@ const Layout = () => {
     }));
   };
 
+  const getNavItems = () => {
+    const items = [
+      {
+        type: "section",
+        text: "TAMS",
+        items: [
+          { type: "link", text: "Sources", href: "/sources" },
+          { type: "link", text: "Flows", href: "/flows" },
+        ],
+      },
+    ];
+
+    if (AWS_IDENTITY_POOL_ID) {
+      if (IS_HLS_INGEST_DEPLOYED) {
+        items.push({
+          type: "section",
+          text: "Ingest",
+          items: [
+            {
+              type: "link",
+              text: "MediaLive HLS Channels",
+              href: "/hls-channels",
+            },
+            { type: "link", text: "MediaConvert HLS Jobs", href: "/hls-jobs" },
+            { type: "link", text: "HLS Ingests", href: "/workflows" },
+          ],
+        });
+      }
+
+      if (IS_FFMPEG_DEPLOYED) {
+        items.push({
+          type: "section",
+          text: "FFmpeg",
+          items: [
+            { type: "link", text: "Export", href: "/ffmpeg-exports" },
+            { type: "link", text: "Rules", href: "/ffmpeg-rules" },
+            { type: "link", text: "Jobs", href: "/ffmpeg-jobs" },
+          ],
+        });
+      }
+
+      items.push({
+        type: "section",
+        text: "MediaConvert",
+        items: [
+          { type: "link", text: "TAMS Jobs", href: "/mediaconvert-tams-jobs" },
+        ],
+      });
+    }
+
+    return items;
+  };
+
   return (
     <>
       <Header />
@@ -66,76 +123,7 @@ const Layout = () => {
         navigationOpen={navigationOpen}
         onNavigationChange={({ detail }) => setNavigationOpen(detail.open)}
         navigation={
-          <SideNavigation
-            onFollow={followLink}
-            items={[
-              {
-                type: "section",
-                text: "TAMS",
-                items: [
-                  { type: "link", text: "Sources", href: "/sources" },
-                  { type: "link", text: "Flows", href: "/flows" },
-                ],
-              },
-              AWS_HLS_INGEST_ENDPOINT
-                ? {
-                    type: "section",
-                    text: "Ingest",
-                    items: [
-                      {
-                        type: "link",
-                        text: "MediaLive HLS Channels",
-                        href: "/hls-channels",
-                      },
-                      {
-                        type: "link",
-                        text: "MediaConvert HLS Jobs",
-                        href: "/hls-jobs",
-                      },
-                      {
-                        type: "link",
-                        text: "HLS Ingests",
-                        href: "/workflows",
-                      },
-                    ],
-                  }
-                : {},
-              AWS_FFMPEG_ENDPOINT
-                ? {
-                    type: "section",
-                    text: "FFmpeg",
-                    items: [
-                      {
-                        type: "link",
-                        text: "Export",
-                        href: "/ffmpeg-exports",
-                      },
-                      {
-                        type: "link",
-                        text: "Rules",
-                        href: "/ffmpeg-rules",
-                      },
-                      {
-                        type: "link",
-                        text: "Jobs",
-                        href: "/ffmpeg-jobs",
-                      },
-                    ],
-                  }
-                : {},
-              {
-                type: "section",
-                text: "MediaConvert",
-                items: [
-                  {
-                    type: "link",
-                    text: "TAMS Jobs",
-                    href: "/mediaconvert-tams-jobs",
-                  },
-                ],
-              },
-            ]}
-          />
+          <SideNavigation onFollow={followLink} items={getNavItems()} />
         }
         toolsHide
         content={

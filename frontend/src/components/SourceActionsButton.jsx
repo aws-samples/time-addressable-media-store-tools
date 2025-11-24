@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ButtonDropdown } from "@cloudscape-design/components";
 import SourceActionsModal from "@/components/SourceActionsModal";
+import { IS_MEDIACONVERT_DEPLOYED } from "@/constants";
 
 const SourceActionsButton = ({ selectedItems }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -11,19 +12,29 @@ const SourceActionsButton = ({ selectedItems }) => {
     setModalVisible(true);
   };
 
+  // Build items array conditionally
+  const items = [];
+
+  if (IS_MEDIACONVERT_DEPLOYED) {
+    items.push({
+      text: "Create MediaConvert Job",
+      id: "create-export",
+      disabled: selectedItems.length !== 1,
+    });
+  }
+
+  // Don't render if no actions available
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <ButtonDropdown
         onItemClick={handleOnClick}
         disabled={selectedItems.length === 0}
         expandableGroups
-        items={[
-          {
-            text: "Create MediaConvert Job",
-            id: "create-export",
-            disabled: selectedItems.length !== 1,
-          },
-        ]}
+        items={items}
       >
         Actions
       </ButtonDropdown>

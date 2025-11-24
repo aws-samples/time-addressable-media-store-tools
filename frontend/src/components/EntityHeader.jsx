@@ -6,7 +6,7 @@ import {
 } from "@cloudscape-design/components";
 import { useNavigate } from "react-router-dom";
 
-import { AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN } from "@/constants";
+import { IS_HLS_DEPLOYED, AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
 import getPresignedUrl from "@/utils/getPresignedUrl";
@@ -32,7 +32,7 @@ const EntityHeader = ({ type, entity }) => {
   return (
     <SpaceBetween size="xl" direction="horizontal">
       <span>{type} details</span>
-      {AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN && (
+      {IS_HLS_DEPLOYED && (
         <span>
           <Button
             href={`/hlsplayer/${entityType}/${entity.id}`}
