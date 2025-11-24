@@ -1,9 +1,9 @@
 /************* ENVIRONMENT VARIABLES **************/
 export const APP_TITLE = import.meta.env.VITE_APP_TITLE;
 export const APP_TITLE_LOGO = import.meta.env.VITE_APP_TITLE_LOGO;
-export const AWS_REGION = import.meta.env.VITE_APP_AWS_REGION;
-export const AWS_USER_POOL_ID = import.meta.env.VITE_APP_AWS_USER_POOL_ID;
-export const AWS_USER_POOL_CLIENT_WEB_ID = import.meta.env.VITE_APP_AWS_USER_POOL_CLIENT_WEB_ID;
+export const OIDC_AUTHORITY = import.meta.env.VITE_APP_OIDC_AUTHORITY;
+export const OIDC_CLIENT_ID = import.meta.env.VITE_APP_OIDC_CLIENT_ID;
+export const OIDC_REDIRECT_URI = import.meta.env.VITE_APP_OIDC_REDIRECT_URI;
 export const AWS_IDENTITY_POOL_ID = import.meta.env.VITE_APP_AWS_IDENTITY_POOL_ID;
 export const AWS_TAMS_ENDPOINT = import.meta.env.VITE_APP_TAMS_API_ENDPOINT;
 export const OMAKASE_EXPORT_EVENT_BUS = import.meta.env.VITE_APP_OMAKASE_EXPORT_EVENT_BUS;
@@ -60,6 +60,18 @@ export const HAS_OMAKASE_EXPORT_CAPABILITY = !!(
   OMAKASE_EXPORT_EVENT_PARAMETER
 );
 /************* END OF FEATURE FLAGS **************/
+export const AWS_REGION = AWS_IDENTITY_POOL_ID?.split(":")[0];
+export const AWS_USER_POOL_ID = OIDC_AUTHORITY.includes("cognito")
+  ? OIDC_AUTHORITY.split("/").pop()
+  : null;
+export const OIDC_SCOPES = [
+  "openid",
+  "email",
+  "tams-api/admin",
+  "tams-api/delete",
+  "tams-api/read",
+  "tams-api/write",
+];
 export const PAGE_SIZE = 20;
 export const PAGE_SIZE_PREFERENCE = {
   title: "Select page size",
