@@ -1,20 +1,17 @@
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 
 import { AWS_REGION } from "@/constants";
-import { fetchAuthSession } from "aws-amplify/auth";
-import { get } from "aws-amplify/api";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
+import useIamApi from "@/hooks/useIamApi";
+import { AWS_HLS_INGEST_ENDPOINT } from "@/constants";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 
-const fetcher = async (path) =>
-  get({ apiName: "HlsIngest", path })
-    .response.then((res) => res.body)
-    .then((body) => body.json());
-
 export const useWorkflows = () => {
+  const api = useIamApi(AWS_HLS_INGEST_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/workflows",
-    fetcher,
+    (path) => api.get(path),
     {
       refreshInterval: 3000,
     }
@@ -30,17 +27,16 @@ export const useWorkflows = () => {
 };
 
 export const useStateMachine = () => {
+  const credentials = useAwsCredentials();
   const { trigger, isMutating } = useSWRMutation(
     "/hls-ingestion",
-    (_, { arg }) =>
-      fetchAuthSession().then((session) =>
-        new SFNClient({
-          region: AWS_REGION,
-          credentials: session.credentials,
-        })
-          .send(new StartExecutionCommand(arg))
-          .then((response) => response)
-      )
+    async (_, { arg }) => {
+      const client = new SFNClient({
+        region: AWS_REGION,
+        credentials,
+      });
+      return client.send(new StartExecutionCommand(arg));
+    }
   );
 
   return {
