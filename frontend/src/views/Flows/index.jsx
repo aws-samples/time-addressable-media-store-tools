@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PAGE_SIZE_PREFERENCE } from "@/constants";
+import { PAGE_SIZE_PREFERENCE, IS_REPLICATION_DEPLOYED } from "@/constants";
 import {
   Box,
   Button,
@@ -224,17 +224,17 @@ const Flows = () => {
                 direction="horizontal"
                 alignItems="center"
               >
-                <Button
-                  onClick={() =>
-                    handleOnClick({ detail: { id: "replication" } })
-                  }
-                  disabled={selectedItems.length !== 0}
-                >
-                  Replication
-                </Button>
-                <FlowActionsButton
-                  selectedItems={selectedItems}
-                />
+                {IS_REPLICATION_DEPLOYED && (
+                  <Button
+                    onClick={() =>
+                      handleOnClick({ detail: { id: "replication" } })
+                    }
+                    disabled={selectedItems.length !== 0}
+                  >
+                    Replication
+                  </Button>
+                )}
+                <FlowActionsButton selectedItems={selectedItems} />
                 <Toggle
                   onChange={({ detail }) => setShowHierarchy(detail.checked)}
                   checked={showHierarchy}

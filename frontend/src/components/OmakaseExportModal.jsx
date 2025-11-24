@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Modal, SpaceBetween } from "@cloudscape-design/components";
+import { Modal, SpaceBetween, Box } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useExportOperations } from "@/hooks/useExportOperations";
 import { useExportForm } from "@/hooks/useExportForm";
@@ -12,6 +12,10 @@ import OperationSelector from "./OperationSelector";
 import MediaConvertExportForm from "./MediaConvertExportForm";
 import DynamicForm from "./DynamicForm";
 import ExportModalFooter from "./ExportModalFooter";
+import {
+  HAS_OMAKASE_EXPORT_CAPABILITY,
+  IS_MEDIACONVERT_DEPLOYED,
+} from "@/constants";
 
 const OmakaseExportModal = ({
   sourceId,
@@ -37,6 +41,15 @@ const OmakaseExportModal = ({
     resetForm,
     isFormValid,
   } = useExportForm(getOperationSchema);
+
+  const availableOperations = useMemo(() => {
+    return operations.filter((op) => {
+      if (op.value === "MEDIACONVERT_EXPORT") {
+        return IS_MEDIACONVERT_DEPLOYED;
+      }
+      return HAS_OMAKASE_EXPORT_CAPABILITY;
+    });
+  }, [operations]);
 
   const flowOptions = useMemo(
     () =>
@@ -99,7 +112,9 @@ const OmakaseExportModal = ({
             onCancel={handleDismiss}
             onSubmit={handleSubmit}
             submitText="Export"
-            submitDisabled={isExportButtonDisabled}
+            submitDisabled={
+              isExportButtonDisabled || availableOperations.length === 0
+            }
             submitLoading={isLoading}
             cancelDisabled={isStarting}
             cancelLoading={isStarting || isLoading}
@@ -110,7 +125,10 @@ const OmakaseExportModal = ({
             onSubmit={handleCreateJob}
             submitText="Export"
             submitDisabled={
-              isStarting || !editTimeranges || !validateJson(jobSpec).isValid
+              isStarting ||
+              !editTimeranges ||
+              !validateJson(jobSpec).isValid ||
+              availableOperations.length === 0
             }
             submitLoading={isStarting}
             cancelDisabled={isStarting}
@@ -125,29 +143,42 @@ const OmakaseExportModal = ({
           onChange={setSelectedFlows}
         />
 
-        <OperationSelector
-          operations={operations}
-          selectedOperation={formData.operation}
-          onChange={handleOperationChange}
-        />
+        {availableOperations.length === 0 ? (
+          <Box textAlign="center">
+            <SpaceBetween size="s">
+              <Box variant="strong">No export operations available</Box>
+              <Box variant="p">
+                Export functionality requires backend deployment.
+              </Box>
+            </SpaceBetween>
+          </Box>
+        ) : (
+          <>
+            <OperationSelector
+              operations={availableOperations}
+              selectedOperation={formData.operation}
+              onChange={handleOperationChange}
+            />
 
-        {formSchema && (
-          <DynamicForm
-            schema={formSchema}
-            formData={formData}
-            onChange={({ formData }) => setFormData(formData)}
-          />
-        )}
+            {formSchema && (
+              <DynamicForm
+                schema={formSchema}
+                formData={formData}
+                onChange={({ formData }) => setFormData(formData)}
+              />
+            )}
 
-        {formData.operation === "MEDIACONVERT_EXPORT" && (
-          <MediaConvertExportForm
-            timeranges={editTimeranges}
-            fileName={fileName}
-            setFileName={setFileName}
-            jobSpec={jobSpec}
-            onJobSpecChange={setJobSpec}
-            readOnly={true}
-          />
+            {formData.operation === "MEDIACONVERT_EXPORT" && (
+              <MediaConvertExportForm
+                timeranges={editTimeranges}
+                fileName={fileName}
+                setFileName={setFileName}
+                jobSpec={jobSpec}
+                onJobSpecChange={setJobSpec}
+                readOnly={true}
+              />
+            )}
+          </>
         )}
       </SpaceBetween>
     </Modal>

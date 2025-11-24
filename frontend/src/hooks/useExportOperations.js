@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { AWS_REGION, OMAKASE_EXPORT_EVENT_PARAMETER } from "@/constants";
+import {
+  AWS_REGION,
+  OMAKASE_EXPORT_EVENT_PARAMETER,
+  HAS_OMAKASE_EXPORT_CAPABILITY,
+} from "@/constants";
 import useAlertsStore from "@/stores/useAlertsStore";
 
 const STATIC_OPERATIONS = {
@@ -23,6 +27,10 @@ export const useExportOperations = () => {
     );
 
   useEffect(() => {
+    // Only fetch if export capability is available
+    if (!HAS_OMAKASE_EXPORT_CAPABILITY) {
+      return;
+    }
     const fetchOperationSchemas = async () => {
       try {
         const session = await fetchAuthSession();

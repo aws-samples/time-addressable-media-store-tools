@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Box,
   Button,
-  ButtonDropdown,
   CollectionPreferences,
   CopyToClipboard,
   Header,
@@ -19,7 +18,7 @@ import { useSources } from "@/hooks/useSources";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import ReplicationModal from "@/components/ReplicationModal";
 import SourceActionsButton from "@/components/SourceActionsButton";
-import { PAGE_SIZE_PREFERENCE } from "@/constants";
+import { PAGE_SIZE_PREFERENCE, IS_REPLICATION_DEPLOYED } from "@/constants";
 
 const columnDefinitions = [
   {
@@ -120,9 +119,15 @@ const collectionPreferencesProps = {
 
 const Sources = () => {
   const preferences = usePreferencesStore((state) => state.sourcesPreferences);
-  const setPreferences = usePreferencesStore((state) => state.setSourcesPreferences);
-  const showHierarchy = usePreferencesStore((state) => state.sourcesShowHierarchy);
-  const setShowHierarchy = usePreferencesStore((state) => state.setSourcesShowHierarchy);
+  const setPreferences = usePreferencesStore(
+    (state) => state.setSourcesPreferences
+  );
+  const showHierarchy = usePreferencesStore(
+    (state) => state.sourcesShowHierarchy
+  );
+  const setShowHierarchy = usePreferencesStore(
+    (state) => state.setSourcesShowHierarchy
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
   const { sources, isLoading } = useSources();
@@ -149,7 +154,7 @@ const Sources = () => {
       sorting: {
         defaultState: {
           sortingColumn: columnDefinitions.find((col) => col.id === "created"),
-          isDescending: true
+          isDescending: true,
         },
       },
       selection: {},
@@ -172,17 +177,17 @@ const Sources = () => {
                 direction="horizontal"
                 alignItems="center"
               >
-                <Button
-                  onClick={() =>
-                    handleOnClick({ detail: { id: "replication" } })
-                  }
-                  disabled={selectedItems.length !== 0}
-                >
-                  Replication
-                </Button>
-                <SourceActionsButton
-                  selectedItems={selectedItems}
-                />
+                {IS_REPLICATION_DEPLOYED && (
+                  <Button
+                    onClick={() =>
+                      handleOnClick({ detail: { id: "replication" } })
+                    }
+                    disabled={selectedItems.length !== 0}
+                  >
+                    Replication
+                  </Button>
+                )}
+                <SourceActionsButton selectedItems={selectedItems} />
                 <Toggle
                   onChange={({ detail }) => setShowHierarchy(detail.checked)}
                   checked={showHierarchy}
