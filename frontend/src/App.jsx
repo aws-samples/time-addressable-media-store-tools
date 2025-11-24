@@ -1,19 +1,15 @@
 import {
-  AWS_HLS_INGEST_ENDPOINT,
+  OIDC_AUTHORITY,
+  OIDC_CLIENT_ID,
+  OIDC_REDIRECT_URI,
+  OIDC_SCOPES,
   AWS_IDENTITY_POOL_ID,
-  AWS_FFMPEG_ENDPOINT,
-  AWS_REGION,
-  AWS_TAMS_ENDPOINT,
-  AWS_USER_POOL_CLIENT_WEB_ID,
-  AWS_USER_POOL_ID,
   IS_HLS_DEPLOYED,
   IS_HLS_INGEST_DEPLOYED,
   IS_FFMPEG_DEPLOYED,
 } from "@/constants";
 import { HashRouter, Route, Routes } from "react-router-dom";
 
-import { Amplify } from "aws-amplify";
-import { ConsoleLogger } from "aws-amplify/utils";
 import Diagram from "@/views/Diagram";
 import Flow from "@/views/Flow";
 import Flows from "@/views/Flows";
@@ -31,87 +27,76 @@ import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
 import React from "react";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
-import { withAuthenticator } from "@aws-amplify/ui-react";
+import { AuthProvider } from "react-oidc-context";
+import AuthGuard from "@/components/AuthGuard";
 
-ConsoleLogger.LOG_LEVEL = "INFO";
-Amplify.configure({
-  Auth: {
-    Cognito: {
-      userPoolId: AWS_USER_POOL_ID,
-      userPoolClientId: AWS_USER_POOL_CLIENT_WEB_ID,
-      identityPoolId: AWS_IDENTITY_POOL_ID,
-    },
-  },
-  API: {
-    REST: {
-      TAMS: {
-        endpoint: AWS_TAMS_ENDPOINT,
-        region: AWS_REGION,
-      },
-      HlsIngest: {
-        endpoint: AWS_HLS_INGEST_ENDPOINT,
-        region: AWS_REGION,
-      },
-      Ffmpeg: {
-        endpoint: AWS_FFMPEG_ENDPOINT,
-        region: AWS_REGION,
-      },
-    },
-  },
-});
+const oidcConfig = {
+  authority: `https://${OIDC_AUTHORITY}`,
+  client_id: OIDC_CLIENT_ID,
+  redirect_uri: OIDC_REDIRECT_URI,
+  response_type: "code",
+  scope: OIDC_SCOPES.join(" "),
+  revokeTokenTypes: ["refresh_token"],
+  revokeTokensOnSignout: true,
+};
 
 const App = () => {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="sources">
-            <Route index element={<Sources />} />
-            <Route path=":sourceId" element={<Source />} />
-          </Route>
-          <Route path="flows">
-            <Route index element={<Flows />} />
-            <Route path=":flowId" element={<Flow />} />
-          </Route>
-          <Route path="diagram/:type/:id" element={<Diagram />} />
-          <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
-          {AWS_IDENTITY_POOL_ID && (
-            <>
-              {IS_HLS_DEPLOYED && (
-                <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
-              )}
-              {IS_HLS_INGEST_DEPLOYED && (
-                <>
-                  <Route path="workflows" element={<HlsIngestion />} />
-                  <Route
-                    path="hls-channels"
-                    element={<MediaLiveHlsIngestion />}
-                  />
-                  <Route
-                    path="hls-jobs"
-                    element={<MediaConvertHlsIngestion />}
-                  />
-                </>
-              )}
-              {IS_FFMPEG_DEPLOYED && (
-                <>
-                  <Route path="ffmpeg-exports" element={<FfmpegExports />} />
-                  <Route path="ffmpeg-rules" element={<FfmpegRules />} />
-                  <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
-                </>
-              )}
-              <Route path="mediaconvert-tams-jobs">
-                <Route index element={<MediaConvertTamsJobs />} />
+    <AuthProvider {...oidcConfig}>
+      <AuthGuard>
+        <HashRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="sources">
+                <Route index element={<Sources />} />
+                <Route path=":sourceId" element={<Source />} />
               </Route>
-            </>
-          )}
-        </Route>
-      </Routes>
-    </HashRouter>
+              <Route path="flows">
+                <Route index element={<Flows />} />
+                <Route path=":flowId" element={<Flow />} />
+              </Route>
+              <Route path="diagram/:type/:id" element={<Diagram />} />
+              <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
+              {AWS_IDENTITY_POOL_ID && (
+                <>
+                  {IS_HLS_DEPLOYED && (
+                    <Route path="hlsplayer/:type/:id" element={<HlsPlayer />} />
+                  )}
+                  {IS_HLS_INGEST_DEPLOYED && (
+                    <>
+                      <Route path="workflows" element={<HlsIngestion />} />
+                      <Route
+                        path="hls-channels"
+                        element={<MediaLiveHlsIngestion />}
+                      />
+                      <Route
+                        path="hls-jobs"
+                        element={<MediaConvertHlsIngestion />}
+                      />
+                    </>
+                  )}
+                  {IS_FFMPEG_DEPLOYED && (
+                    <>
+                      <Route
+                        path="ffmpeg-exports"
+                        element={<FfmpegExports />}
+                      />
+                      <Route path="ffmpeg-rules" element={<FfmpegRules />} />
+                      <Route path="ffmpeg-jobs" element={<FfmpegJobs />} />
+                    </>
+                  )}
+                  <Route path="mediaconvert-tams-jobs">
+                    <Route index element={<MediaConvertTamsJobs />} />
+                  </Route>
+                </>
+              )}
+            </Route>
+          </Routes>
+        </HashRouter>
+      </AuthGuard>
+    </AuthProvider>
   );
 };
-
-const AuthApp = withAuthenticator(App, { hideSignUp: true });
 
 export default App;
