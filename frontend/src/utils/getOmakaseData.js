@@ -4,7 +4,6 @@ import {
 } from "@/utils/timerange";
 
 import paginationFetcher from "@/utils/paginationFetcher";
-import { useApi } from "@/hooks/useApi";
 
 const DEFAULT_SEGMENTATION_DURATION = 300;
 const NANOS_PER_SECOND = 1_000_000_000n;
@@ -12,20 +11,19 @@ const NANOS_PER_SECOND = 1_000_000_000n;
 const shouldExcludeFlow = (flow) =>
   flow.tags?.hls_exclude?.toLowerCase() === "true";
 
-const getFlowAndRelated = async ({ type, id }) => {
-  const { get } = useApi();
+const getFlowAndRelated = async (api, { type, id }) => {
   let flow = {};
   const relatedFlowQueue = [];
 
   if (type === "flows") {
-    const flowData = (await get(`/flows/${id}?include_timerange=true`)).data;
+    const flowData = (await api.get(`/flows/${id}?include_timerange=true`)).data;
     if (shouldExcludeFlow(flowData)) {
       console.error("No valid Flows found.");
       return { flow: null, relatedFlows: [] };
     }
     flow = flowData;
   } else {
-    const sourceFlows = (await get(`/flows/?source_id=${id}`)).data;
+    const sourceFlows = (await api.get(`/flows/?source_id=${id}`)).data;
     const filteredSourceFlows = sourceFlows.filter(
       (sourceFlow) => !shouldExcludeFlow(sourceFlow)
     );
@@ -36,7 +34,7 @@ const getFlowAndRelated = async ({ type, id }) => {
     }
 
     flow = (
-      await get(`/flows/${filteredSourceFlows[0].id}?include_timerange=true`)
+      await api.get(`/flows/${filteredSourceFlows[0].id}?include_timerange=true`)
     ).data;
     relatedFlowQueue.push(...filteredSourceFlows.slice(1).map(({ id }) => id));
   }
@@ -45,15 +43,14 @@ const getFlowAndRelated = async ({ type, id }) => {
     relatedFlowQueue.push(...flow.flow_collection.map(({ id }) => id));
   }
 
-  const relatedFlows = await getFlowHierarchy(relatedFlowQueue);
+  const relatedFlows = await getFlowHierarchy(api, relatedFlowQueue);
   const sortedRelatedFlows = relatedFlows.sort(
     (a, b) => a.avg_bit_rate - b.avg_bit_rate
   );
   return { flow, relatedFlows: sortedRelatedFlows };
 };
 
-const getFlowHierarchy = async (relatedFlowQueue) => {
-  const { get } = useApi();
+const getFlowHierarchy = async (api, relatedFlowQueue) => {
   const relatedFlows = [];
   const checkedFlowIds = new Set();
 
@@ -62,7 +59,7 @@ const getFlowHierarchy = async (relatedFlowQueue) => {
     checkedFlowIds.add(relatedFlowId);
 
     const flowData = (
-      await get(`/flows/${relatedFlowId}?include_timerange=true`)
+      await api.get(`/flows/${relatedFlowId}?include_timerange=true`)
     ).data;
 
     if (!shouldExcludeFlow(flowData)) {
@@ -122,7 +119,7 @@ const parseAndFilterFlows = (flows) => {
   return result;
 };
 
-const getSegmentationTimerange = async (flows) => {
+const getSegmentationTimerange = async (flows, api) => {
   // Filter for video flows, Video must take priority if any are present
   const videoFlows = flows.filter(
     ({ format }) => format === "urn:x-nmos:format:video"
@@ -154,7 +151,7 @@ const getSegmentationTimerange = async (flows) => {
   const windowSegments = await paginationFetcher(
     `/flows/${
       earliestEndFlow.id
-    }/segments?limit=300&timerange=${toTimerangeString(windowTimerange)}`
+    }/segments?limit=300&timerange=${toTimerangeString(windowTimerange)}`, null, api
   );
 
   if (windowSegments.length === 0) {
@@ -185,8 +182,8 @@ const getSegmentationTimerange = async (flows) => {
   };
 };
 
-const getOmakaseData = async ({ type, id, timerange }) => {
-  const { flow, relatedFlows } = await getFlowAndRelated({ type, id });
+const getOmakaseData = async (api, { type, id, timerange }) => {
+  const { flow, relatedFlows } = await getFlowAndRelated(api, { type, id });
   const timerangeValidFlows = parseAndFilterFlows([flow, ...relatedFlows]);
 
   const maxTimerange = getMaxTimerange(timerangeValidFlows);
@@ -198,7 +195,7 @@ const getOmakaseData = async ({ type, id, timerange }) => {
   let segmentationResult = null;
 
   if (!timerange) {
-    segmentationResult = await getSegmentationTimerange(timerangeValidFlows);
+    segmentationResult = await getSegmentationTimerange(timerangeValidFlows, api);
     parsedTimerange = toTimerangeString(segmentationResult.timerange);
 
     // Cache the segments if they were fetched
@@ -218,7 +215,7 @@ const getOmakaseData = async ({ type, id, timerange }) => {
     .forEach((id) =>
       fetchPromises.push(
         paginationFetcher(
-          `/flows/${id}/segments?limit=300&timerange=${parsedTimerange}`
+          `/flows/${id}/segments?limit=300&timerange=${parsedTimerange}`, null, api
         ).then((result) => [id, result])
       )
     );

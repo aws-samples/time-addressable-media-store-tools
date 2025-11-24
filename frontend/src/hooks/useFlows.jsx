@@ -4,9 +4,10 @@ import useSWRMutation from "swr/mutation";
 import paginationFetcher from "@/utils/paginationFetcher";
 
 const useFlowsQuery = (url) => {
+  const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     url,
-    paginationFetcher,
+    (path) => paginationFetcher(path, null, api),
     {
       refreshInterval: 3000,
     }

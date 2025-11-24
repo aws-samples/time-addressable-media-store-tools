@@ -1,7 +1,9 @@
-import getOmakaseData from "../utils/getOmakaseData";
+import getOmakaseData from "@/utils/getOmakaseData";
+import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 
 export const useOmakaseData = (type, id, timerange) => {
+  const api = useApi();
   const {
     data: response,
     error,
@@ -16,7 +18,7 @@ export const useOmakaseData = (type, id, timerange) => {
         flowSegments,
         maxTimerange,
         timerange: segmentsTimerange,
-      } = await getOmakaseData({ type, id, timerange });
+      } = await getOmakaseData(api, { type, id, timerange });
 
       return {
         flow,
