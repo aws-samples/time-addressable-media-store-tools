@@ -23,7 +23,7 @@ export const useApi = () => {
       const links = parseLinkHeader(response.headers.get("link"));
 
       return {
-        data: method === "GET" ? await response.json() : response.status,
+        data: await response.json(),
         headers: Object.fromEntries(response.headers.entries()),
         nextLink: links.next,
       };

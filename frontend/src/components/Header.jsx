@@ -13,6 +13,8 @@ const Header = () => {
 
   const handleDropdownClick = ({ detail }) => {
     if (detail.id === "signout") {
+      // The configuration passed to signoutRedirect have be built to work with Amazon Cognito
+      // This may need to be tweaked to work correctly with different OIDC providers
       auth.signoutRedirect({
         extraQueryParams: {
           client_id: auth.settings.client_id,
