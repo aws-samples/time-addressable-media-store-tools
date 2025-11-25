@@ -312,7 +312,6 @@ Resources:
             Resource:
               - !Sub ${MediaConvertBucket.Arn}/*
 
-
   EditByReferenceFunction:
     Type: AWS::Serverless::Function
     Metadata:
