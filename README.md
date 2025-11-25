@@ -67,11 +67,11 @@ The placeholder names in the `.env.template` file show the corresponding CloudFo
 
 The following variables must be configured for basic functionality. Values come from outputs of two different CloudFormation stacks:
 
-- **VITE_APP_AWS_REGION**: The AWS region where your TAMS API is deployed
-- **VITE_APP_AWS_USER_POOL_ID**: From **TAMS API stack** output `UserPoolId`
-- **VITE_APP_AWS_USER_POOL_CLIENT_WEB_ID**: From **TAMS API stack** output `UserPoolClientWebId`
-- **VITE_APP_AWS_IDENTITY_POOL_ID**: From **TAMS API stack** output `IdentityPoolId`
-- **VITE_APP_AWS_API_ENDPOINT**: From **TAMS API stack** output `ApiEndpoint`
+- **VITE_APP_TAMS_API_ENDPOINT**: From **TAMS API stack** output `ApiEndpoint`
+- **VITE_APP_OIDC_AUTHORITY**: The OIDC Authority URL. When using Cognito, construct as `cognito-idp.<Region>.amazonaws.com/<UserPoolId>` using **TAMS API stack** output `UserPoolId`
+- **VITE_APP_OIDC_CLIENT_ID**: The OIDC Client ID. When using Cognito, use **TAMS Tools stack** output `UserPoolClientWebId`
+- **VITE_APP_OIDC_REDIRECT_URI**: The redirect URI for your application (e.g., `http://localhost:5173` for local development)
+- **VITE_APP_AWS_IDENTITY_POOL_ID**: From **TAMS Tools stack** output `IdentityPoolId`
 - **VITE_APP_OMAKASE_EXPORT_EVENT_BUS**: From **TAMS Tools stack** output `OmakaseExportEventBus`
 - **VITE_APP_OMAKASE_EXPORT_EVENT_PARAMETER**: From **TAMS Tools stack** output `OmakaseExportEventParameter`
 - **VITE_APP_TAMS_AUTH_CONNECTION_ARN**: From **TAMS Tools stack** output `TamsAuthConnectionArn`
@@ -104,7 +104,7 @@ In the initial state the Web App will have a simple interface. This allows you t
 
 Four optional components can be deployed to the infrastructure to add additional functionality. The deployment of these components is expected to be done from the AWS CloudFormation Console. Changes should be made by updating the stack parameters for the CloudFormation Stack created for the infrastructure.
 
-**NOTE: The Web UI is authenticated using the same Cognito User Pool used by the TAMS API. To login you will first need to create a user in Cognito.**
+**NOTE: The Web UI is authenticated using the same OIDC provider as the TAMS API. When using Cognito, you will need to create a user in the Cognito User Pool to login.**
 
 ### Core Features
 
@@ -132,7 +132,7 @@ This solution includes 5 optional components. They can be deployed by performing
 
 This will deploy a HLS API endpoint to the solution and enable a basic Video player in the WebUI that uses this HLS API to play TAMS content.
 
-**Required Environment Variable:**
+**Required Environment Variables:**
 
 - `VITE_APP_AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN` = **TAMS Tools stack** output `HlsObjectLambdaAccessPointArn`
 
@@ -175,7 +175,9 @@ This will deploy the Loop Recorder functionality to the solution. The Loop Recor
 
 **Note:** This component includes an Event Bridge rule that triggers for every `flows/segments_added` event, so it should only be deployed when loop recording functionality is required.
 
-**No additional environment variables required** - the Loop Recorder operates automatically based on flow tags.
+**Required Environment Variable:**
+
+- `VITE_APP_AWS_LOOP_RECORDER_ARN` = **TAMS Tools stack** output `LoopRecorderArn`
 
 ## SSM Parameters Configuration
 
