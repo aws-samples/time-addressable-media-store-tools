@@ -37,7 +37,7 @@ const Home = () => {
   }.
 
   On each of these pages you can access:
-  - **Diagram View** - Visual representation of TAMS entities and their relationships.${
+  ${
     IS_HLS_DEPLOYED
       ? `
   - **HLS Player** - Basic HLS video player and HLS Manifest API.`
@@ -47,7 +47,8 @@ const Home = () => {
     HAS_OMAKASE_EXPORT_CAPABILITY
       ? ", markers, and export capabilities"
       : " and markers"
-  }.${
+  }.
+  - **Diagram View** - Visual representation of TAMS entities and their relationships.${
     IS_REPLICATION_DEPLOYED
       ? `
   - **Replication** - Copy sources/flows between different TAMS stores.`
