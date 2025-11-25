@@ -6,8 +6,9 @@ import {
   IS_HLS_INGEST_DEPLOYED,
   IS_FFMPEG_DEPLOYED,
   IS_REPLICATION_DEPLOYED,
+  IS_MEDIACONVERT_DEPLOYED,
+  HAS_OMAKASE_EXPORT_CAPABILITY,
 } from "@/constants";
-
 
 const Home = () => {
   const markdown = `
@@ -22,30 +23,39 @@ const Home = () => {
   - **Sources** shows the current sources in the TAMS store. You can select individual items to view more details${
     IS_REPLICATION_DEPLOYED
       ? ", create MediaConvert jobs, and access replication functionality"
-      : " and create MediaConvert jobs"
+      : IS_MEDIACONVERT_DEPLOYED
+      ? " and create MediaConvert jobs"
+      : ""
   }.
   - **Flows** shows the current flows in the TAMS store. You can select individual items to view more details${
     IS_REPLICATION_DEPLOYED
       ? ", create exports, and manage replication workflows"
-      : " and create exports"
+      : HAS_OMAKASE_EXPORT_CAPABILITY
+      ? " and create exports"
+      : ""
   }.
 
   On each of these pages you can access:
-  - **Diagram View** - Visual representation of TAMS entities and their relationships${
+  - **Diagram View** - Visual representation of TAMS entities and their relationships.${
     IS_HLS_DEPLOYED
       ? `
-  - **HLS Player** - Basic HLS video player and HLS Manifest API`
+  - **HLS Player** - Basic HLS video player and HLS Manifest API.`
       : ""
   }
-  - **Omakase Player** - Advanced video player with timeline, markers, and export capabilities${
+  - **Omakase Player** - Advanced video player with timeline${
+    HAS_OMAKASE_EXPORT_CAPABILITY
+      ? ", markers, and export capabilities"
+      : " and markers"
+  }.${
     IS_REPLICATION_DEPLOYED
       ? `
-  - **Replication** - Copy sources/flows between different TAMS stores`
+  - **Replication** - Copy sources/flows between different TAMS stores.`
       : ""
   }
-${
-  IS_HLS_INGEST_DEPLOYED
-    ? `
+
+  ${
+    IS_HLS_INGEST_DEPLOYED
+      ? `
   ## Ingest Components
 
   - **MediaLive Channels** shows a list of AWS Elemental MediaLive Channels. You can choose to Ingest the channel and/or start/stop the Channel.
@@ -53,8 +63,8 @@ ${
   - **HLS Ingests** shows a list of HLS Ingest Jobs and their status. You can also create a new HLS Ingest job.
 
   > **NOTE**: The Ingest workflow for both MediaLive and MediaConvert uses the HLS manifest file produced by those services to determine how and what to ingest. Therefore only output types of HLS for Channels and Jobs will support ingest.`
-    : ""
-}${
+      : ""
+  }${
     IS_FFMPEG_DEPLOYED
       ? `
 
@@ -65,12 +75,18 @@ ${
   - **FFmpeg - Jobs** shows a list of batch FFmpeg Conversion Jobs that have been triggered. They can be reviewed from here.`
       : ""
   }
-
+${
+  IS_MEDIACONVERT_DEPLOYED
+    ? `
   ## MediaConvert Integration
 
   - **MediaConvert Jobs** shows a list of AWS Elemental MediaConvert Jobs with detailed status information, progress tracking, and job specifications. You can monitor job execution and view comprehensive job details.
-  - **Create MediaConvert Jobs** from TAMS sources using the export functionality, allowing you to process TAMS content through MediaConvert workflows.
-
+  - **Create MediaConvert Jobs** from TAMS sources using the export functionality, allowing you to process TAMS content through MediaConvert workflows.`
+    : ""
+}
+${
+  HAS_OMAKASE_EXPORT_CAPABILITY || IS_FFMPEG_DEPLOYED
+    ? `
   ## Advanced Features
 
   ### Export Operations
@@ -78,20 +94,26 @@ ${
     IS_FFMPEG_DEPLOYED
       ? "Export operations are dynamically configurable through AWS Systems Manager Parameter Store. "
       : ""
-  }The system supports:
-  - **MediaConvert Export** - Create MediaConvert jobs directly from TAMS content${
-    IS_FFMPEG_DEPLOYED
-      ? `
+  }The system supports:${
+        IS_MEDIACONVERT_DEPLOYED
+          ? `
+  - **MediaConvert Export** - Create MediaConvert jobs directly from TAMS content`
+          : ""
+      }${
+        IS_FFMPEG_DEPLOYED
+          ? `
   - **Custom Export Operations** - Configurable FFmpeg-based export workflows defined in SSM parameters`
-      : ""
-  }
+          : ""
+      }
 
   ### Edit-by-Reference
-  The solution supports non-destructive editing workflows, allowing you to work with TAMS content without modifying the original media.
-
+  The solution supports non-destructive editing workflows, allowing you to work with TAMS content without modifying the original media.`
+    : ""
+}
 ${
   IS_REPLICATION_DEPLOYED
-    ? `  ### Replication
+    ? `
+  ### Replication
   Replicate sources and flows between different TAMS stores with support for:
   - One-off batch replication
   - Live replication rules
@@ -117,7 +139,11 @@ ${
   | ***hls_exclude***        | _bool_   | Used to indicate the source should be excluded from HLS manifest generation. This option includes exclusion from the Omakase Player. **Note: Only works when HLS API component is deployed.** |
   `;
 
-  return <TextContent><ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown></TextContent>;
+  return (
+    <TextContent>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+    </TextContent>
+  );
 };
 
 export default Home;
