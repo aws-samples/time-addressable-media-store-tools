@@ -16,6 +16,7 @@ import { AWS_FFMPEG_COMMANDS_PARAMETER } from "@/constants";
 import { useJobStart } from "@/hooks/useFfmpeg";
 import createFFmegFlow from "@/utils/createFFmegFlow";
 import { useParameter } from "@/hooks/useParameters";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 
 const FlowCreateJobModal = ({
   modalVisible,
@@ -30,6 +31,7 @@ const FlowCreateJobModal = ({
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
   const { parameter: commandsData } = useParameter(AWS_FFMPEG_COMMANDS_PARAMETER);
+  const credentials = useAwsCredentials();
 
   const commands = useMemo(() => {
     if (!commandsData) return [];
@@ -49,7 +51,7 @@ const FlowCreateJobModal = ({
   const createJob = async () => {
     setIsSubmitting(true);
     const destination =
-      outputFlow || (await createFFmegFlow(selectedFlowId, ffmpeg.tams));
+      outputFlow || (await createFFmegFlow(selectedFlowId, ffmpeg.tams, credentials));
     const id = crypto.randomUUID();
     addAlertItem({
       type: "success",
