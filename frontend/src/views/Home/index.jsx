@@ -8,6 +8,7 @@ import {
   IS_REPLICATION_DEPLOYED,
   IS_MEDIACONVERT_DEPLOYED,
   HAS_OMAKASE_EXPORT_CAPABILITY,
+  IS_LOOP_RECORDER_DEPLOYED,
 } from "@/constants";
 
 const Home = () => {
@@ -128,23 +129,23 @@ ${
   - Configurable connection management`
     : ""
 }
-
+${IS_HLS_DEPLOYED || IS_LOOP_RECORDER_DEPLOYED ? `
   ## Special Tags
-
+${IS_HLS_DEPLOYED || IS_LOOP_RECORDER_DEPLOYED ? `
   ### TAMS Flow Tags
 
   | Tag Key                  | Type     | Notes |
-  | ------------------------ | -------- | ----- |
-  | ***flow_status***        | _string_ | Used to control whether the **ENDLIST** line is present in the HLS manifest. Set this tag value to **ingesting** to exclude the line. **Note: Only works when HLS API component is deployed.** |
-  | ***hls_segments***       | _number_ | Used to limit the number of segments presented in the HLS manifest. Defaults to **150** if tag not set. Use the value **inf** to list all segments. However, listing all segments may result in the generation of the HLS manifest timing out. **Note: Only works when HLS API component is deployed.** |
-  | ***hls_exclude***        | _bool_   | Used to indicate the flow should be excluded from HLS manifest generation. **Note: Only works when HLS API component is deployed.** |
-  | ***loop_recorder_duration*** | _number_ | Used by the Loop Recorder to automatically manage flow duration by deleting older segments when flows exceed the specified duration (in seconds). **Note: Only works when Loop Recorder component is deployed.** |
-
+  | ------------------------ | -------- | ----- |${IS_HLS_DEPLOYED ? `
+  | ***flow_status***        | _string_ | Used to control whether the **ENDLIST** line is present in the HLS manifest. Set this tag value to **ingesting** to exclude the line. |
+  | ***hls_segments***       | _number_ | Used to limit the number of segments presented in the HLS manifest. Defaults to **150** if tag not set. Use the value **inf** to list all segments. However, listing all segments may result in the generation of the HLS manifest timing out. |
+  | ***hls_exclude***        | _bool_   | Used to indicate the flow should be excluded from HLS manifest generation. |` : ""}${IS_LOOP_RECORDER_DEPLOYED ? `
+  | ***loop_recorder_duration*** | _number_ | Used by the Loop Recorder to automatically manage flow duration by deleting older segments when flows exceed the specified duration (in seconds). |` : ""}` : ""}
+${IS_HLS_DEPLOYED ? `
   ### TAMS Source Tags
 
   | Tag Key                  | Type     | Notes |
   | ------------------------ | -------- | ----- |
-  | ***hls_exclude***        | _bool_   | Used to indicate the source should be excluded from HLS manifest generation. This option includes exclusion from the Omakase Player. **Note: Only works when HLS API component is deployed.** |
+  | ***hls_exclude***        | _bool_   | Used to indicate the source should be excluded from HLS manifest generation. This option includes exclusion from the Omakase Player. |` : ""}` : ""}
   `;
 
   return (
