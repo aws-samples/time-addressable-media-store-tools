@@ -5,17 +5,6 @@ import { TextContent } from "@cloudscape-design/components";
 const AuthGuard = ({ children }) => {
   const auth = useAuth();
 
-  // Clean up OAuth callback parameters using plain JavaScript
-  useEffect(() => {
-    if (auth.isAuthenticated && window.location.search.includes("code=")) {
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname + window.location.hash
-      );
-    }
-  }, [auth.isAuthenticated]);
-
   useEffect(() => {
     if (
       !auth.isAuthenticated &&

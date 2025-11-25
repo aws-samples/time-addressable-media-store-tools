@@ -34,10 +34,15 @@ const oidcConfig = {
   authority: `https://${OIDC_AUTHORITY}`,
   client_id: OIDC_CLIENT_ID,
   redirect_uri: OIDC_REDIRECT_URI,
+  post_logout_redirect_uri: OIDC_REDIRECT_URI,
   response_type: "code",
   scope: OIDC_SCOPES.join(" "),
   revokeTokenTypes: ["refresh_token"],
   revokeTokensOnSignout: true,
+
+  onSigninCallback: () => {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  },
 };
 
 const App = () => {
