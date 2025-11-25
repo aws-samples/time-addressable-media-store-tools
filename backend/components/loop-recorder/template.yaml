@@ -66,3 +66,7 @@ Resources:
           Properties:
             Name: !Ref ApiStackName
             ScheduleExpression: rate(1 minute)
+
+Outputs:
+  LoopRecorderArn:
+    Value: !Ref LoopRecorder

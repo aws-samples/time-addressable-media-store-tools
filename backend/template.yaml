@@ -155,8 +155,10 @@ Resources:
       AuthorizationType: OAUTH_CLIENT_CREDENTIALS
       AuthParameters:
         OAuthParameters:
-          AuthorizationEndpoint: !ImportValue
-            Fn::Sub: ${ApiStackName}-TokenUrl
+          AuthorizationEndpoint: !Sub
+            - https://${CognitoDomain}/oauth2/token
+            - CognitoDomain: !ImportValue
+                Fn::Sub: ${ApiStackName}-CognitoDomain
           ClientParameters:
             ClientID: !ImportValue
               Fn::Sub: ${ApiStackName}-UserPoolClientId
@@ -280,8 +282,7 @@ Resources:
   AuthRolePolicyTools:
     Type: AWS::IAM::RolePolicy
     Properties:
-      RoleName: !ImportValue
-        Fn::Sub: ${ApiStackName}-AuthRoleName
+      RoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
       PolicyName: !Ref AWS::StackName
       PolicyDocument:
         Version: "2012-10-17"
@@ -336,8 +337,8 @@ Resources:
           POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           TAMS_ENDPOINT: !ImportValue
             Fn::Sub: ${ApiStackName}-ApiEndpoint
-          TOKEN_URL: !ImportValue
-            Fn::Sub: ${ApiStackName}-TokenUrl
+          COGNITO_DOMAIN: !ImportValue
+            Fn::Sub: ${ApiStackName}-CognitoDomain
           USER_POOL_ID: !ImportValue
             Fn::Sub: ${ApiStackName}-UserPoolId
           CLIENT_ID: !ImportValue
@@ -388,10 +389,9 @@ Resources:
           Fn::Sub: ${ApiStackName}-ApiEndpoint
         UserPoolClientId: !ImportValue
           Fn::Sub: ${ApiStackName}-UserPoolClientId
-        TokenUrl: !ImportValue
-          Fn::Sub: ${ApiStackName}-TokenUrl
-        AuthRoleName: !ImportValue
-          Fn::Sub: ${ApiStackName}-AuthRoleName
+        CognitoDomain: !ImportValue
+          Fn::Sub: ${ApiStackName}-CognitoDomain
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         CodecsParameterName: !Ref CodecsParameter
         ApiStackName: !Ref ApiStackName
@@ -409,10 +409,9 @@ Resources:
           Fn::Sub: ${ApiStackName}-ApiEndpoint
         UserPoolClientId: !ImportValue
           Fn::Sub: ${ApiStackName}-UserPoolClientId
-        TokenUrl: !ImportValue
-          Fn::Sub: ${ApiStackName}-TokenUrl
-        AuthRoleName: !ImportValue
-          Fn::Sub: ${ApiStackName}-AuthRoleName
+        CognitoDomain: !ImportValue
+          Fn::Sub: ${ApiStackName}-CognitoDomain
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         TamsConnectionArn: !GetAtt TamsConnection.Arn
         ParentStackName: !Ref AWS::StackName
@@ -429,10 +428,7 @@ Resources:
           Fn::Sub: ${ApiStackName}-ApiEndpoint
         UserPoolClientId: !ImportValue
           Fn::Sub: ${ApiStackName}-UserPoolClientId
-        TokenUrl: !ImportValue
-          Fn::Sub: ${ApiStackName}-TokenUrl
-        AuthRoleName: !ImportValue
-          Fn::Sub: ${ApiStackName}-AuthRoleName
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         CodecsParameterName: !Ref CodecsParameter
         TamsConnectionArn: !GetAtt TamsConnection.Arn
@@ -452,10 +448,7 @@ Resources:
           Fn::Sub: ${ApiStackName}-ApiEndpoint
         UserPoolClientId: !ImportValue
           Fn::Sub: ${ApiStackName}-UserPoolClientId
-        TokenUrl: !ImportValue
-          Fn::Sub: ${ApiStackName}-TokenUrl
-        AuthRoleName: !ImportValue
-          Fn::Sub: ${ApiStackName}-AuthRoleName
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         TamsConnectionArn: !GetAtt TamsConnection.Arn
         SqsSegmentIngestionFunctionRoleName: !GetAtt IngestStack.Outputs.SqsSegmentIngestionFunctionRoleName
@@ -478,10 +471,7 @@ Resources:
           Fn::Sub: ${ApiStackName}-ApiEndpoint
         UserPoolClientId: !ImportValue
           Fn::Sub: ${ApiStackName}-UserPoolClientId
-        TokenUrl: !ImportValue
-          Fn::Sub: ${ApiStackName}-TokenUrl
-        AuthRoleName: !ImportValue
-          Fn::Sub: ${ApiStackName}-AuthRoleName
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
         OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
         TamsConnectionArn: !GetAtt TamsConnection.Arn
         SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
@@ -490,7 +480,24 @@ Resources:
         ApiStackName: !Ref ApiStackName
     Condition: DeployReplication
 
+  CognitoStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/cognito.yaml
+      Parameters:
+        UserPoolId: !ImportValue
+          Fn::Sub: ${ApiStackName}-UserPoolId
+
 Outputs:
+  UserPoolClientWebId:
+    Value: !GetAtt CognitoStack.Outputs.UserPoolClientId
+
+  IdentityPoolId:
+    Value: !GetAtt CognitoStack.Outputs.IdentityPoolId
+
+  AuthRoleName:
+    Value: !GetAtt CognitoStack.Outputs.AuthRoleName
+
   OmakaseExportEventBus:
     Value: !Ref OmakaseExportEventBus
 
@@ -505,6 +512,12 @@ Outputs:
 
   OmakaseExportEventParameter:
     Value: !Ref OmakaseExportEventParameter
+
+  LoopRecorderArn:
+    Value: !If
+      - DeployLoopRecorder
+      - !GetAtt LoopRecorderStack.Outputs.LoopRecorderArn
+      - ""
 
   HlsCodecsParameter:
     Value: !If
