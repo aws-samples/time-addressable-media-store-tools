@@ -5,6 +5,7 @@ import { useExportOperations } from "@/hooks/useExportOperations";
 import { useExportForm } from "@/hooks/useExportForm";
 import { useMediaConvertJob } from "@/hooks/useMediaConvertJob";
 import { useMediaConvertJobSpec } from "@/hooks/useMediaConvertJobSpec";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import { executeExport } from "@/utils/executeExport";
 import validateJson from "@/utils/validateJson";
 import FlowSelector from "./FlowSelector";
@@ -30,6 +31,7 @@ const OmakaseExportModal = ({
     setFileName(sourceId);
     resetJobSpec();
   };
+  const credentials = useAwsCredentials();
   const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
   const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
   const { operations, getOperationSchema } = useExportOperations();
@@ -77,7 +79,8 @@ const OmakaseExportModal = ({
       formData,
       editTimeranges,
       selectedFlows.map((flow) => flow.value),
-      sourceId
+      sourceId,
+      credentials
     );
     const id = crypto.randomUUID();
     addAlertItem({
