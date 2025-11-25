@@ -64,17 +64,18 @@ const Home = () => {
 
   > **NOTE**: The Ingest workflow for both MediaLive and MediaConvert uses the HLS manifest file produced by those services to determine how and what to ingest. Therefore only output types of HLS for Channels and Jobs will support ingest.`
       : ""
-  }${
-    IS_FFMPEG_DEPLOYED
-      ? `
-
+  }
+${
+  IS_FFMPEG_DEPLOYED
+    ? `
   ## FFmpeg Components
 
   - **FFmpeg - Export** shows a list of FFmpeg exports that have been triggered and their status. You can also download the results from here.
   - **FFmpeg - Rules** shows a list of event driven FFmpeg Conversion Rules that are setup. They can be reviewed and deleted from here.
   - **FFmpeg - Jobs** shows a list of batch FFmpeg Conversion Jobs that have been triggered. They can be reviewed from here.`
-      : ""
-  }
+    : ""
+}
+
 ${
   IS_MEDIACONVERT_DEPLOYED
     ? `
@@ -84,6 +85,7 @@ ${
   - **Create MediaConvert Jobs** from TAMS sources using the export functionality, allowing you to process TAMS content through MediaConvert workflows.`
     : ""
 }
+
 ${
   HAS_OMAKASE_EXPORT_CAPABILITY || IS_FFMPEG_DEPLOYED
     ? `
@@ -106,10 +108,16 @@ ${
           : ""
       }
 
+  ${
+    HAS_OMAKASE_EXPORT_CAPABILITY
+      ? `
   ### Edit-by-Reference
   The solution supports non-destructive editing workflows, allowing you to work with TAMS content without modifying the original media.`
+      : ""
+  }`
     : ""
 }
+
 ${
   IS_REPLICATION_DEPLOYED
     ? `
