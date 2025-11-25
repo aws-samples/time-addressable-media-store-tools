@@ -10,9 +10,6 @@ Parameters:
   UserPoolClientId:
     Type: String
 
-  TokenUrl:
-    Type: String
-
   AuthRoleName:
     Type: String
 

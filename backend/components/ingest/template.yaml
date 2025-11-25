@@ -10,7 +10,7 @@ Parameters:
   UserPoolClientId:
     Type: String
 
-  TokenUrl:
+  CognitoDomain:
     Type: String
 
   AuthRoleName:
@@ -72,7 +72,7 @@ Resources:
           POWERTOOLS_SERVICE_NAME: tams-tools
           POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           TAMS_ENDPOINT: !Ref ApiEndpoint
-          TOKEN_URL: !Ref TokenUrl
+          COGNITO_DOMAIN: !Ref CognitoDomain
           USER_POOL_ID: !Ref UserPoolId
           CLIENT_ID: !Ref UserPoolClientId
       Policies:

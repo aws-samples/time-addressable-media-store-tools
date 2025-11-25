@@ -25,7 +25,7 @@ batch_processor = BatchProcessor(event_type=EventType.SQS)
 s3 = boto3.client("s3")
 endpoint = os.environ["TAMS_ENDPOINT"]
 creds = Credentials(
-    token_url=os.environ["TOKEN_URL"],
+    token_url=f'https://{os.environ["COGNITO_DOMAIN"]}/oauth2/token',
     user_pool_id=os.environ["USER_POOL_ID"],
     client_id=os.environ["CLIENT_ID"],
     scopes=["tams-api/read", "tams-api/write"],
