@@ -1,22 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-  UserPoolId:
-    Type: String
-
   ApiEndpoint:
-    Type: String
-
-  UserPoolClientId:
-    Type: String
-
-  CognitoDomain:
     Type: String
 
   AuthRoleName:
     Type: String
 
   OpenIdAuthLayerArn:
+    Type: String
+
+  SecretArn:
     Type: String
 
   CodecsParameterName:
@@ -102,9 +96,7 @@ Resources:
           POWERTOOLS_SERVICE_NAME: tams-tools
           POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
           TAMS_ENDPOINT: !Ref ApiEndpoint
-          COGNITO_DOMAIN: !Ref CognitoDomain
-          USER_POOL_ID: !Ref UserPoolId
-          CLIENT_ID: !Ref UserPoolClientId
+          SECRET_ARN: !Ref SecretArn
           DEFAULT_HLS_SEGMENTS: 150
           CODEC_PARAMETER: !Ref CodecsParameterName
           OBJECT_LAMBDA_ACCESS_POINT_ARN: !Sub arn:${AWS::Partition}:s3-object-lambda:${AWS::Region}:${AWS::AccountId}:accesspoint/${ParentStackName}
@@ -113,8 +105,9 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
-                - cognito-idp:DescribeUserPoolClient
-              Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !Ref SecretArn
             - Effect: Allow
               Action:
                 - ssm:GetParameter

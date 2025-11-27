@@ -31,7 +31,7 @@ import { AuthProvider } from "react-oidc-context";
 import AuthGuard from "@/components/AuthGuard";
 
 const oidcConfig = {
-  authority: `https://${OIDC_AUTHORITY}`,
+  authority: OIDC_AUTHORITY,
   client_id: OIDC_CLIENT_ID,
   redirect_uri: OIDC_REDIRECT_URI,
   post_logout_redirect_uri: OIDC_REDIRECT_URI,

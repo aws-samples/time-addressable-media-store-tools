@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
 import {
   Box,
@@ -33,7 +33,7 @@ const MediaLiveHlsIngestion = () => {
       { id: "button", visible: true },
     ],
   };
-  const columnDefinitions = [
+  const columnDefinitions = useMemo(() => [
     {
       id: "id",
       header: "Channel Id",
@@ -112,7 +112,7 @@ const MediaLiveHlsIngestion = () => {
         />
       ),
     },
-  ];
+  ]);
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : channels, {
       filtering: {

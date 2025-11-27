@@ -4,7 +4,20 @@ Parameters:
   UserPoolId:
     Type: String
 
+  OidcUrl:
+    Type: String
+
+  OidcClientId:
+    Type: String
+
 Transform: AWS::Serverless-2016-10-31
+
+Conditions:
+  CreateUserPoolClient: !Not [!Equals [!Ref UserPoolId, "-"]]
+
+  CreateOidcProvider: !And [!Not [!Equals [!Ref OidcUrl, ""]], !Not [!Equals [!Ref OidcClientId, ""]], !Equals [!Ref UserPoolId, "-"]]
+
+  CreateIdentityPool: !Or [!Condition CreateUserPoolClient, !Condition CreateOidcProvider]
 
 Resources:
   UserPoolClient:
@@ -41,15 +54,31 @@ Resources:
         - http://localhost:5173
       LogoutURLs:
         - http://localhost:5173
+    Condition: CreateUserPoolClient
+
+  OIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Ref OidcUrl
+      ClientIdList: 
+        - !Ref OidcClientId
+    Condition: CreateOidcProvider
 
   IdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
       IdentityPoolName: !Ref AWS::StackName
       AllowUnauthenticatedIdentities: False
-      CognitoIdentityProviders:
-        - ClientId: !Ref UserPoolClient
-          ProviderName: !Sub cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+      CognitoIdentityProviders: !If
+        - CreateUserPoolClient
+        - - ClientId: !Ref UserPoolClient
+            ProviderName: !Sub cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+        - !Ref AWS::NoValue
+      OpenIdConnectProviderARNs: !If
+        - CreateOidcProvider
+        - - !GetAtt OIDCProvider.Arn
+        - !Ref AWS::NoValue
+    Condition: CreateIdentityPool
 
   AuthRole:
     Type: AWS::IAM::Role
@@ -66,6 +95,7 @@ Resources:
                 cognito-identity.amazonaws.com:aud: !Ref IdentityPool
               ForAnyValue:StringLike:
                 cognito-identity.amazonaws.com:amr: authenticated
+    Condition: CreateIdentityPool
 
   IdentityPoolRoleMap:
     Type: AWS::Cognito::IdentityPoolRoleAttachment
@@ -73,13 +103,30 @@ Resources:
       IdentityPoolId: !Ref IdentityPool
       Roles:
         authenticated: !GetAtt AuthRole.Arn
+    Condition: CreateIdentityPool
 
 Outputs:
-  UserPoolClientId:
-    Value: !Ref UserPoolClient
+
+  OidcAuthority:
+    Value: !If
+      - CreateUserPoolClient
+      - !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+      - !Ref OidcUrl
+
+  OidcClientId:
+    Value: !If
+      - CreateUserPoolClient
+      - !Ref UserPoolClient
+      - !Ref OidcClientId
 
   IdentityPoolId:
-    Value: !Ref IdentityPool
+    Value: !If
+      - CreateIdentityPool
+      - !Ref IdentityPool
+      - ""
 
   AuthRoleName:
-    Value: !Ref AuthRole
+    Value: !If
+      - CreateIdentityPool
+      - !Ref AuthRole
+      - ""

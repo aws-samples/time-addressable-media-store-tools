@@ -26,7 +26,7 @@ export const useIamApi = (endpoint) => {
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
-    return response.json();
+    return response.json().catch(() => ({}));
   };
 
   return {
