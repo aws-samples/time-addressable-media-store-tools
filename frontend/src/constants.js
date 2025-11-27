@@ -1,9 +1,9 @@
 /************* ENVIRONMENT VARIABLES **************/
 export const APP_TITLE = import.meta.env.VITE_APP_TITLE;
 export const APP_TITLE_LOGO = import.meta.env.VITE_APP_TITLE_LOGO;
-export const AWS_REGION = import.meta.env.VITE_APP_AWS_REGION;
-export const AWS_USER_POOL_ID = import.meta.env.VITE_APP_AWS_USER_POOL_ID;
-export const AWS_USER_POOL_CLIENT_WEB_ID = import.meta.env.VITE_APP_AWS_USER_POOL_CLIENT_WEB_ID;
+export const OIDC_AUTHORITY = import.meta.env.VITE_APP_OIDC_AUTHORITY;
+export const OIDC_CLIENT_ID = import.meta.env.VITE_APP_OIDC_CLIENT_ID;
+export const OIDC_REDIRECT_URI = import.meta.env.VITE_APP_OIDC_REDIRECT_URI;
 export const AWS_IDENTITY_POOL_ID = import.meta.env.VITE_APP_AWS_IDENTITY_POOL_ID;
 export const AWS_TAMS_ENDPOINT = import.meta.env.VITE_APP_TAMS_API_ENDPOINT;
 export const OMAKASE_EXPORT_EVENT_BUS = import.meta.env.VITE_APP_OMAKASE_EXPORT_EVENT_BUS;
@@ -11,6 +11,7 @@ export const OMAKASE_EXPORT_EVENT_PARAMETER = import.meta.env.VITE_APP_OMAKASE_E
 export const TAMS_AUTH_CONNECTION_ARN = import.meta.env.VITE_APP_TAMS_AUTH_CONNECTION_ARN;
 export const MEDIACONVERT_ROLE_ARN = import.meta.env.VITE_APP_AWS_MEDIACONVERT_ROLE_ARN;
 export const MEDIACONVERT_BUCKET = import.meta.env.VITE_APP_AWS_MEDIACONVERT_BUCKET;
+export const LOOP_RECORDER_ARN = import.meta.env.VITE_APP_AWS_LOOP_RECORDER_ARN
 export const AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN = import.meta.env.VITE_APP_AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN;
 export const AWS_INGEST_CREATE_NEW_FLOW_ARN = import.meta.env.VITE_APP_AWS_INGEST_CREATE_NEW_FLOW_ARN;
 export const AWS_HLS_INGEST_ENDPOINT = import.meta.env.VITE_APP_AWS_HLS_INGEST_ENDPOINT;
@@ -59,7 +60,23 @@ export const HAS_OMAKASE_EXPORT_CAPABILITY = !!(
   OMAKASE_EXPORT_EVENT_BUS &&
   OMAKASE_EXPORT_EVENT_PARAMETER
 );
+export const IS_LOOP_RECORDER_DEPLOYED = !!(
+  AWS_IDENTITY_POOL_ID &&
+  LOOP_RECORDER_ARN
+);
 /************* END OF FEATURE FLAGS **************/
+export const AWS_REGION = AWS_IDENTITY_POOL_ID?.split(":")[0];
+export const AWS_USER_POOL_ID = OIDC_AUTHORITY.includes("cognito")
+  ? OIDC_AUTHORITY.split("/").pop()
+  : null;
+export const OIDC_SCOPES = [
+  "openid",
+  "email",
+  "tams-api/admin",
+  "tams-api/delete",
+  "tams-api/read",
+  "tams-api/write",
+];
 export const PAGE_SIZE = 20;
 export const PAGE_SIZE_PREFERENCE = {
   title: "Select page size",

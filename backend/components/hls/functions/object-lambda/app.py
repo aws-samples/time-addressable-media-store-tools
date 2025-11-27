@@ -31,10 +31,8 @@ s3 = boto3.client(
 endpoint = os.environ["TAMS_ENDPOINT"]
 object_lambda_access_point_arn = os.environ["OBJECT_LAMBDA_ACCESS_POINT_ARN"]
 creds = Credentials(
-    token_url=os.environ["TOKEN_URL"],
-    user_pool_id=os.environ["USER_POOL_ID"],
-    client_id=os.environ["CLIENT_ID"],
     scopes=["tams-api/read"],
+    secret_arn=os.environ["SECRET_ARN"],
 )
 default_hls_segments = os.environ["DEFAULT_HLS_SEGMENTS"]
 codec_parameter = os.environ["CODEC_PARAMETER"]

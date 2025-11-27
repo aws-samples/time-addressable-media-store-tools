@@ -4,9 +4,10 @@ import useSWRMutation from "swr/mutation";
 import paginationFetcher from "@/utils/paginationFetcher";
 
 const useFlowsQuery = (url) => {
+  const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     url,
-    paginationFetcher,
+    (path) => paginationFetcher(path, null, api),
     {
       refreshInterval: 3000,
     }
@@ -57,7 +58,7 @@ export const useDelete = () => {
     "/flows",
     (path, { arg }) =>
       del(`${path}/${arg.flowId}`).then((response) =>
-        setTimeout(response.data, 1000)
+        new Promise(resolve => setTimeout(() => resolve(response.data), 1000))
       ) // setTimeout used to artificially wait until basic deletes are complete.
   );
 

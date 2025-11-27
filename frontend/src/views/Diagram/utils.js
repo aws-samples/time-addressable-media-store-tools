@@ -1,15 +1,11 @@
 import { formatPrecedence, nodeSize } from "./constants";
 
-import { useApi } from "@/hooks/useApi";
-
-const getEntities = async (path, graph = {}) => {
-  const { get } = useApi();
-
+const getEntities = async (api, path, graph = {}) => {
   // If we've already processed this path, return
   if (graph[path]) return graph;
 
   // Fetch current path data
-  const { data: resp } = await get(path);
+  const { data: resp } = await api.get(path);
   graph[path] = resp;
 
   // Collect all promises for parallel execution
@@ -18,11 +14,11 @@ const getEntities = async (path, graph = {}) => {
   if (resp.source_id) {
     const sourcePath = `/sources/${resp.source_id}`;
     if (!graph[sourcePath]) {
-      promises.push(getEntities(sourcePath, graph));
+      promises.push(getEntities(api, sourcePath, graph));
     }
   } else {
     // Handle source flows in parallel
-    const { data: source_flows } = await get(`/flows?source_id=${resp.id}`);
+    const { data: source_flows } = await api.get(`/flows?source_id=${resp.id}`);
     source_flows.forEach((flow) => {
       const flowPath = `/flows/${flow.id}`;
       graph[flowPath] = flow;
@@ -34,7 +30,7 @@ const getEntities = async (path, graph = {}) => {
     const type = resp.source_id ? "flows" : "sources";
     const collectedPromises = resp.collected_by
       .filter((collection) => !graph[`/${type}/${collection}`])
-      .map((collection) => getEntities(`/${type}/${collection}`, graph));
+      .map((collection) => getEntities(api, `/${type}/${collection}`, graph));
     promises.push(...collectedPromises);
   }
 
@@ -42,7 +38,7 @@ const getEntities = async (path, graph = {}) => {
   if (resp.flow_collection) {
     const flowPromises = resp.flow_collection
       .filter((collection) => !graph[`/flows/${collection.id}`])
-      .map((collection) => getEntities(`/flows/${collection.id}`, graph));
+      .map((collection) => getEntities(api, `/flows/${collection.id}`, graph));
     promises.push(...flowPromises);
   }
 
@@ -50,7 +46,7 @@ const getEntities = async (path, graph = {}) => {
   if (resp.source_collection) {
     const sourcePromises = resp.source_collection
       .filter((collection) => !graph[`/sources/${collection.id}`])
-      .map((collection) => getEntities(`/sources/${collection.id}`, graph));
+      .map((collection) => getEntities(api, `/sources/${collection.id}`, graph));
     promises.push(...sourcePromises);
   }
 
@@ -107,9 +103,9 @@ const getPositions = (entities) => {
   );
 };
 
-export const getElements = async (path) => {
+export const getElements = async (api, path) => {
   // Get a list of all Sources and Flows related to the input entity.
-  const entities = await getEntities(path).then((graph) =>
+  const entities = await getEntities(api, path).then((graph) =>
     Object.values(graph)
   );
   const positions = getPositions(entities);

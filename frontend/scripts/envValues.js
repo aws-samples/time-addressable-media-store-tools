@@ -114,16 +114,20 @@ async function run(samConfigEnv, options) {
   const envData = envTemplateData
     .split("\n")
     .map((line) => {
-      const match = line.match(/<(.+)>/);
-      if (match) {
+      let processedLine = line;
+      const matches = line.matchAll(/<(.+?)>/g);
+      let hasMatch = false;
+      for (const match of matches) {
+        hasMatch = true;
         if (outputs[match[1]]) {
-          return line.replace(/^#\s*/, "").replace(match[0], outputs[match[1]]);
+          processedLine = processedLine.replace(match[0], outputs[match[1]]);
+        } else {
+          console.log(
+            chalk.yellow(`No output found for placeholder: ${match[1]}`)
+          );
         }
-        console.log(
-          chalk.yellow(`No output found for placeholder: ${match[1]}`)
-        );
       }
-      return line;
+      return hasMatch ? processedLine.replace(/^#\s*/, "") : processedLine;
     })
     .join("\n");
   await fs.writeFile(options.outputPath, envData);

@@ -20,32 +20,35 @@ import JobDetailModal from "./components/JobDetailModal";
 
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useTamsJobs } from "@/hooks/useMediaConvert";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import getPresignedUrl from "@/utils/getPresignedUrl";
-
-const handleDownload = async (outputGroup) => {
-  const destination =
-    outputGroup.OutputGroupSettings.FileGroupSettings.Destination;
-  const fileExtension =
-    CONTAINER_FILE_EXTENSION[
-      outputGroup.Outputs[0].ContainerSettings.Container
-    ];
-  const s3Uri_parts = destination.split("/");
-  const bucket = s3Uri_parts[2];
-  const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
-  const fileName = `${s3Uri_parts[s3Uri_parts.length - 1]}.${fileExtension}`;
-  const url = await getPresignedUrl({
-    bucket,
-    key,
-    expiry: 300,
-    ResponseContentDisposition: `attachment; filename="${fileName}"`,
-  });
-  window.open(url, "_blank");
-};
 
 const MediaConvertTamsJobs = () => {
   const { jobs, isLoading } = useTamsJobs();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState({});
+  const credentials = useAwsCredentials();
+
+  const handleDownload = async (outputGroup) => {
+    const destination =
+      outputGroup.OutputGroupSettings.FileGroupSettings.Destination;
+    const fileExtension =
+      CONTAINER_FILE_EXTENSION[
+        outputGroup.Outputs[0].ContainerSettings.Container
+      ];
+    const s3Uri_parts = destination.split("/");
+    const bucket = s3Uri_parts[2];
+    const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
+    const fileName = `${s3Uri_parts[s3Uri_parts.length - 1]}.${fileExtension}`;
+    const url = await getPresignedUrl({
+      bucket,
+      key,
+      expiry: 300,
+      credentials,
+      ResponseContentDisposition: `attachment; filename="${fileName}"`,
+    });
+    window.open(url, "_blank");
+  };
 
   const preferences = {
     pageSize: PAGE_SIZE,

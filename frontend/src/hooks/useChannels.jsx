@@ -4,21 +4,17 @@ import {
   StopChannelCommand,
 } from "@aws-sdk/client-medialive";
 
-import { AWS_REGION } from "@/constants";
-import { fetchAuthSession } from "aws-amplify/auth";
-import { get } from "aws-amplify/api";
+import { AWS_REGION, AWS_HLS_INGEST_ENDPOINT } from "@/constants";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
+import useIamApi from "@/hooks/useIamApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 
-const fetcher = async (path) =>
-  get({ apiName: "HlsIngest", path })
-    .response.then((res) => res.body)
-    .then((body) => body.json());
-
 export const useChannels = () => {
+  const api = useIamApi(AWS_HLS_INGEST_ENDPOINT);
   const { data, mutate, error, isLoading, isValidating } = useSWR(
     "/channel-ingestion",
-    fetcher,
+    (path) => api.get(path),
     {
       refreshInterval: 3000,
     }
@@ -34,15 +30,16 @@ export const useChannels = () => {
 };
 
 export const useChannelStart = () => {
+  const credentials = useAwsCredentials();
   const { trigger, isMutating } = useSWRMutation(
     "/channel-ingestion",
-    (_, { arg }) =>
-      fetchAuthSession().then((session) =>
-        new MediaLiveClient({
-          region: AWS_REGION,
-          credentials: session.credentials,
-        }).send(new StartChannelCommand(arg)).then((response) => response)
-      )
+    async (_, { arg }) => {
+      const client = new MediaLiveClient({
+        region: AWS_REGION,
+        credentials,
+      });
+      return client.send(new StartChannelCommand(arg));
+    }
   );
 
   return {
@@ -52,15 +49,16 @@ export const useChannelStart = () => {
 };
 
 export const useChannelStop = () => {
+  const credentials = useAwsCredentials();
   const { trigger, isMutating } = useSWRMutation(
     "/channel-ingestion",
-    (_, { arg }) =>
-      fetchAuthSession().then((session) =>
-        new MediaLiveClient({
-          region: AWS_REGION,
-          credentials: session.credentials,
-        }).send(new StopChannelCommand(arg)).then((response) => response)
-      )
+    async (_, { arg }) => {
+      const client = new MediaLiveClient({
+        region: AWS_REGION,
+        credentials,
+      });
+      return client.send(new StopChannelCommand(arg));
+    }
   );
 
   return {

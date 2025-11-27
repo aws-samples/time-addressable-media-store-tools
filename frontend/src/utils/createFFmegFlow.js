@@ -1,12 +1,10 @@
-import { fetchAuthSession } from "aws-amplify/auth";
 import { AWS_REGION, AWS_INGEST_CREATE_NEW_FLOW_ARN } from "@/constants";
 import { SFNClient, StartSyncExecutionCommand } from "@aws-sdk/client-sfn";
 
-const createFFmegFlow = async (flowId, changes) => {
-  const session = await fetchAuthSession();
+const createFFmegFlow = async (flowId, changes, credentials) => {
   const sfnClient = new SFNClient({
     region: AWS_REGION,
-    credentials: session.credentials,
+    credentials,
   });
   const response = await sfnClient.send(
     new StartSyncExecutionCommand({

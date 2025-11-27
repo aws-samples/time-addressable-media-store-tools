@@ -1,19 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TopNavigation } from "@cloudscape-design/components";
-import { useAuthenticator } from "@aws-amplify/ui-react";
+import { useAuth } from "react-oidc-context";
 import { Mode, applyMode } from "@cloudscape-design/global-styles";
 import { APP_TITLE, APP_TITLE_LOGO } from "@/constants";
 import "./Header.css";
 
 const Header = () => {
   const [mode, setMode] = useState(Mode.Dark);
-  const { user, signOut } = useAuthenticator((context) => [context.user]);
+  const auth = useAuth();
 
   applyMode(mode);
 
   const handleDropdownClick = ({ detail }) => {
     if (detail.id === "signout") {
-      signOut();
+      // The configuration passed to signoutRedirect have be built to work with Amazon Cognito
+      // This may need to be tweaked to work correctly with different OIDC providers
+      auth.signoutRedirect({
+        extraQueryParams: {
+          client_id: auth.settings.client_id,
+          logout_uri: auth.settings.redirect_uri,
+          response_type: "code",
+        },
+      });
     }
     if (detail.id === "dark") {
       setMode(Mode.Dark);
@@ -33,7 +41,10 @@ const Header = () => {
       utilities={[
         {
           type: "menu-dropdown",
-          text: user.signInDetails.loginId,
+          text:
+            auth.user?.profile?.email ||
+            auth.user?.profile?.preferred_username ||
+            "User",
           iconName: "user-profile",
           onItemClick: handleDropdownClick,
           items: [

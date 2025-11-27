@@ -1,22 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-  UserPoolId:
-    Type: String
-
   ApiEndpoint:
     Type: String
 
-  UserPoolClientId:
-    Type: String
-
-  TokenUrl:
-    Type: String
-
   AuthRoleName:
-    Type: String
-
-  OpenIdAuthLayerArn:
     Type: String
 
   CodecsParameterName:
@@ -25,7 +13,7 @@ Parameters:
   TamsConnectionArn:
     Type: String
 
-  SqsSegmentIngestFunctionArn:
+  SecretArn:
     Type: String
 
   SegmentIngestQueueUrl:
@@ -356,9 +344,7 @@ Resources:
                 - secretsmanager:GetSecretValue
                 - secretsmanager:DescribeSecret
               Resource:
-                - !Sub
-                  - arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:events!connection/${TamsConnection}/*
-                  - TamsConnection: !Select [1, !Split [/, !Ref TamsConnectionArn]]
+                - !Ref SecretArn
             - Effect: Allow
               Action:
                 - states:InvokeHTTPEndpoint

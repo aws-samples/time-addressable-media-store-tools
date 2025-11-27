@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  UserPoolId:
+    Type: String
+
+  OidcUrl:
+    Type: String
+
+  OidcClientId:
+    Type: String
+
+Transform: AWS::Serverless-2016-10-31
+
+Conditions:
+  CreateUserPoolClient: !Not [!Equals [!Ref UserPoolId, "-"]]
+
+  CreateOidcProvider: !And [!Not [!Equals [!Ref OidcUrl, ""]], !Not [!Equals [!Ref OidcClientId, ""]], !Equals [!Ref UserPoolId, "-"]]
+
+  CreateIdentityPool: !Or [!Condition CreateUserPoolClient, !Condition CreateOidcProvider]
+
+Resources:
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPoolId
+      ClientName: !Ref AWS::StackName
+      GenerateSecret: False
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      AuthSessionValidity: 3
+      RefreshTokenValidity: 30
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      TokenValidityUnits:
+        RefreshToken: days
+        AccessToken: minutes
+        IdToken: minutes
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlowsUserPoolClient: True
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - tams-api/admin
+        - tams-api/read
+        - tams-api/write
+        - tams-api/delete
+      CallbackURLs:
+        - http://localhost:5173
+      LogoutURLs:
+        - http://localhost:5173
+    Condition: CreateUserPoolClient
+
+  OIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Ref OidcUrl
+      ClientIdList: 
+        - !Ref OidcClientId
+    Condition: CreateOidcProvider
+
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Ref AWS::StackName
+      AllowUnauthenticatedIdentities: False
+      CognitoIdentityProviders: !If
+        - CreateUserPoolClient
+        - - ClientId: !Ref UserPoolClient
+            ProviderName: !Sub cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+        - !Ref AWS::NoValue
+      OpenIdConnectProviderARNs: !If
+        - CreateOidcProvider
+        - - !GetAtt OIDCProvider.Arn
+        - !Ref AWS::NoValue
+    Condition: CreateIdentityPool
+
+  AuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+    Condition: CreateIdentityPool
+
+  IdentityPoolRoleMap:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt AuthRole.Arn
+    Condition: CreateIdentityPool
+
+Outputs:
+
+  OidcAuthority:
+    Value: !If
+      - CreateUserPoolClient
+      - !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+      - !Ref OidcUrl
+
+  OidcClientId:
+    Value: !If
+      - CreateUserPoolClient
+      - !Ref UserPoolClient
+      - !Ref OidcClientId
+
+  IdentityPoolId:
+    Value: !If
+      - CreateIdentityPool
+      - !Ref IdentityPool
+      - ""
+
+  AuthRoleName:
+    Value: !If
+      - CreateIdentityPool
+      - !Ref AuthRole
+      - ""

@@ -32,14 +32,21 @@ sam deploy --guided --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
 
+**Note on Authentication**: By default, this solution uses Cognito from the TAMS API stack for authentication. The OIDC parameters configure user authentication for the Web UI, while the OAuth parameters configure service-to-service authentication with the TAMS API. Leave all authentication parameters blank to use the default Cognito setup.
+
 - **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 - **AWS Region**: The AWS region you want to deploy your app to.
 - **ApiStackName**: Supply the name of the CloudFormation stack used to deploy the TAMS API.
+- **OidcUrl**: Optional. The OIDC Authority URL for Web UI user authentication. Leave blank to use Cognito from the TAMS API stack.
+- **OidcClientId**: Optional. The OIDC provider client ID for Web UI user authentication. Leave blank to use Cognito from the TAMS API stack.
+- **OAuthClientId**: Optional. The OAuth provider client ID for service-to-service API authentication. Leave blank to use Cognito from the TAMS API stack.
+- **OAuthClientSecret**: Optional. The OAuth provider client secret for service-to-service API authentication. Leave blank to use Cognito from the TAMS API stack.
+- **OAuthAuthorizationEndpoint**: Optional. The OAuth provider token URL for service-to-service API authentication. Leave blank to use Cognito from the TAMS API stack.
 - **DeployHlsApi**: Defines whether to deploy the HLS component. **Leave the default value of `No`.**
 - **DeployIngestHls**: Defines whether to deploy the HLS ingest component. **Leave the default value of `No`.**
 - **DeployIngestFfmpeg**: Defines whether to deploy the FFMPEG based transcode component. **Leave the default value of `No`.**
 - **DeployReplication**: Defines whether to deploy the replication component. **Leave the default value of `No`.**
-- **Parameter DeployLoopRecorder**: Defines whether to deploy the loop recorder component. **Leave the default value of `No`.**
+- **DeployLoopRecorder**: Defines whether to deploy the loop recorder component. **Leave the default value of `No`.**
 - **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
 - **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
 - **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
@@ -67,11 +74,11 @@ The placeholder names in the `.env.template` file show the corresponding CloudFo
 
 The following variables must be configured for basic functionality. Values come from outputs of two different CloudFormation stacks:
 
-- **VITE_APP_AWS_REGION**: The AWS region where your TAMS API is deployed
-- **VITE_APP_AWS_USER_POOL_ID**: From **TAMS API stack** output `UserPoolId`
-- **VITE_APP_AWS_USER_POOL_CLIENT_WEB_ID**: From **TAMS API stack** output `UserPoolClientWebId`
-- **VITE_APP_AWS_IDENTITY_POOL_ID**: From **TAMS API stack** output `IdentityPoolId`
-- **VITE_APP_AWS_API_ENDPOINT**: From **TAMS API stack** output `ApiEndpoint`
+- **VITE_APP_TAMS_API_ENDPOINT**: From **TAMS API stack** output `ApiEndpoint`
+- **VITE_APP_OIDC_AUTHORITY**: From **TAMS Tools stack** output `OidcAuthority`
+- **VITE_APP_OIDC_CLIENT_ID**: From **TAMS Tools stack** output `OidcClientId`
+- **VITE_APP_OIDC_REDIRECT_URI**: The redirect URI for your application (for example, `http://localhost:5173` for local development)
+- **VITE_APP_AWS_IDENTITY_POOL_ID**: From **TAMS Tools stack** output `IdentityPoolId`
 - **VITE_APP_OMAKASE_EXPORT_EVENT_BUS**: From **TAMS Tools stack** output `OmakaseExportEventBus`
 - **VITE_APP_OMAKASE_EXPORT_EVENT_PARAMETER**: From **TAMS Tools stack** output `OmakaseExportEventParameter`
 - **VITE_APP_TAMS_AUTH_CONNECTION_ARN**: From **TAMS Tools stack** output `TamsAuthConnectionArn`
@@ -104,7 +111,7 @@ In the initial state the Web App will have a simple interface. This allows you t
 
 Four optional components can be deployed to the infrastructure to add additional functionality. The deployment of these components is expected to be done from the AWS CloudFormation Console. Changes should be made by updating the stack parameters for the CloudFormation Stack created for the infrastructure.
 
-**NOTE: The Web UI is authenticated using the same Cognito User Pool used by the TAMS API. To login you will first need to create a user in Cognito.**
+**NOTE: The Web UI is authenticated using the same OIDC provider as the TAMS API. When using Cognito, you will need to create a user in the Cognito User Pool to login.**
 
 ### Core Features
 
@@ -132,7 +139,7 @@ This solution includes 5 optional components. They can be deployed by performing
 
 This will deploy a HLS API endpoint to the solution and enable a basic Video player in the WebUI that uses this HLS API to play TAMS content.
 
-**Required Environment Variable:**
+**Required Environment Variables:**
 
 - `VITE_APP_AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN` = **TAMS Tools stack** output `HlsObjectLambdaAccessPointArn`
 
@@ -175,7 +182,9 @@ This will deploy the Loop Recorder functionality to the solution. The Loop Recor
 
 **Note:** This component includes an Event Bridge rule that triggers for every `flows/segments_added` event, so it should only be deployed when loop recording functionality is required.
 
-**No additional environment variables required** - the Loop Recorder operates automatically based on flow tags.
+**Required Environment Variable:**
+
+- `VITE_APP_AWS_LOOP_RECORDER_ARN` = **TAMS Tools stack** output `LoopRecorderArn`
 
 ## SSM Parameters Configuration
 

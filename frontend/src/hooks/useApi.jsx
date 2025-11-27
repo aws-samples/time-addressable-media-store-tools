@@ -1,44 +1,39 @@
-import { del, get, put } from "aws-amplify/api";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useAuth } from "react-oidc-context";
+import { useMemo } from "react";
 import parseLinkHeader from "@/utils/parseLinkHeader";
+import { AWS_TAMS_ENDPOINT } from "@/constants";
 
-export const useApi = (apiName = "TAMS") => {
-  const getAuthToken = async () => {
-    const session = await fetchAuthSession();
-    return session.tokens.accessToken.toString();
-  };
+export const useApi = () => {
+  const auth = useAuth();
 
-  const makeRequest = async (method, path, options = {}) => {
-    const accessToken = await getAuthToken();
-    const commonOptions = {
-      apiName,
-      path,
-      options: {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        ...options,
-      },
+  return useMemo(() => {
+    const makeRequest = async (method, path, options = {}) => {
+      const accessToken = auth.user?.access_token;
+
+      const response = await fetch(`${AWS_TAMS_ENDPOINT}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+
+      const links = parseLinkHeader(response.headers.get("link"));
+
+      return {
+        data: await response.json().catch(() => ({})),
+        headers: Object.fromEntries(response.headers.entries()),
+        nextLink: links.next,
+      };
     };
-    const response = await method(commonOptions).response;
-    const links = parseLinkHeader(response.headers.link);
-    const enhancedResponse = {
-      data: method === get ? await response.body.json() : response.statusCode,
-      headers: response.headers,
-      nextLink: links.next,
-    };
-    return enhancedResponse;
-  };
 
-  return {
-    get: (path, clientConfig = {}) =>
-      makeRequest(get, path, { ...clientConfig }),
-    put: (path, jsonBody, clientConfig = {}) =>
-      makeRequest(put, path, {
-        ...clientConfig,
-        body: jsonBody,
-      }),
-    del: (path, clientConfig = {}) =>
-      makeRequest(del, path, { ...clientConfig }),
-  };
+    return {
+      get: (path, options = {}) => makeRequest("GET", path, options),
+      put: (path, jsonBody, options = {}) =>
+        makeRequest("PUT", path, { ...options, body: jsonBody }),
+      del: (path, options = {}) => makeRequest("DELETE", path, options),
+    };
+  }, [auth.user?.access_token]);
 };
-
-export default useApi;
