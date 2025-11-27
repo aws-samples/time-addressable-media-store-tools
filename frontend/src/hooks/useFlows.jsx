@@ -58,7 +58,7 @@ export const useDelete = () => {
     "/flows",
     (path, { arg }) =>
       del(`${path}/${arg.flowId}`).then((response) =>
-        setTimeout(response.data, 1000)
+        new Promise(resolve => setTimeout(() => resolve(response.data), 1000))
       ) // setTimeout used to artificially wait until basic deletes are complete.
   );
 
