@@ -72,7 +72,6 @@ export const AWS_USER_POOL_ID = OIDC_AUTHORITY.includes("cognito")
 export const OIDC_SCOPES = [
   "openid",
   "email",
-  "tams-api/admin",
   "tams-api/delete",
   "tams-api/read",
   "tams-api/write",
