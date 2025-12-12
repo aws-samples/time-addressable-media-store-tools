@@ -3,18 +3,17 @@ import { useEffect } from "react";
 import "./style.css";
 
 import {
-  ImageButton,
   Marker,
   MarkerLane,
   MarkerListApi,
   OmakasePlayer,
   PeriodMarker,
-  TextLabel,
   TimelineApi,
-  VideoLoadOptions,
 } from "@byomakase/omakase-player";
 
 import {
+  convertFlowIdToSubtitlesId,
+  MediaInfo,
   OmakaseMarkerListComponent,
   OmakasePlayerTimelineBuilder,
   OmakasePlayerTimelineComponent,
@@ -23,11 +22,7 @@ import {
   OmakaseTimeRangePicker,
   TimeRangeUtil,
 } from "@byomakase/omakase-react-components";
-import {
-  Flow,
-  FlowSegment,
-  VideoFlow,
-} from "@byomakase/omakase-react-components";
+import { Flow, FlowSegment } from "@byomakase/omakase-react-components";
 import {
   HIGHLIGHTED_PERIOD_MARKER_STYLE,
   MARKER_LANE_STYLE,
@@ -37,7 +32,7 @@ import {
   PLAYER_CHROMING,
   SCRUBBER_LANE_STYLE,
   SEGMENT_PERIOD_MARKER_STYLE,
-  SOUND_BUTTON_CONFIG,
+  SUBTITLES_LANE_STYLE,
   TIMELINE_CONFIG,
   TIMELINE_LANE_STYLE,
   VARIABLES,
@@ -48,8 +43,14 @@ import RowTemplate from "./OmakaseMarkerListComponentTemplates/RowTemplate";
 import HeaderTemplate from "./OmakaseMarkerListComponentTemplates/HeaderTemplate";
 import OmakaseSegmentationHeader from "../OmakaseSegmentation/OmakaseSegmentationHeader";
 import EmptyTemplate from "./OmakaseMarkerListComponentTemplates/EmptyTemplate";
-import { TimecodeUtil } from "../../util/timecode-util";
 import { TAMSThumbnailUtil } from "../../util/tams-thumbnail-util";
+
+import {
+  createAudioButton,
+  createDropdownButton,
+  createLabel,
+  createSubtitlesButton,
+} from "../../util/timeline-util";
 
 type OmakasePlayerTamsComponentProps = {
   sourceId: string;
@@ -94,83 +95,6 @@ function flowFormatSorting(a: Flow, b: Flow) {
   if (a.format === "urn:x-nmos:format:audio") return -1;
   if (b.format === "urn:x-nmos:format:audio") return 1;
   return 1; // Any other string is considered the biggest
-}
-
-function resolveVideoInfo(
-  flows: Flow[],
-  flowSegments: Map<string, FlowSegment[]>,
-  requestedTimeRange: string
-): VideoInfo {
-  const sortedStartTimeAndFramerate = flows
-    .filter((flow) => flowSegments.get(flow.id)!.length > 0)
-    .map((flow) => {
-      const segments = flowSegments.get(flow.id)!;
-      let frameRate;
-      let dropFrame = false;
-
-      if (flow.format === "urn:x-nmos:format:video") {
-        flow as VideoFlow;
-        const frameRateParameters = flow.essence_parameters.frame_rate;
-
-        if (frameRateParameters) {
-          frameRate =
-            frameRateParameters.numerator /
-            (frameRateParameters.denominator ?? 1);
-
-          if (
-            (frameRateParameters.numerator === 60000 ||
-              frameRateParameters.numerator === 30000) &&
-            frameRateParameters.denominator === 1001
-          ) {
-            dropFrame = true;
-          }
-        }
-      }
-
-      return {
-        start: TimeRangeUtil.timeMomentToSeconds(
-          TimeRangeUtil.parseTimeRange(segments.at(0)!.timerange).start!
-        ),
-        frameRate: frameRate,
-        dropFrame: dropFrame,
-      };
-    })
-    .sort((a, b) => a.start - b.start);
-
-  const videoStartTimeAndFrameRate = sortedStartTimeAndFramerate.find(
-    (timeAndFrameRate) => timeAndFrameRate.frameRate !== undefined
-  );
-
-  const start =
-    videoStartTimeAndFrameRate?.start ??
-    sortedStartTimeAndFramerate.at(0)!.start;
-  const date = new Date(start * 1000);
-  const hours = date.getUTCHours();
-  const minutes = date.getUTCMinutes();
-  const seconds = date.getUTCSeconds();
-  const milliseconds = date.getUTCMilliseconds();
-
-  const realStart = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
-
-  if (videoStartTimeAndFrameRate === undefined) {
-    return {
-      ffom: TimecodeUtil.formatToTimecode(realStart, 100, false),
-      markerOffset: start,
-      fps: 100,
-      dropFrame: false,
-    };
-  }
-
-  return {
-    ffom: TimecodeUtil.formatToTimecode(
-      realStart,
-      videoStartTimeAndFrameRate.frameRate!,
-      videoStartTimeAndFrameRate.dropFrame
-    ),
-    markerOffset: videoStartTimeAndFrameRate.start,
-    fps: videoStartTimeAndFrameRate.frameRate!,
-    dropFrame: videoStartTimeAndFrameRate.dropFrame,
-  };
 }
 
 function segmentToMarker(
@@ -317,7 +241,11 @@ function buildTimeline(
   childFlows.forEach((flow) => {
     if (
       flow.format !== "urn:x-nmos:format:audio" &&
-      flow.format !== "urn:x-nmos:format:video"
+      flow.format !== "urn:x-nmos:format:video" &&
+      !(
+        flow.format === "urn:x-nmos:format:data" &&
+        flow.container === "text/vtt"
+      )
     ) {
       return;
     }
@@ -337,14 +265,48 @@ function buildTimeline(
     }
 
     const segments = childFlowsSegments.get(flow.id);
+    const urls = segments?.map((segment) => segment.get_urls!.at(-1)!.url);
 
     const markerLaneId = `marker-lane-${flow.id}`;
+    let markerLaneMinimized = false;
+    let labeledLaneId = markerLaneId;
     const colorResolver = new ColorResolver(VARIABLES.markerColors);
+
+    if (
+      flow.format === "urn:x-nmos:format:data" &&
+      flow.container === "text/vtt" &&
+      urls?.length
+    ) {
+      const subtitlesLaneId = `subtitles-lane-${flow.id}`;
+      labeledLaneId = subtitlesLaneId;
+
+      timelineBuilder.addSubtitlesLane({
+        id: subtitlesLaneId,
+        vttUrl: omakasePlayer.subtitles
+          .getTracks()
+          .find((track) => track.id === convertFlowIdToSubtitlesId(flow.id))!
+          .src,
+        style: SUBTITLES_LANE_STYLE,
+      });
+
+      createDropdownButton(timelineBuilder, timeline, subtitlesLaneId, [
+        markerLaneId,
+      ]);
+
+      createSubtitlesButton(
+        timelineBuilder,
+        omakasePlayer,
+        flow,
+        subtitlesLaneId
+      );
+
+      markerLaneMinimized = true;
+    }
 
     timelineBuilder.addMarkerLane({
       id: markerLaneId,
-      // description: flow.description ?? "Segmentation",
       style: TIMELINE_LANE_STYLE,
+      minimized: markerLaneMinimized,
     });
 
     if (segments?.length) {
@@ -368,72 +330,15 @@ function buildTimeline(
       timelineBuilder.addMarkers(markerLaneId, markers);
     }
 
-    const label = new TextLabel({
-      text: flow.description ?? "Segments",
-      style: MARKER_LANE_TEXT_LABEL_STYLE,
-    });
-
-    const labelConstructionData = {
-      node: label,
-      config: {
-        justify: "end" as "end",
-        timelineNode: label,
-        width: 150,
-        height: 42,
-        margin: [0, 0, 0, 10],
-      },
-    };
-
-    timelineBuilder.addTimelineNode(markerLaneId, labelConstructionData);
+    createLabel(timelineBuilder, flow.description ?? "Segments", labeledLaneId);
 
     if (flow.format === "urn:x-nmos:format:audio") {
-      const buttonImageSrc =
-        omakasePlayer.audio.getActiveAudioTrack()?.label === flow.description
-          ? "/sound-active-button.svg"
-          : "/sound-inactive-button.svg";
-
-      const soundControlButton = new ImageButton({
-        ...SOUND_BUTTON_CONFIG,
-        src: buttonImageSrc,
-      });
-
-      soundControlButton.onClick$.subscribe({
-        next: () => {
-          const audioTrack = omakasePlayer.audio
-            .getAudioTracks()
-            .find((track) => track.label === flow.description)!;
-          omakasePlayer.audio.setActiveAudioTrack(audioTrack.id);
-        },
-      });
-
-      omakasePlayer.audio.onAudioSwitched$.subscribe({
-        next: (audioSwitchedEvent) => {
-          const buttonImageSrc =
-            audioSwitchedEvent.activeAudioTrack.label === flow.description
-              ? "/sound-active-button.svg"
-              : "/sound-inactive-button.svg";
-          soundControlButton.setImage({
-            ...SOUND_BUTTON_CONFIG,
-            src: buttonImageSrc,
-          });
-        },
-      });
-
-      const buttonConstructionData = {
-        node: soundControlButton,
-        config: {
-          height: soundControlButton.config.height!,
-          width: soundControlButton.config.width!,
-          justify: "start" as "start",
-          timelineNode: soundControlButton,
-          margin: [0, 10, 0, 10],
-        },
-      };
-
-      timelineBuilder.addTimelineNode(markerLaneId, buttonConstructionData);
+      createAudioButton(timelineBuilder, omakasePlayer, flow, markerLaneId);
     }
   });
 
+  //@ts-ignore
+  window.timeline = timeline;
   timeline.getScrubberLane().style = SCRUBBER_LANE_STYLE;
 
   timelineBuilder.buildAttachedTimeline(timeline);
@@ -490,30 +395,15 @@ const OmakasePlayerTamsComponent = React.memo(
       return flows;
     }, [childFlows, flowsSegments, flow]);
 
-    const videoInfo = resolveVideoInfo(
-      timelineBuilderFlows,
-      flowsSegments,
-      timeRange
-    );
-
-    const videoLoadOptions: VideoLoadOptions = videoInfo.ffom
-      ? {
-          protocol: "hls",
-          ffom: videoInfo.ffom,
-          frameRate: videoInfo.fps,
-          dropFrame: videoInfo.dropFrame,
-        }
-      : {
-          protocol: "hls",
-          frameRate: videoInfo.fps,
-          dropFrame: videoInfo.dropFrame,
-        };
-
     timelineBuilderFlows.sort(flowFormatSorting);
 
     const [omakasePlayer, setOmakasePlayer] = useState<
       OmakasePlayer | undefined
     >(undefined);
+
+    const [mediaInfo, setMediaInfo] = useState<MediaInfo | undefined>(
+      undefined
+    );
 
     const [selectedMarker, setSelectedMarker] = useState<Marker | undefined>(
       undefined
@@ -606,10 +496,6 @@ const OmakasePlayerTamsComponent = React.memo(
       onMarkerClickCallback(undefined);
     };
 
-    const onCreateMarkerListCallback = (markerList: MarkerListApi) => {
-      setMarkerList((prev) => (prev === markerList ? prev : markerList));
-    };
-
     const onCheckmarkClickCallback = (start: number, end: number) => {
       const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
       const endMoment = TimeRangeUtil.secondsToTimeMoment(end);
@@ -644,7 +530,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     sourceId={sourceId}
                     flows={timelineBuilderFlows}
                     flowSegments={flowsSegments}
-                    markerOffset={videoInfo.markerOffset}
+                    markerOffset={mediaInfo!.mediaStartTime}
                   />
 
                   <OmakaseMarkerListComponent
@@ -698,10 +584,10 @@ const OmakasePlayerTamsComponent = React.memo(
                 flow={flow}
                 childFlows={childFlows}
                 flowsSegments={flowsSegments}
-                videoLoadOptions={videoLoadOptions}
-                onVideoLoadedCallback={(omakasePlayer) =>
-                  setOmakasePlayer((prev) => prev ?? omakasePlayer)
-                }
+                onVideoLoadedCallback={(omakasePlayer, _, videoInfo) => {
+                  setOmakasePlayer((prev) => prev ?? omakasePlayer);
+                  setMediaInfo((prev) => prev ?? videoInfo);
+                }}
                 config={{
                   playerChroming: PLAYER_CHROMING,
                 }}
@@ -734,7 +620,7 @@ const OmakasePlayerTamsComponent = React.memo(
                 flowsSegments,
                 markerLaneMapRef.current,
                 timeRange,
-                videoInfo.markerOffset,
+                mediaInfo!.mediaStartTime,
                 config,
                 onMarkerClickCallback,
                 addMLCSourceCallback,
