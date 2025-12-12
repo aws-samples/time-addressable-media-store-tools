@@ -20,7 +20,7 @@
     "@aws-sdk/client-ssm": "^3.906.0",
     "@aws-sdk/s3-request-presigner": "^3.906.0",
     "@byomakase/omakase-player": "0.24.0",
-    "@byomakase/omakase-react-components": "1.2.0",
+    "@byomakase/omakase-react-components": "1.2.2",
     "@cloudscape-design/collection-hooks": "^1.0.76",
     "@cloudscape-design/components": "^3.0.1108",
     "@cloudscape-design/design-tokens": "^3.0.62",

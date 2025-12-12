@@ -1,13 +1,10 @@
 import {
   ConfigWithOptionalStyle,
   DefaultThemeControl,
-  DefaultThemeControl,
   ImageButtonConfig,
   MarkerLaneConfig,
   MarkerListConfig,
   PeriodMarkerStyle,
-  PlayerChroming,
-  PlayerChromingTheme,
   PlayerChroming,
   PlayerChromingTheme,
   ScrubberLaneStyle,
