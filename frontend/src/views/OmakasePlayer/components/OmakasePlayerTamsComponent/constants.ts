@@ -8,6 +8,7 @@ import {
   PlayerChroming,
   PlayerChromingTheme,
   ScrubberLaneStyle,
+  SubtitlesLaneStyle,
   TextLabelStyle,
   TimelineConfig,
   TimelineLaneStyle,
@@ -33,6 +34,12 @@ export const PLAYER_CHROMING: PlayerChroming = {
     ],
   },
 };
+
+export const CHEVRON_DOWN_SVG_SOURCE = `/chevron-down.svg`;
+export const CHEVRON_RIGHT_SVG_SOURCE = `/chevron-right.svg`;
+export const CHATBOX_SVG_SOURCE = `/chatbox.svg`;
+export const CHATBOX_ACTIVE_SVG_SOURCE = `/chatbox-active.svg`;
+export const CHATBOX_DISABLED_SVG_SOURCE = `/chatbox-disabled.svg`;
 
 export const VARIABLES = {
   text: {
@@ -205,6 +212,12 @@ export const THUMBNAIL_LANE_STYLE: Partial<TimelineLaneStyle> = {
   height: 70,
 };
 
+export const SUBTITLES_LANE_STYLE: Partial<SubtitlesLaneStyle> = {
+  ...TIMELINE_LANE_STYLE,
+  paddingTop: 12,
+  paddingBottom: 12,
+};
+
 export const PERIOD_MARKER_STYLE: Partial<PeriodMarkerStyle> & {
   color: string;
 } = {
@@ -250,6 +263,22 @@ export const SOUND_BUTTON_CONFIG: ImageButtonConfig = {
   src: "/sound-inactive-button.svg",
   width: 14,
   height: 20,
+  listening: true,
+  style: {},
+};
+
+export const DROPDOWN_BUTTON_CONFIG: ImageButtonConfig = {
+  src: CHEVRON_RIGHT_SVG_SOURCE,
+  width: 24,
+  height: 24,
+  listening: true,
+  style: {},
+};
+
+export const SUBTITLES_BUTTON_CONFIG: ImageButtonConfig = {
+  src: CHATBOX_SVG_SOURCE,
+  width: 24,
+  height: 24,
   listening: true,
   style: {},
 };

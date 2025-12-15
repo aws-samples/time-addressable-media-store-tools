@@ -101,6 +101,7 @@ const parseAndFilterFlows = (flows) => {
   const validFormats = new Set([
     "urn:x-nmos:format:video",
     "urn:x-nmos:format:audio",
+    "urn:x-nmos:format:data",
   ]);
 
   for (const flow of flows) {
@@ -176,9 +177,8 @@ const getSegmentationTimerange = async (flows) => {
   return {
     timerange: {
       start: parseTimerange(windowSegments[0].timerange).start,
-      end: parseTimerange(
-        windowSegments[windowSegments.length - 1].timerange
-      ).end,
+      end: parseTimerange(windowSegments[windowSegments.length - 1].timerange)
+        .end,
     },
     flowId: earliestEndFlow.id,
     segments: windowSegments,
