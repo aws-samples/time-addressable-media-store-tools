@@ -171,7 +171,7 @@ States:
   UpdateFlowCollections:
     Type: Map
     Items: >-
-      {% $flow.collected_by %}
+      {% $exists($flow.collected_by) ? $flow.collected_by : [] %}
     ItemProcessor:
       ProcessorConfig:
         Mode: INLINE
