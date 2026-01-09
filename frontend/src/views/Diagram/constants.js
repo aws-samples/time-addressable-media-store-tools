@@ -11,12 +11,19 @@ export const formatPrecedence = [
     "urn:x-tam:format:image",
     "urn:x-nmos:format:audio",
     "urn:x-nmos:format:data",
-]
+];
 
 export const nodeSize = {
     height: 60,
     width: 120,
-}
+};
+
+const createSvgDataUri = (width, height, pathData, fill = null) => {
+  const fillAttr = fill ? ` fill="${fill}"` : "";
+  return `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="${width}px" height="${height}px" viewBox="0 -960 960 960"><path${fillAttr} d="${pathData}"/></svg>`;
+};
+const createFormatIcon = (pathData) => createSvgDataUri(18, 18, pathData);
+const createContainerBadge = () => createSvgDataUri(12, 12, "M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 480q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z", "%23008099");
 
 export const styles = {
     nodes: {
@@ -75,16 +82,32 @@ export const buildStylesheet = () => ([
     },
     // Selected Node styling
     {
-        selector: 'node:selected',
+        selector: "node:selected",
         style: {
             borderWidth: 1.5,
             borderColor: "red",
-        }
+        },
     },
     // Node type specific styling
     ...Object.entries(styles.nodes).map(([type, props]) => ({ selector: `node.${type}`, style: props })),
     // Node format specific styling
-    ...Object.entries(svgPaths).map(([format, d]) => ({ selector: `node.${format}`, style: { backgroundOffsetX: "50px", backgroundOffsetY: "20px", backgroundImage: encodeURI(`data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 -960 960 960"><path d="${d}"/></svg>`) } })),
+    ...Object.entries(svgPaths).map(([format, d]) => ({
+        selector: `node.${format}`,
+        style: {
+            backgroundOffsetX: "50px",
+            backgroundOffsetY: "20px",
+            backgroundImage: createFormatIcon(d),
+        },
+    })),
+    // Node format specific styling (with container)
+    ...Object.entries(svgPaths).map(([format, d]) => ({
+        selector: `node.${format}.container`,
+        style: {
+            backgroundOffsetX: ["50px", "50px"],
+            backgroundOffsetY: ["-20px", "20px"],
+            backgroundImage: [createContainerBadge(), createFormatIcon(d)],
+        },
+    })),
     // Edge type specific styling
     ...Object.entries(styles.edges).map(([type, props]) => ({ selector: `edge.${type}`, style: props })),
-])
+]);
