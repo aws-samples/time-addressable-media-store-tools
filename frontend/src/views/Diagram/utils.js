@@ -124,6 +124,8 @@ export const getElements = async (path) => {
   // Create list of Elements representing the nodes alone
   const nodes = entities.map((node) => {
     const type = node.source_id ? "flow" : "source";
+    const classes = [type, node.format.split(":")[3]];
+    if (node.container) classes.push("container");
     return {
       data: {
         id: `${type}s/${node.id}`,
@@ -133,7 +135,7 @@ export const getElements = async (path) => {
       },
       selectable: false,
       selected: node.id == path.split("/")[2],
-      classes: [type, node.format.split(":")[3]],
+      classes,
       position: positions[node.id],
     };
   });
