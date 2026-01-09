@@ -22,6 +22,7 @@ logger = Logger()
 metrics = Metrics()
 batch_processor = BatchProcessor(event_type=EventType.SQS)
 
+IMAGE_FORMAT = "urn:x-tam:format:image"
 s3 = boto3.client("s3")
 endpoint = os.environ["TAMS_ENDPOINT"]
 creds = Credentials(
@@ -77,6 +78,17 @@ def upload_file(flow_id: str, data: bytes, object_id: str | None) -> dict:
         if ex.response.status_code == 404:
             logger.error(ex.response.text)
             return None
+        elif ex.response.status_code == 400 and object_id:
+            try:
+                error_data = ex.response.json()
+                if "already exist" in error_data.get("message", ""):
+                    logger.info(
+                        f"Object ID {object_id} already exists, skipping upload"
+                    )
+                    return {"object_id": object_id}
+            except (ValueError, KeyError):
+                pass
+            raise ex
         else:
             raise ex
     media_object = get_url.json()["media_objects"][0]
@@ -134,6 +146,18 @@ def delete_s3_file(source: str) -> None:
 
 
 @tracer.capture_method(capture_response=False)
+def get_flow_format(flow_id: str) -> str:
+    """Get the format of a flow"""
+    response = requests.get(
+        f"{endpoint}/flows/{flow_id}",
+        headers={"Authorization": f"Bearer {creds.token()}"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["format"]
+
+
+@tracer.capture_method(capture_response=False)
 def record_handler(record: SQSRecord) -> None:
     """Processes a single SQS record"""
     message = json.loads(record.body)
@@ -160,10 +184,8 @@ def record_handler(record: SQSRecord) -> None:
     media_object = upload_file(flow_id, file_data, message.get("objectId"))
     if media_object is None:
         raise ValueError(f"Unable to upload file to flow {flow_id}")
-    if (
-        media_object["put_url"]["content-type"].split("/")[0] == "image"
-        and "_" in message["timerange"]
-    ):
+    flow_format = get_flow_format(flow_id)
+    if flow_format == IMAGE_FORMAT and "_" in message["timerange"]:
         message["timerange"] = f'{message["timerange"].split("_")[0]}]'
     post_result = post_segment(flow_id, media_object["object_id"], message["timerange"])
     if not post_result:
