@@ -18,12 +18,27 @@ export const nodeSize = {
     width: 120,
 };
 
+const iconOffset = { x: "50px", y: "20px" };
+
 const createSvgDataUri = (width, height, pathData, fill = null) => {
   const fillAttr = fill ? ` fill="${fill}"` : "";
   return `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="${width}px" height="${height}px" viewBox="0 -960 960 960"><path${fillAttr} d="${pathData}"/></svg>`;
 };
 const createFormatIcon = (pathData) => createSvgDataUri(18, 18, pathData);
 const createContainerBadge = () => createSvgDataUri(12, 12, "M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 480q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z", "%23008099");
+
+const createFormatStyles = (format, d, withContainer = false) => {
+    const formatIcon = createFormatIcon(d);
+    
+    return {
+        selector: withContainer ? `node.${format}.container` : `node.${format}`,
+        style: {
+            backgroundOffsetX: withContainer ? [iconOffset.x, iconOffset.x] : [iconOffset.x],
+            backgroundOffsetY: withContainer ? [`-${iconOffset.y}`, iconOffset.y] : [iconOffset.y],
+            backgroundImage: withContainer ? [createContainerBadge(), formatIcon] : [formatIcon],
+        },
+    };
+};
 
 export const styles = {
     nodes: {
@@ -91,23 +106,7 @@ export const buildStylesheet = () => ([
     // Node type specific styling
     ...Object.entries(styles.nodes).map(([type, props]) => ({ selector: `node.${type}`, style: props })),
     // Node format specific styling
-    ...Object.entries(svgPaths).map(([format, d]) => ({
-        selector: `node.${format}`,
-        style: {
-            backgroundOffsetX: "50px",
-            backgroundOffsetY: "20px",
-            backgroundImage: createFormatIcon(d),
-        },
-    })),
-    // Node format specific styling (with container)
-    ...Object.entries(svgPaths).map(([format, d]) => ({
-        selector: `node.${format}.container`,
-        style: {
-            backgroundOffsetX: ["50px", "50px"],
-            backgroundOffsetY: ["-20px", "20px"],
-            backgroundImage: [createContainerBadge(), createFormatIcon(d)],
-        },
-    })),
+    ...Object.entries(svgPaths).flatMap(([format, d]) => [createFormatStyles(format, d, false), createFormatStyles(format, d, true)]),
     // Edge type specific styling
     ...Object.entries(styles.edges).map(([type, props]) => ({ selector: `edge.${type}`, style: props })),
 ]);
