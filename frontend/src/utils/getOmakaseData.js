@@ -23,7 +23,7 @@ const getFlowAndRelated = async (api, { type, id }) => {
     }
     flow = flowData;
   } else {
-    const sourceFlows = (await api.get(`/flows/?source_id=${id}`)).data;
+    const sourceFlows = (await api.get(`/flows?source_id=${id}`)).data;
     const filteredSourceFlows = sourceFlows.filter(
       (sourceFlow) => !shouldExcludeFlow(sourceFlow)
     );
@@ -95,14 +95,10 @@ const getMaxTimerange = (flows) => {
 
 const parseAndFilterFlows = (flows) => {
   const result = [];
-  const validFormats = new Set([
-    "urn:x-nmos:format:video",
-    "urn:x-nmos:format:audio",
-    "urn:x-nmos:format:data",
-  ]);
 
   for (const flow of flows) {
-    if (!validFormats.has(flow.format)) continue;
+    // If the flow does not have a container value then it cannot have segments registered
+    if (!flow.container) continue;
 
     try {
       const parsedTimerange = parseTimerange(flow.timerange);
@@ -152,7 +148,7 @@ const getSegmentationTimerange = async (flows, api) => {
   const windowSegments = await paginationFetcher(
     `/flows/${
       earliestEndFlow.id
-    }/segments?limit=300&timerange=${toTimerangeString(windowTimerange)}`, null, api
+    }/segments?presigned=true&limit=300&timerange=${toTimerangeString(windowTimerange)}`, null, api
   );
 
   if (windowSegments.length === 0) {
@@ -215,7 +211,7 @@ const getOmakaseData = async (api, { type, id, timerange }) => {
     .forEach((id) =>
       fetchPromises.push(
         paginationFetcher(
-          `/flows/${id}/segments?limit=300&timerange=${parsedTimerange}`, null, api
+          `/flows/${id}/segments?presigned=true&limit=300&timerange=${parsedTimerange}`, null, api
         ).then((result) => [id, result])
       )
     );
