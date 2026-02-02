@@ -23,12 +23,12 @@ async function parseToml(tomlPath, env) {
     })
   );
   const result = {
-    profile: tomlParameters.profile ?? "default",
+    profile: tomlParameters.profile || null,
     region: tomlParameters.region,
     apiStackName: parameterOverrides.ApiStackName,
     toolsStackName: tomlParameters.stack_name,
   };
-  if (Object.values(result).some((v) => !v)) {
+  if ([result.region, result.apiStackName, result.toolsStackName].some((v) => !v)) {
     console.log(
       chalk.yellow(
         "Unable to find Region and/or Stack Name(s) in specified toml."
@@ -77,7 +77,7 @@ async function readToml(tomlPath) {
 async function getCloudFormationOutputs(profile, region, stackName) {
   const cfnClient = new CloudFormationClient({
     region: region,
-    credentials: fromIni({ profile }),
+    ...(profile && { credentials: fromIni({ profile }) }),
   });
   const describeStacks = new DescribeStacksCommand({ StackName: stackName });
   try {
