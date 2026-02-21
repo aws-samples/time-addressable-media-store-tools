@@ -11,13 +11,13 @@
     "envLocal": "node scripts/envValues.js"
   },
   "dependencies": {
-    "@aws-sdk/client-eventbridge": "^3.906.0",
-    "@aws-sdk/client-mediaconvert": "^3.906.0",
-    "@aws-sdk/client-medialive": "^3.906.0",
-    "@aws-sdk/client-s3": "^3.906.0",
-    "@aws-sdk/client-sfn": "^3.906.0",
-    "@aws-sdk/client-ssm": "^3.906.0",
-    "@aws-sdk/s3-request-presigner": "^3.906.0",
+    "@aws-sdk/client-eventbridge": "^3.995.0",
+    "@aws-sdk/client-mediaconvert": "^3.995.0",
+    "@aws-sdk/client-medialive": "^3.995.0",
+    "@aws-sdk/client-s3": "^3.995.0",
+    "@aws-sdk/client-sfn": "^3.995.0",
+    "@aws-sdk/client-ssm": "^3.995.0",
+    "@aws-sdk/s3-request-presigner": "^3.995.0",
     "@byomakase/omakase-player": "0.24.0",
     "@byomakase/omakase-react-components": "1.2.2",
     "@cloudscape-design/collection-hooks": "^1.0.76",
@@ -41,8 +41,8 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@aws-sdk/client-cloudformation": "^3.906.0",
-    "@aws-sdk/credential-providers": "^3.906.0",
+    "@aws-sdk/client-cloudformation": "^3.995.0",
+    "@aws-sdk/credential-providers": "^3.995.0",
     "@eslint/js": "^9.37.0",
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.0.4",
