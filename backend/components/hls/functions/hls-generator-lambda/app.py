@@ -9,9 +9,9 @@ from urllib.parse import urlparse, quote
 import boto3
 import m3u8
 import requests
-from aws_lambda_powertools import Logger, Tracer
 from botocore.auth import SigV4QueryAuth
 from botocore.awsrequest import AWSRequest
+from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import LambdaFunctionUrlResolver, Response
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from mediatimestamp.immutable import TimeRange
@@ -42,6 +42,7 @@ def get_function_url():
         lambda_client = boto3.client("lambda")
         response = lambda_client.get_function_url_config(FunctionName=function_name)
         return response.get("FunctionUrl")
+    # pylint: disable=broad-exception-caught
     except Exception as ex:
         logger.warning("Could not get function URL")
         logger.exception(ex)
@@ -374,6 +375,7 @@ def get_flow_hls(flowId: str):
         content_type="application/vnd.apple.mpegurl",
         body=manifest.dumps(),
     )
+
 
 @app.get("/flows/<flowId>/segments/manifest.m3u8")
 @tracer.capture_method(capture_response=False)
