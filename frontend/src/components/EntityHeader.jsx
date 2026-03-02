@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { IS_HLS_DEPLOYED, AWS_HLS_FUNCTION_URL } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
+import useAwsCredentials from "@/hooks/useAwsCredentials";
 import { getLambdaSignedUrl } from "@/utils/getLambdaSignedUrl";
 
 const EntityHeader = ({ type, entity }) => {
@@ -18,11 +19,12 @@ const EntityHeader = ({ type, entity }) => {
 
   const handleCopyClick = async () => {
     try {
-      const url = await getLambdaSignedUrl(
-        AWS_HLS_FUNCTION_URL,
-        `/${entityType}/${entity.id}/manifest.m3u8`,
-        3600
-      );
+      const url = await getLambdaSignedUrl({
+        functionUrl: AWS_HLS_FUNCTION_URL,
+        path: `/${entityType}/${entity.id}/manifest.m3u8`,
+        expiresIn: 3600,
+        credentials,
+      });
       navigator.clipboard.writeText(url);
     } catch (error) {
       console.error("Failed to copy manifest link:", error);

@@ -1,7 +1,6 @@
 import { SignatureV4 } from "@smithy/signature-v4";
 import { HttpRequest } from "@smithy/protocol-http";
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { fetchAuthSession } from "aws-amplify/auth";
 import { AWS_REGION } from "@/constants";
 
 /**
@@ -9,9 +8,10 @@ import { AWS_REGION } from "@/constants";
  * @param {string} functionUrl - The base Lambda Function URL
  * @param {string} path - The path to append to the Function URL
  * @param {number} expiresIn - URL expiration time in seconds (default 3600)
+ * @param {object} credentials - AWS credentials object for signing the request
  * @returns {Promise<string>} The presigned URL
  */
-export async function getLambdaSignedUrl(functionUrl, path, expiresIn = 3600) {
+export async function getLambdaSignedUrl({functionUrl, path, expiresIn = 3600, credentials}) {
   if (!functionUrl || typeof functionUrl !== "string") {
     throw new Error("Invalid function URL");
   }
@@ -23,7 +23,6 @@ export async function getLambdaSignedUrl(functionUrl, path, expiresIn = 3600) {
   }
 
   try {
-    const session = await fetchAuthSession();
     const url = new URL(path, functionUrl);
 
     const request = new HttpRequest({
@@ -37,7 +36,7 @@ export async function getLambdaSignedUrl(functionUrl, path, expiresIn = 3600) {
     });
 
     const signer = new SignatureV4({
-      credentials: session.credentials,
+      credentials,
       region: AWS_REGION,
       service: "lambda",
       sha256: Sha256,
