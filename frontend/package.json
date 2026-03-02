@@ -11,6 +11,9 @@
     "envLocal": "node scripts/envValues.js"
   },
   "dependencies": {
+    "@smithy/signature-v4": "^5.3.8",
+    "@smithy/protocol-http": "^5.3.8",
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@aws-sdk/client-eventbridge": "^3.995.0",
     "@aws-sdk/client-mediaconvert": "^3.995.0",
     "@aws-sdk/client-medialive": "^3.995.0",
@@ -18,7 +21,7 @@
     "@aws-sdk/client-sfn": "^3.995.0",
     "@aws-sdk/client-ssm": "^3.995.0",
     "@aws-sdk/s3-request-presigner": "^3.995.0",
-    "@byomakase/omakase-player": "0.25.3",
+    "@byomakase/omakase-player": "0.25.2",
     "@byomakase/omakase-react-components": "1.2.3",
     "@cloudscape-design/collection-hooks": "^1.0.76",
     "@cloudscape-design/components": "^3.0.1108",
