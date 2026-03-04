@@ -555,10 +555,10 @@ Outputs:
       - !Ref CodecsParameter
       - ""
 
-  HlsObjectLambdaAccessPointArn:
+  HlsFunctionUrl:
     Value: !If
       - DeployHlsApi
-      - !GetAtt HlsApiStack.Outputs.ObjectLambdaAccessPointArn
+      - !GetAtt HlsApiStack.Outputs.HlsFunctionUrl
       - ""
 
   IngestCreateNewFlowArn:

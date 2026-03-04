@@ -45,39 +45,25 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - s3-object-lambda:GetObject
-            Resource:
-              - !GetAtt ObjectLambdaAccessPoint.Arn
-          - Effect: Allow
-            Action:
+              - lambda:InvokeFunctionUrl
               - lambda:InvokeFunction
             Resource:
-              - !GetAtt ObjectLambdaFunction.Arn
-            Condition:
-              ForAnyValue:StringEquals:
-                "aws:CalledVia":
-                  - s3-object-lambda.amazonaws.com
+              - !GetAtt HlsGeneratorFunction.Arn
 
-  S3AccessPoint:
-    Type: AWS::S3::AccessPoint
+  HlsGeneratorFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W24
+            reason: Required permission to allow Lambda to generate pre-signed URLs for itself
     Properties:
-      Bucket: !ImportValue
-        Fn::Sub: ${ApiStackName}-MediaStorageBucket
+      FunctionName: !GetAtt HlsGeneratorFunction.Arn
+      FunctionUrlAuthType: AWS_IAM
+      Action: lambda:InvokeFunctionUrl
+      Principal: !Ref AWS::AccountId
 
-  ObjectLambdaAccessPoint:
-    Type: AWS::S3ObjectLambda::AccessPoint
-    Properties:
-      Name: !Ref ParentStackName
-      ObjectLambdaConfiguration:
-        SupportingAccessPoint: !GetAtt S3AccessPoint.Arn
-        TransformationConfigurations:
-          - Actions:
-              - GetObject
-            ContentTransformation:
-              AwsLambda:
-                FunctionArn: !GetAtt ObjectLambdaFunction.Arn
-
-  ObjectLambdaFunction:
+  HlsGeneratorFunction:
     Type: AWS::Serverless::Function
     Metadata:
       cfn_nag:
@@ -87,7 +73,16 @@ Resources:
           - id: W92
             reason: ReservedConcurrentExecutions not required
     Properties:
-      CodeUri: functions/object-lambda/
+      CodeUri: functions/hls-generator/
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowMethods:
+            - GET
+          AllowHeaders:
+            - "*"
       Layers:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:7
         - !Ref OpenIdAuthLayerArn
@@ -99,7 +94,6 @@ Resources:
           SECRET_ARN: !Ref SecretArn
           DEFAULT_HLS_SEGMENTS: 150
           CODEC_PARAMETER: !Ref CodecsParameterName
-          OBJECT_LAMBDA_ACCESS_POINT_ARN: !Sub arn:${AWS::Partition}:s3-object-lambda:${AWS::Region}:${AWS::AccountId}:accesspoint/${ParentStackName}
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -113,22 +107,24 @@ Resources:
                 - ssm:GetParameter
               Resource:
                 - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameterName}
-            - Effect: Allow
-              Action:
-                - s3-object-lambda:WriteGetObjectResponse
-                - s3-object-lambda:GetObject
-              Resource:
-                - !Sub arn:${AWS::Partition}:s3-object-lambda:${AWS::Region}:${AWS::AccountId}:accesspoint/${ParentStackName}
-            - Effect: Allow
-              Action:
-                - lambda:InvokeFunction
-              Resource:
-                - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${ParentStackName}-*
-              Condition:
-                ForAnyValue:StringEquals:
-                  "aws:CalledVia":
-                    - s3-object-lambda.amazonaws.com
+
+  HlsGeneratorFunctionSelfInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${HlsGeneratorFunction}SelfInvoke"
+      Roles:
+        - !Ref HlsGeneratorFunctionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunctionUrl
+              - lambda:InvokeFunction
+              - lambda:GetFunctionUrlConfig
+            Resource:
+              - !GetAtt HlsGeneratorFunction.Arn
 
 Outputs:
-  ObjectLambdaAccessPointArn:
-    Value: !GetAtt ObjectLambdaAccessPoint.Arn
+  HlsFunctionUrl:
+    Value: !GetAtt HlsGeneratorFunctionUrl.FunctionUrl

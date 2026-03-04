@@ -17,7 +17,7 @@ import { Link } from "react-router-dom";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useExports } from "@/hooks/useFfmpeg";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
-import getPresignedUrl from "@/utils/getPresignedUrl";
+import getS3PresignedUrl from "@/utils/getS3PresignedUrl";
 
 const FfmpegExports = () => {
   const credentials = useAwsCredentials();
@@ -159,7 +159,7 @@ const FfmpegExports = () => {
     });
 
   const handleDownload = async (item) => {
-    const url = await getPresignedUrl({
+    const url = await getS3PresignedUrl({
       bucket: item.output.bucket,
       key: item.output.key,
       expiry: 300,

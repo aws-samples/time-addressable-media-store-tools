@@ -2,11 +2,11 @@ import { useRef } from "react";
 import { Box } from "@cloudscape-design/components";
 import VideoJS from "./components/VideoJS";
 import { useParams } from "react-router-dom";
-import { usePresignedUrl } from "@/hooks/usePresignedUrl";
+import { useLambdaPresignedUrl } from "@/hooks/useLambdaPresignedUrl";
 
 export const HlsPlayer = () => {
   const { type, id } = useParams();
-  const { url, isLoading } = usePresignedUrl(type, id);
+  const { url, isLoading } = useLambdaPresignedUrl(type, id);
   const playerRef = useRef(null);
 
   const videoJsOptions = {

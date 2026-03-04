@@ -6,11 +6,11 @@ import {
 } from "@cloudscape-design/components";
 import { useNavigate } from "react-router-dom";
 
-import { IS_HLS_DEPLOYED, AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN } from "@/constants";
+import { IS_HLS_DEPLOYED, AWS_HLS_FUNCTION_URL } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
-import getPresignedUrl from "@/utils/getPresignedUrl";
+import getLambdaPresignedUrl from "@/utils/getLambdaPresignedUrl";
 
 const EntityHeader = ({ type, entity }) => {
   const entityType = `${type.toLowerCase()}s`;
@@ -18,10 +18,9 @@ const EntityHeader = ({ type, entity }) => {
   const credentials = useAwsCredentials();
 
   const handleCopyClick = async () => {
-    const url = await getPresignedUrl({
-      bucket: AWS_HLS_OBJECT_LAMBDA_ACCESS_POINT_ARN,
-      key: `${entityType}/${entity.id}/manifest.m3u8`,
-      expiry: 3600,
+    const url = await getLambdaPresignedUrl({
+      functionUrl: AWS_HLS_FUNCTION_URL,
+      path: `${entityType}/${entity.id}/manifest.m3u8`,
       credentials,
     });
     navigator.clipboard.writeText(url);

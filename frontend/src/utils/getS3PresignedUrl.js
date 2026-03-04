@@ -2,7 +2,7 @@ import { AWS_REGION } from "@/constants";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const getPresignedUrl = ({ bucket, key, expiry, credentials, ...rest }) => {
+const getS3PresignedUrl = ({ bucket, key, expiry, credentials, ...rest }) => {
   const s3Client = new S3Client({
     region: AWS_REGION,
     credentials,
@@ -15,4 +15,4 @@ const getPresignedUrl = ({ bucket, key, expiry, credentials, ...rest }) => {
   return getSignedUrl(s3Client, command, { expiresIn: expiry });
 };
 
-export default getPresignedUrl;
+export default getS3PresignedUrl;

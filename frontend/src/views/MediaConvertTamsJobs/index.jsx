@@ -21,7 +21,7 @@ import JobDetailModal from "./components/JobDetailModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useTamsJobs } from "@/hooks/useMediaConvert";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
-import getPresignedUrl from "@/utils/getPresignedUrl";
+import getS3PresignedUrl from "@/utils/getS3PresignedUrl";
 
 const MediaConvertTamsJobs = () => {
   const { jobs, isLoading } = useTamsJobs();
@@ -40,7 +40,7 @@ const MediaConvertTamsJobs = () => {
     const bucket = s3Uri_parts[2];
     const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
     const fileName = `${s3Uri_parts[s3Uri_parts.length - 1]}.${fileExtension}`;
-    const url = await getPresignedUrl({
+    const url = await getS3PresignedUrl({
       bucket,
       key,
       expiry: 300,
