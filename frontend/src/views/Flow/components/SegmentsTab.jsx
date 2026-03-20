@@ -107,7 +107,7 @@ const SegmentsTab = ({ flowId }) => {
       <SpaceBetween size="xs">
         <i>Showing last {SEGMENT_COUNT} segments</i>
         <Table
-          trackBy="object_id"
+          trackBy="timerange"
           variant="borderless"
           columnDefinitions={columnDefinitions}
           columnDisplay={preferences.contentDisplay}
