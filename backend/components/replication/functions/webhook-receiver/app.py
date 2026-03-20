@@ -35,13 +35,14 @@ def segments_added(event):
         if len(urls) == 0:
             # Skip if no presigned urls are provided
             continue
-        message_body = {
+        # Copy all segment fields except get_urls (which is source-store specific)
+        message_body = {k: v for k, v in segment.items() if k != "get_urls"}
+        # Add/override operational fields
+        message_body.update({
             "flowId": event["flow_id"],
-            "timerange": segment["timerange"],
             "uri": urls[0],
             "deleteSource": False,
-            "objectId": segment["object_id"],
-        }
+        })
         entries.append(
             {"Id": message_body["objectId"], "MessageBody": json.dumps(message_body)}
         )

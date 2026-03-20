@@ -113,16 +113,11 @@ States:
             States:
               MessageBody:
                 Type: Pass
-                Output:
-                  flowId: >-
-                    {% $flowId %}
-                  timerange: >-
-                    {% $states.input.segment.timerange %}
-                  uri: >-
-                    {% $states.input.segment.get_urls[0].url %}
-                  deleteSource: false
-                  objectId: >-
-                    {% $states.input.segment.object_id %}
+                Output: >-
+                  {% $merge([
+                    {"flowId": $flowId, "uri": $states.input.segment.get_urls[0].url, "deleteSource": false},
+                    $sift($states.input.segment, function($v, $k) { $k != 'get_urls' })
+                  ]) %}
                 Next: Entry
                 Assign:
                   index: >-

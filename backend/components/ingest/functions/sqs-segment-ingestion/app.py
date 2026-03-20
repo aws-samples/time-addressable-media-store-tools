@@ -105,12 +105,12 @@ def upload_file(flow_id: str, data: bytes, object_id: str | None) -> dict:
 
 
 @tracer.capture_method(capture_response=False)
-def post_segment(flow_id: str, object_id: str, timerange: str) -> bool:
+def post_segment(flow_id: str, segment_data: dict) -> bool:
     """Register the segment with the TAMS API"""
-    segment = {
-        "object_id": object_id,
-        "timerange": timerange,
-    }
+    # Exclude operational fields that are not part of the TAMS segment schema
+    excluded_fields = {"flowId", "uri", "deleteSource", "byterange"}
+    segment = {k: v for k, v in segment_data.items() if k not in excluded_fields}
+
     logger.info("Posting segment to TAMS...")
     post = requests.post(
         f"{endpoint}/flows/{flow_id}/segments",
@@ -181,13 +181,15 @@ def record_handler(record: SQSRecord) -> None:
     file_data = get_file(message["uri"], message.get("byterange"))
     if not file_data:
         raise ValueError(f'Unable to read source file {message["uri"]}')
-    media_object = upload_file(flow_id, file_data, message.get("objectId"))
+    media_object = upload_file(flow_id, file_data, message.get("object_id"))
     if media_object is None:
         raise ValueError(f"Unable to upload file to flow {flow_id}")
     flow_format = get_flow_format(flow_id)
     if flow_format == IMAGE_FORMAT and "_" in message["timerange"]:
         message["timerange"] = f'{message["timerange"].split("_")[0]}]'
-    post_result = post_segment(flow_id, media_object["object_id"], message["timerange"])
+    # Update object_id in message to use the actual uploaded object_id
+    message["object_id"] = media_object["object_id"]
+    post_result = post_segment(flow_id, message)
     if not post_result:
         raise ValueError(f"Unable to post segment to flow {flow_id}")
     if message.get("deleteSource", False):
