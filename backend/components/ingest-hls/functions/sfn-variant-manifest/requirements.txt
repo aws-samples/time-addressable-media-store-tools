@@ -1,2 +1,2 @@
-requests==2.32.4
+requests==2.33.0
 m3u8==6.0.0
