@@ -6,20 +6,20 @@ import {
   Marker,
   MarkerLane,
   MarkerListApi,
-  OmakasePlayer,
+  OmakasePlayerApi,
   PeriodMarker,
+  SubtitlesLane,
   TimelineApi,
 } from "@byomakase/omakase-player";
 
 import {
-  convertFlowIdToSubtitlesId,
-  MediaInfo,
   OmakaseMarkerListComponent,
   OmakasePlayerTimelineBuilder,
   OmakasePlayerTimelineComponent,
   OmakasePlayerTimelineControlsToolbar,
   OmakaseTamsPlayerComponent,
   OmakaseTimeRangePicker,
+  TamsVideo,
   TimeRangeUtil,
 } from "@byomakase/omakase-react-components";
 import { Flow, FlowSegment } from "@byomakase/omakase-react-components";
@@ -30,6 +30,7 @@ import {
   MARKER_LIST_CONFIG,
   PERIOD_MARKER_STYLE,
   PLAYER_CHROMING,
+  PLAYER_CHROMING_TEXT_TRACK,
   SCRUBBER_LANE_STYLE,
   SEGMENT_PERIOD_MARKER_STYLE,
   SUBTITLES_LANE_STYLE,
@@ -51,6 +52,9 @@ import {
   createLabel,
   createSubtitlesButton,
 } from "../../util/timeline-util";
+import { mergeVttManifest } from "../../util/vtt-util";
+import { first } from "rxjs";
+import { FlowUtil } from "../../util/flow-util";
 
 type OmakasePlayerTamsComponentProps = {
   sourceId: string;
@@ -70,15 +74,8 @@ export type DisplayConfig = {
   displayAudioSegments: boolean;
 };
 
-type VideoInfo = {
-  ffom: string | undefined;
-  markerOffset: number;
-  fps: number;
-  dropFrame: boolean;
-};
-
 function resolveDisplayConfig(
-  partialConfig: Partial<DisplayConfig>
+  partialConfig: Partial<DisplayConfig>,
 ): DisplayConfig {
   return {
     displayTimeline: partialConfig.displayTimeline ?? true,
@@ -90,6 +87,8 @@ function resolveDisplayConfig(
 
 function flowFormatSorting(a: Flow, b: Flow) {
   if (a === b) return 0;
+  if (a.format === "urn:x-nmos:format:multi") return -1;
+  if (b.format === "urn:x-nmos:format:multi") return 1;
   if (a.format === "urn:x-nmos:format:video") return -1;
   if (b.format === "urn:x-nmos:format:video") return 1;
   if (a.format === "urn:x-nmos:format:audio") return -1;
@@ -100,7 +99,7 @@ function flowFormatSorting(a: Flow, b: Flow) {
 function segmentToMarker(
   segment: FlowSegment,
   markerOffset: number,
-  videoLength: number
+  videoLength: number,
 ) {
   const timerange = TimeRangeUtil.parseTimeRange(segment.timerange);
   let start, end;
@@ -139,7 +138,7 @@ function segmentToMarker(
 }
 
 function buildTimeline(
-  omakasePlayer: OmakasePlayer,
+  omakasePlayer: OmakasePlayerApi,
   timeline: TimelineApi,
   childFlows: Flow[],
   childFlowsSegments: Map<string, FlowSegment[]>,
@@ -149,13 +148,13 @@ function buildTimeline(
   config: DisplayConfig,
   onMarkerClickCallback: (marker: Marker) => void,
   addMLCSourceCallback: (markerSource: MarkerLane) => void,
-  setSegmentationLanes: React.Dispatch<React.SetStateAction<MarkerLane[]>>
+  setSegmentationLanes: React.Dispatch<React.SetStateAction<MarkerLane[]>>,
 ) {
   const timelineBuilder = new OmakasePlayerTimelineBuilder(omakasePlayer);
 
   const checkMarkerOverlap = (
     lane: MarkerLane,
-    checkedMarker: PeriodMarker
+    checkedMarker: PeriodMarker,
   ): boolean => {
     return lane.getMarkers().reduce((overlaps, marker) => {
       if (checkedMarker.id === marker.id) {
@@ -194,11 +193,11 @@ function buildTimeline(
   const parsedTimeRange = TimeRangeUtil.parseTimeRange(timerange);
   const start = Math.max(
     TimeRangeUtil.timeMomentToSeconds(parsedTimeRange.start!) - markerOffset,
-    0
+    0,
   );
   const end = Math.min(
     TimeRangeUtil.timeMomentToSeconds(parsedTimeRange.end!) - markerOffset,
-    omakasePlayer.video.getDuration()
+    omakasePlayer.video.getDuration(),
   );
 
   const segmentationMarker = new PeriodMarker({
@@ -223,7 +222,7 @@ function buildTimeline(
     const vttUrl = TAMSThumbnailUtil.generateThumbnailVttBlob(
       childFlowsSegments.get(thumbnailFlow.id)!,
       omakasePlayer.video.getDuration() + markerOffset,
-      markerOffset
+      markerOffset,
     );
 
     const thumbnailLaneId = "thumbanil-lane";
@@ -245,7 +244,8 @@ function buildTimeline(
       !(
         flow.format === "urn:x-nmos:format:data" &&
         flow.container === "text/vtt"
-      )
+      ) &&
+      !(flow.format === "urn:x-nmos:format:multi" && flow.container)
     ) {
       return;
     }
@@ -282,11 +282,19 @@ function buildTimeline(
 
       timelineBuilder.addSubtitlesLane({
         id: subtitlesLaneId,
-        vttUrl: omakasePlayer.subtitles
-          .getTracks()
-          .find((track) => track.id === convertFlowIdToSubtitlesId(flow.id))!
-          .src,
         style: SUBTITLES_LANE_STYLE,
+      });
+
+      mergeVttManifest(
+        (omakasePlayer.video.getVideo() as TamsVideo).textUrls!.get(flow.id)!,
+        omakasePlayer.video.getDuration(),
+      ).then((vttUrl) => {
+        omakasePlayer.timeline!.onReady$.pipe(first(Boolean)).subscribe(() => {
+          const lane = omakasePlayer.timeline!.getTimelineLane(
+            subtitlesLaneId,
+          ) as SubtitlesLane;
+          lane.loadVtt(vttUrl);
+        });
       });
 
       createDropdownButton(timelineBuilder, timeline, subtitlesLaneId, [
@@ -297,7 +305,7 @@ function buildTimeline(
         timelineBuilder,
         omakasePlayer,
         flow,
-        subtitlesLaneId
+        subtitlesLaneId,
       );
 
       markerLaneMinimized = true;
@@ -315,13 +323,13 @@ function buildTimeline(
           segmentToMarker(
             segment,
             markerOffset,
-            omakasePlayer.video.getDuration()
-          )
+            omakasePlayer.video.getDuration(),
+          ),
         )
         .filter(
           (marker) =>
             marker.timeObservation.start != undefined &&
-            marker.timeObservation.end != undefined
+            marker.timeObservation.end != undefined,
         );
 
       markers.forEach((marker) => {
@@ -344,7 +352,7 @@ function buildTimeline(
   timelineBuilder.buildAttachedTimeline(timeline);
 
   const segmentationLane = timeline.getTimelineLane(
-    segmentationLaneId
+    segmentationLaneId,
   )! as MarkerLane;
 
   segmentationLane.onMarkerUpdate$.subscribe({
@@ -352,7 +360,7 @@ function buildTimeline(
       if (
         checkMarkerOverlap(
           segmentationLane,
-          markerUpdateEvent.marker as PeriodMarker
+          markerUpdateEvent.marker as PeriodMarker,
         )
       ) {
         markerUpdateEvent.marker.timeObservation =
@@ -369,7 +377,7 @@ function buildTimeline(
 
 function findMarkerLane(markerLanes: MarkerLane[], markerId: string) {
   const lane = markerLanes.find(
-    (markerLane) => markerLane.getMarker(markerId) !== undefined
+    (markerLane) => markerLane.getMarker(markerId) !== undefined,
   );
   return lane;
 }
@@ -388,7 +396,13 @@ const OmakasePlayerTamsComponent = React.memo(
     const config = resolveDisplayConfig(displayConfig);
 
     const timelineBuilderFlows = useMemo(() => {
-      const flows = childFlows ? [...childFlows] : [];
+      if (flow.container) {
+        // multiflow with muxed segments, no need to visualize the subflows as they carry only essence parameters information
+        return [flow];
+      }
+      const flows = childFlows
+        ? [...childFlows.filter((childFlow) => childFlow.container)]
+        : [];
       if (flowsSegments.get(flow.id)!.length > 0) {
         flows.unshift(flow);
       }
@@ -398,20 +412,27 @@ const OmakasePlayerTamsComponent = React.memo(
     timelineBuilderFlows.sort(flowFormatSorting);
 
     const [omakasePlayer, setOmakasePlayer] = useState<
-      OmakasePlayer | undefined
+      OmakasePlayerApi | undefined
     >(undefined);
 
-    const [mediaInfo, setMediaInfo] = useState<MediaInfo | undefined>(
-      undefined
+    const [mediaStartTime, setMediaStartTime] = useState<number | undefined>(
+      undefined,
     );
 
     const [selectedMarker, setSelectedMarker] = useState<Marker | undefined>(
-      undefined
+      undefined,
     );
 
     const [segementationLanes, setSegmentationLanes] = useState<MarkerLane[]>(
-      []
+      [],
     );
+
+    // useEffect(() => {
+    //   //@ts-ignore
+    //   window.omp = omakasePlayer;
+
+    //   console.log(omakasePlayer);
+    // }, [omakasePlayer]);
 
     useEffect(() => {
       if (segementationLanes.length > 1) {
@@ -420,7 +441,7 @@ const OmakasePlayerTamsComponent = React.memo(
     }, [segementationLanes]);
 
     const [markerList, setMarkerList] = useState<MarkerListApi | undefined>(
-      undefined
+      undefined,
     );
 
     const markerLaneMapRef = useRef<Map<string, string>>(new Map());
@@ -432,13 +453,15 @@ const OmakasePlayerTamsComponent = React.memo(
         selectedMarker
           ? findMarkerLane(segementationLanes, selectedMarker.id)
           : undefined,
-      [selectedMarker, segementationLanes]
+      [selectedMarker, segementationLanes],
     );
 
-    if (lane && source !== lane) {
-      lane.toggleMarker(selectedMarker!.id);
-      setSource(lane);
-    }
+    useEffect(() => {
+      if (lane && source !== lane) {
+        lane.toggleMarker(selectedMarker!.id);
+        setSource(lane);
+      }
+    }, [lane, source, selectedMarker]);
 
     useEffect(() => {
       //sync selected marker state with omp
@@ -446,7 +469,7 @@ const OmakasePlayerTamsComponent = React.memo(
         segementationLanes
           .filter(
             (segmentationLane) =>
-              segmentationLane.getMarker(selectedMarker.id) === undefined
+              segmentationLane.getMarker(selectedMarker.id) === undefined,
           )
           .forEach((segmentationLane) => {
             const selectedMarker = segmentationLane.getSelectedMarker();
@@ -462,7 +485,7 @@ const OmakasePlayerTamsComponent = React.memo(
           selectedMarker && segmentationLane.toggleMarker(selectedMarker.id);
         });
       }
-    }, [selectedMarker]);
+    }, [selectedMarker, segementationLanes, lane]);
 
     useEffect(() => {
       if (!markerList) {
@@ -504,7 +527,7 @@ const OmakasePlayerTamsComponent = React.memo(
         startMoment,
         endMoment,
         true,
-        false
+        false,
       );
 
       setTimeRange(TimeRangeUtil.formatTimeRangeExpr(newTimeRange));
@@ -530,7 +553,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     sourceId={sourceId}
                     flows={timelineBuilderFlows}
                     flowSegments={flowsSegments}
-                    markerOffset={mediaInfo!.mediaStartTime}
+                    markerOffset={mediaStartTime!}
                   />
 
                   <OmakaseMarkerListComponent
@@ -544,7 +567,7 @@ const OmakasePlayerTamsComponent = React.memo(
                     }}
                     onCreateMarkerListCallback={(markerList) =>
                       setMarkerList((prev) =>
-                        prev === markerList ? prev : markerList
+                        prev === markerList ? prev : markerList,
                       )
                     }
                   />
@@ -582,17 +605,19 @@ const OmakasePlayerTamsComponent = React.memo(
             <div className="player-wrapper" style={{ marginBottom: 0 }}>
               <OmakaseTamsPlayerComponent
                 flow={flow}
-                childFlows={childFlows}
+                subflows={childFlows}
                 flowsSegments={flowsSegments}
-                onVideoLoadedCallback={(omakasePlayer, _, videoInfo) => {
+                onVideoLoadedCallback={(omakasePlayer, videoInfo) => {
                   setOmakasePlayer((prev) => prev ?? omakasePlayer);
-                  setMediaInfo((prev) => prev ?? videoInfo);
+                  setMediaStartTime((prev) => prev ?? videoInfo.mediaStartTime);
                 }}
                 config={{
-                  playerChroming: PLAYER_CHROMING,
+                  playerChroming: FlowUtil.hasTextFlow(childFlows)
+                    ? PLAYER_CHROMING_TEXT_TRACK
+                    : PLAYER_CHROMING,
                 }}
                 timerange={timeRange}
-                enableHotkey={true}
+                enableHotkeys={true}
               />
             </div>
             <div className="player-wrapper">
@@ -620,11 +645,11 @@ const OmakasePlayerTamsComponent = React.memo(
                 flowsSegments,
                 markerLaneMapRef.current,
                 timeRange,
-                mediaInfo!.mediaStartTime,
+                mediaStartTime!,
                 config,
                 onMarkerClickCallback,
                 addMLCSourceCallback,
-                setSegmentationLanes
+                setSegmentationLanes,
               )
             }
           ></OmakasePlayerTimelineComponent>
@@ -637,10 +662,10 @@ const OmakasePlayerTamsComponent = React.memo(
     // TODO: PoC only, needs improvement
     return (
       prevProps.flow.id === nextProps.flow.id &&
-      prevProps.timeRange === nextProps.timeRange &&
+      // prevProps.timeRange === nextProps.timeRange && -> skipped in case of live flows
       prevProps.childFlows?.length === nextProps.childFlows?.length
     );
-  }
+  },
 );
 
 export default OmakasePlayerTamsComponent;

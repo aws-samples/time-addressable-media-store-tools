@@ -24,79 +24,76 @@ function formatSecondsToVttTimestamp(seconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
-export async function mergeVttUrls(
-  urls: string[],
-  localOffsetSeconds: number,
-  videoDuration: number
+export async function mergeVttManifest(
+  manifestUrl: string,
+  videoDuration: number,
 ): Promise<string> {
-  if (!urls.length) throw new Error("No URLs provided");
-
-  function shiftTimestamp(
-    time: number,
-    offsetSeconds: number,
-    videoDuration: number
-  ): number {
-    return Math.min(time - offsetSeconds, videoDuration);
-  }
-
-  function filterCue(
-    startTime: number,
-    offsetSeconds: number,
-    videoDuration: number
-  ): boolean {
-    return (
-      startTime >= offsetSeconds && startTime <= videoDuration + offsetSeconds
+  const manifestRes = await fetch(manifestUrl);
+  if (!manifestRes.ok) {
+    throw new Error(
+      `Failed to fetch manifest: ${manifestRes.status} ${manifestRes.statusText}`,
     );
   }
 
-  const contents = await Promise.all(urls.map(fetchVttUtf8));
+  const manifestText = await manifestRes.text();
+  if (!manifestText.trim()) throw new Error("Empty manifest text");
 
-  const allCues = [];
-  let metadata;
+  const vttUrls: string[] = [];
+  const lines = manifestText.split("\n");
+
+  const masterUrl = new URL(manifestUrl);
+  const host = `${
+    masterUrl.protocol === "blob:" ? masterUrl.protocol : ""
+  }${masterUrl.origin}`;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) {
+      const vttUrl = `${host}/${trimmed}`;
+      vttUrls.push(vttUrl);
+    }
+  }
+
+  if (!vttUrls.length) throw new Error("No VTT files found in manifest");
+
+  const contents = await Promise.all(vttUrls.map(fetchVttUtf8));
+
+  const allCues: any[] = [];
+  let metadata: any | undefined;
 
   for (const text of contents) {
     const parsed = webvtt.parse(text, { strict: false, meta: true });
 
-    if (!metadata) {
-      metadata = parsed.meta;
-    }
+    if (!metadata) metadata = parsed.meta;
 
-    const filteredCues = parsed.cues.filter((cue: any) =>
-      filterCue(cue.end, localOffsetSeconds, videoDuration)
-    );
-
-    for (const cue of filteredCues) {
+    for (const cue of parsed.cues) {
       allCues.push({
         ...cue,
-        start: shiftTimestamp(cue.start, localOffsetSeconds, videoDuration),
-        end: shiftTimestamp(cue.end, localOffsetSeconds, videoDuration),
+        start: Math.max(0, Math.min(cue.start, videoDuration)),
+        end: Math.max(0, Math.min(cue.end, videoDuration)),
       });
     }
   }
 
   const final: string[] = [];
-
   final.push("WEBVTT");
 
-  if (metadata["X-TIMESTAMP-MAP=LOCAL"]) {
+  if (metadata?.["X-TIMESTAMP-MAP=LOCAL"]) {
     final.push(`X-TIMESTAMP-MAP=LOCAL${metadata["X-TIMESTAMP-MAP=LOCAL"]}`);
-    final.push(""); // blank line after metadata
+    final.push("");
   } else {
     final.push("");
   }
 
   for (const cue of allCues) {
     final.push(
-      `${formatSecondsToVttTimestamp(
-        cue.start
-      )} --> ${formatSecondsToVttTimestamp(cue.end)}`
+      `${formatSecondsToVttTimestamp(cue.start)} --> ${formatSecondsToVttTimestamp(cue.end)}`,
     );
     final.push(cue.text);
-    final.push(""); // blank line between cues
+    final.push("");
   }
 
   const vtt = final.join("\n").trim() + "\n";
-
   const blob = new Blob([vtt], { type: "text/vtt" });
   return URL.createObjectURL(blob);
 }

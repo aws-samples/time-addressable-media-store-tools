@@ -1,6 +1,6 @@
 import {
   ImageButton,
-  OmakasePlayer,
+  OmakasePlayerApi,
   TextLabel,
   TimelineApi,
 } from "@byomakase/omakase-player";
@@ -8,6 +8,8 @@ import {
   convertFlowIdToSubtitlesId,
   Flow,
   OmakasePlayerTimelineBuilder,
+  resolveAudioManifestName,
+  resolveTextManifestName,
 } from "@byomakase/omakase-react-components";
 import {
   SUBTITLES_BUTTON_CONFIG,
@@ -22,21 +24,25 @@ import {
 
 export function createSubtitlesButton(
   timelineBuilder: OmakasePlayerTimelineBuilder,
-  omakasePlayer: OmakasePlayer,
+  omakasePlayer: OmakasePlayerApi,
   flow: Flow,
-  subtitlesLaneId: string
+  subtitlesLaneId: string,
 ) {
   const config = { ...SUBTITLES_BUTTON_CONFIG };
   if (
     omakasePlayer.subtitles.getActiveTrack()?.id ===
-    convertFlowIdToSubtitlesId(flow.id)
+      convertFlowIdToSubtitlesId(flow.id) &&
+    !omakasePlayer.subtitles.getActiveTrack()?.hidden
   ) {
     config.src = CHATBOX_ACTIVE_SVG_SOURCE;
   }
   const subtitlesButton = new ImageButton(config);
 
-  const subtitlesId = convertFlowIdToSubtitlesId(flow.id);
   subtitlesButton.onClick$.subscribe(() => {
+    const subtitlesId = omakasePlayer.subtitles
+      .getTracks()
+      .find((track) => track.label === resolveTextManifestName(flow))!.id;
+
     if (omakasePlayer.subtitles.getActiveTrack()?.id !== subtitlesId) {
       if (
         omakasePlayer.subtitles
@@ -45,12 +51,29 @@ export function createSubtitlesButton(
       ) {
         omakasePlayer.subtitles.showTrack(subtitlesId);
       }
+    } else if (omakasePlayer.subtitles.getActiveTrack()?.hidden) {
+      omakasePlayer.subtitles.showActiveTrack();
     } else {
       omakasePlayer.subtitles.hideActiveTrack();
     }
   });
 
+  omakasePlayer.subtitles.onHide$.subscribe((subtitlesEvent) => {
+    const subtitlesId = omakasePlayer.subtitles
+      .getTracks()
+      .find((track) => track.label === resolveTextManifestName(flow))!.id;
+
+    if (subtitlesEvent.currentTrack?.id === subtitlesId) {
+      subtitlesButton.setImage({
+        src: CHATBOX_SVG_SOURCE,
+      });
+    }
+  });
   omakasePlayer.subtitles.onShow$.subscribe((subtitlesEvent) => {
+    const subtitlesId = omakasePlayer.subtitles
+      .getTracks()
+      .find((track) => track.label === resolveTextManifestName(flow))!.id;
+
     if (subtitlesEvent.currentTrack?.id === subtitlesId) {
       subtitlesButton.setImage({
         src: CHATBOX_ACTIVE_SVG_SOURCE,
@@ -78,7 +101,7 @@ export function createDropdownButton(
   timelineBuilder: OmakasePlayerTimelineBuilder,
   timeline: TimelineApi,
   controlLaneId: string,
-  laneIds: string[]
+  laneIds: string[],
 ) {
   const dropdownButton = new ImageButton({
     ...DROPDOWN_BUTTON_CONFIG,
@@ -119,7 +142,7 @@ export function createDropdownButton(
 export function createLabel(
   timelineBuilder: OmakasePlayerTimelineBuilder,
   text: string,
-  laneId: string
+  laneId: string,
 ) {
   const label = new TextLabel({
     text: text,
@@ -142,9 +165,9 @@ export function createLabel(
 
 export function createAudioButton(
   timelineBuilder: OmakasePlayerTimelineBuilder,
-  omakasePlayer: OmakasePlayer,
+  omakasePlayer: OmakasePlayerApi,
   flow: Flow,
-  laneId: string
+  laneId: string,
 ) {
   const buttonImageSrc =
     omakasePlayer.audio.getActiveAudioTrack()?.label === flow.description
@@ -160,7 +183,7 @@ export function createAudioButton(
     next: () => {
       const audioTrack = omakasePlayer.audio
         .getAudioTracks()
-        .find((track) => track.label === flow.description)!;
+        .find((track) => track.label === resolveAudioManifestName(flow))!;
       omakasePlayer.audio.setActiveAudioTrack(audioTrack.id);
     },
   });
@@ -168,13 +191,30 @@ export function createAudioButton(
   omakasePlayer.audio.onAudioSwitched$.subscribe({
     next: (audioSwitchedEvent) => {
       const buttonImageSrc =
-        audioSwitchedEvent.activeAudioTrack.label === flow.description
+        audioSwitchedEvent.activeAudioTrack.label ===
+        resolveAudioManifestName(flow)
           ? "/sound-active-button.svg"
           : "/sound-inactive-button.svg";
       soundControlButton.setImage({
         ...SOUND_BUTTON_CONFIG,
         src: buttonImageSrc,
       });
+    },
+  });
+
+  omakasePlayer.audio.onAudioLoaded$.subscribe({
+    next: (audioLoadedEvent) => {
+      const activeAudioTrack = omakasePlayer.audio.getActiveAudioTrack();
+      if (activeAudioTrack) {
+        const buttonImageSrc =
+          activeAudioTrack.label === resolveAudioManifestName(flow)
+            ? "/sound-active-button.svg"
+            : "/sound-inactive-button.svg";
+        soundControlButton.setImage({
+          ...SOUND_BUTTON_CONFIG,
+          src: buttonImageSrc,
+        });
+      }
     },
   });
 

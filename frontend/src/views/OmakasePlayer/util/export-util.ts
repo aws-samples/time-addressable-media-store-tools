@@ -1,7 +1,6 @@
 import {
   MarkerApi,
   MarkerAwareApi,
-  MarkerLane,
   OmakasePlayer,
   PeriodMarker,
 } from "@byomakase/omakase-player";

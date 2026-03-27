@@ -1,7 +1,7 @@
 import {
   MarkerLane,
   MarkerListApi,
-  OmakasePlayer,
+  OmakasePlayerApi,
   PeriodMarker,
 } from "@byomakase/omakase-player";
 import React, { useEffect, useState } from "react";
@@ -21,7 +21,7 @@ type OmakaseSegmentationHeaderProps = {
   flows: Flow[];
   flowSegments: Map<string, FlowSegment[]>;
   markerOffset: number;
-  omakasePlayer: OmakasePlayer;
+  omakasePlayer: OmakasePlayerApi;
 };
 
 const OmakaseSegmentationHeader = ({

@@ -2,7 +2,6 @@ import {
   ConfigWithOptionalStyle,
   DefaultThemeControl,
   ImageButtonConfig,
-  MarkerLaneConfig,
   MarkerListConfig,
   PeriodMarkerStyle,
   PlayerChroming,
@@ -31,6 +30,27 @@ export const PLAYER_CHROMING: PlayerChroming = {
       DefaultThemeControl.TenFramesForward,
       DefaultThemeControl.Trackselector,
       DefaultThemeControl.Volume,
+    ],
+  },
+};
+
+export const PLAYER_CHROMING_TEXT_TRACK: PlayerChroming = {
+  theme: PlayerChromingTheme.Default,
+  themeConfig: {
+    controlBar: [
+      DefaultThemeControl.Bitc,
+      DefaultThemeControl.Detach,
+      DefaultThemeControl.FrameBackward,
+      DefaultThemeControl.FrameForward,
+      DefaultThemeControl.Fullscreen,
+      DefaultThemeControl.Play,
+      DefaultThemeControl.PlaybackRate,
+      DefaultThemeControl.Scrubber,
+      DefaultThemeControl.TenFramesBackward,
+      DefaultThemeControl.TenFramesForward,
+      DefaultThemeControl.Trackselector,
+      DefaultThemeControl.Volume,
+      DefaultThemeControl.Captions,
     ],
   },
 };

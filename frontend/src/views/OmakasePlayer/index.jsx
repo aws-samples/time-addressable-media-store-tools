@@ -4,7 +4,50 @@ import { OmakasePlayerTamsComponent } from ".";
 import { Spinner, Box } from "@cloudscape-design/components";
 import { useOmakaseData } from "@/hooks/useOmakaseData";
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { Component, useState } from "react";
+
+
+class ErrorBoundary extends Component {
+  firstError = null;
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Capture ONLY the first error
+    if (this.firstError === null) {
+      this.firstError = error;
+      this.setState({ error }); 
+    }
+
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const error = this.state.error || this.firstError;
+
+      return (
+        <Box>
+          Can't initialize playback due to the following error(s):
+          <br />
+          {error?.message}
+        </Box>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export const OmakaseHlsPlayer = () => {
   const { type, id } = useParams();
@@ -34,6 +77,7 @@ export const OmakaseHlsPlayer = () => {
   }
 
   return !isLoading ? (
+    <ErrorBoundary>
     <Box>
       <OmakasePlayerTamsComponent
         sourceId={sourceId}
@@ -46,6 +90,8 @@ export const OmakaseHlsPlayer = () => {
         displayConfig={{}}
       />
     </Box>
+    </ErrorBoundary>
+
   ) : (
     <Box textAlign="center">
       Loading Media <Spinner />

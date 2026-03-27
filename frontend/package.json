@@ -18,8 +18,8 @@
     "@aws-sdk/client-sfn": "^3.995.0",
     "@aws-sdk/client-ssm": "^3.995.0",
     "@aws-sdk/s3-request-presigner": "^3.995.0",
-    "@byomakase/omakase-player": "0.25.2",
-    "@byomakase/omakase-react-components": "1.2.3",
+    "@byomakase/omakase-player": "0.25.3",
+    "@byomakase/omakase-react-components": "1.3.0",
     "@cloudscape-design/collection-hooks": "^1.0.76",
     "@cloudscape-design/components": "^3.0.1108",
     "@cloudscape-design/design-tokens": "^3.0.62",
@@ -36,6 +36,7 @@
     "react-oidc-context": "^3.3.0",
     "react-router-dom": "^7.12.0",
     "remark-gfm": "^4.0.1",
+    "rxjs": "^7.8.2",
     "swr": "^2.3.6",
     "video.js": "^8.23.4",
     "zustand": "^5.0.8"

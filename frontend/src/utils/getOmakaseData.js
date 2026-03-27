@@ -117,13 +117,15 @@ const parseAndFilterFlows = (flows) => {
 };
 
 const getSegmentationTimerange = async (flows, api) => {
+  // Filter multiflows with container, they must take priority if present
+  const multiFlowsWithSegments = flows.filter(({format, container}) => format === 'urn:x-nmos:format:multi' && container);
   // Filter for video flows, Video must take priority if any are present
   const videoFlows = flows.filter(
     ({ format }) => format === "urn:x-nmos:format:video"
   );
 
   // Determine which flows to use for calculation
-  const flowsToUse = videoFlows.length > 0 ? videoFlows : flows;
+  const flowsToUse = multiFlowsWithSegments.length > 0 ? multiFlowsWithSegments : videoFlows.length > 0 ? videoFlows : flows;
 
   if (flowsToUse.length === 0) {
     return {
