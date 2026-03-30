@@ -6,10 +6,6 @@
     "strict": true,
     "skipLibCheck": true,
 
-    // Allow JS files during migration
-    "allowJs": true,
-    "checkJs": false,
-
     // React & JSX
     "jsx": "react-jsx",
     "module": "ESNext",

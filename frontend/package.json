@@ -47,6 +47,7 @@
     "@aws-sdk/credential-providers": "^3.1019.0",
     "@eslint/js": "^9.39.4",
     "@types/luxon": "^3.7.1",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/video.js": "^7.3.58",
