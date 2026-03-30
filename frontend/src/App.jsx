@@ -9,7 +9,6 @@ import {
   IS_FFMPEG_DEPLOYED,
 } from "@/constants";
 import { HashRouter, Route, Routes } from "react-router-dom";
-
 import Diagram from "@/views/Diagram";
 import Flow from "@/views/Flow";
 import Flows from "@/views/Flows";
@@ -24,7 +23,6 @@ import FfmpegJobs from "@/views/FfmpegJobs";
 import MediaConvertHlsIngestion from "@/views/MediaConvertHlsIngestion";
 import MediaConvertTamsJobs from "@/views/MediaConvertTamsJobs";
 import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
-import React from "react";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
 import { AuthProvider } from "react-oidc-context";

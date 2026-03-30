@@ -6,17 +6,28 @@
     "strict": true,
     "skipLibCheck": true,
 
-    // Added
-    "jsx": "react",
+    // Allow JS files during migration
+    "allowJs": true,
+    "checkJs": false,
+
+    // React & JSX
+    "jsx": "react-jsx",
     "module": "ESNext",
     "declaration": true,
     "declarationDir": "types",
     "sourceMap": true,
     "outDir": "./dist",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+
+    // Path aliases
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
 
-  "include": ["src/global.d.ts", "**/*.ts", "**/*.tsx"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
