@@ -22,8 +22,8 @@ import type { MultiselectProps } from "@cloudscape-design/components";
 
 type Props = {
   sourceId: Uuid,
-  editTimeranges: Timerange[],
-  flows: Flow[],
+  editTimeranges?: Timerange[],
+  flows: any[],
   onModalToggle: React.Dispatch<React.SetStateAction<boolean>>,
   isModalOpen: boolean,
 };
@@ -87,7 +87,7 @@ const OmakaseExportModal = ({
     setIsLoading(true);
     const exportResult = await executeExport(
       formData,
-      editTimeranges,
+      editTimeranges ?? [],
       selectedFlows.map((flow) => flow.value!),
       sourceId,
       credentials
@@ -111,7 +111,7 @@ const OmakaseExportModal = ({
   }, [selectedFlows.length, isFormValid]);
 
   const handleCreateJob = () => {
-    createJob({ jobSpec, sourceId, fileName, timeranges: editTimeranges });
+    createJob({ jobSpec, sourceId, fileName, timeranges: editTimeranges ?? [] });
   };
 
   return (
@@ -183,7 +183,7 @@ const OmakaseExportModal = ({
 
             {formData.operation === "MEDIACONVERT_EXPORT" && (
               <MediaConvertExportForm
-                timeranges={editTimeranges}
+                timeranges={editTimeranges ?? []}
                 fileName={fileName}
                 setFileName={setFileName}
                 jobSpec={jobSpec}
