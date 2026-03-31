@@ -8,6 +8,13 @@ from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, CORSConfig
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from schemas import (
+    FfmpegExport,
+    FfmpegJob,
+    FfmpegRule,
+    JobTarget,
+    RuleTarget,
+)
 
 tracer = Tracer()
 logger = Logger()
@@ -28,10 +35,10 @@ rule_id_prefix = "ffmpeg-flow-segments-"
 def list_ffmpeg_rules():
     rules = get_rule_names()
     rule_targets = [
-        {
-            "id": rule[len(rule_id_prefix) :],
-            "targets": [parse_rule_target(target) for target in get_rule_targets(rule)],
-        }
+        FfmpegRule(
+            id=rule[len(rule_id_prefix) :],
+            targets=[parse_rule_target(target) for target in get_rule_targets(rule)],
+        )
         for rule in rules
     ]
     return rule_targets
@@ -85,7 +92,7 @@ def list_ffmpeg_jobs():
         input_flow, job_target = get_job_details(execution_arn)
         flow_jobs[input_flow].append(job_target)
     return [
-        {"id": flow_id, "targets": targets} for flow_id, targets in flow_jobs.items()
+        FfmpegJob(id=flow_id, targets=targets) for flow_id, targets in flow_jobs.items()
     ]
 
 
@@ -148,7 +155,7 @@ def parse_rule_target(target):
     )
     for attr in ("segments", "outputBucket", "outputPrefix"):
         input_template.pop(attr, None)
-    return input_template
+    return RuleTarget(**input_template)
 
 
 @tracer.capture_method(capture_response=False)
@@ -169,38 +176,36 @@ def get_executions(state_machine_arn):
 def get_job_details(execution_arn):
     describe_execution = sfn.describe_execution(executionArn=execution_arn)
     job_input = json.loads(describe_execution["input"])
-    return job_input["inputFlow"], {
-        "executionArn": describe_execution["executionArn"],
-        "status": describe_execution["status"],
-        "startDate": describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
-        "stopDate": (
+    return job_input["inputFlow"], JobTarget(
+        executionArn=describe_execution["executionArn"],
+        status=describe_execution["status"],
+        startDate=describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
+        stopDate=(
             describe_execution["stopDate"].strftime("%Y-%m-%d %H:%M:%S")
             if describe_execution.get("stopDate")
             else ""
         ),
-        "sourceTimerange": job_input.get("sourceTimerange", ""),
-        "ffmpeg": job_input["ffmpeg"],
-        "outputFlow": job_input["outputFlow"],
-    }
+        sourceTimerange=job_input.get("sourceTimerange", ""),
+        ffmpeg=job_input["ffmpeg"],
+        outputFlow=job_input["outputFlow"],
+    )
 
 
 @tracer.capture_method(capture_response=False)
 def get_export_details(execution_arn):
     describe_execution = sfn.describe_execution(executionArn=execution_arn)
     job_input = json.loads(describe_execution["input"])
-    return {
-        "executionArn": describe_execution["executionArn"],
-        "status": describe_execution["status"],
-        "startDate": describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
-        "stopDate": (
+    return FfmpegExport(
+        executionArn=describe_execution["executionArn"],
+        status=describe_execution["status"],
+        startDate=describe_execution["startDate"].strftime("%Y-%m-%d %H:%M:%S"),
+        stopDate=(
             describe_execution["stopDate"].strftime("%Y-%m-%d %H:%M:%S")
             if describe_execution.get("stopDate")
             else ""
         ),
-        "timerange": job_input.get("timerange", ""),
-        "flowIds": job_input.get("flowIds", []),
-        "ffmpeg": job_input.get("ffmpeg", {}),
-        "output": json.loads(describe_execution.get("output", "{}")).get(
-            "s3Object", {}
-        ),
-    }
+        timerange=job_input.get("timerange", ""),
+        flowIds=job_input.get("flowIds", []),
+        ffmpeg=job_input.get("ffmpeg", {}),
+        output=json.loads(describe_execution.get("output", "{}")).get("s3Object", {}),
+    )

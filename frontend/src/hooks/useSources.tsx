@@ -1,0 +1,73 @@
+import { useApi } from "@/hooks/useApi";
+import useSWR from "swr";
+import paginationFetcher from "@/utils/paginationFetcher";
+import type { Uuid, Source, Flow } from "@/types/tams";
+
+export const useSources = () => {
+  const api = useApi();
+  const { data, mutate, error, isLoading, isValidating } = useSWR<Source[]>(
+    "/sources?limit=300",
+    (path) => paginationFetcher(path, api),
+    {
+      refreshInterval: 3000,
+    }
+  );
+
+  return {
+    sources: data,
+    mutate,
+    isLoading,
+    isValidating,
+    error,
+  };
+};
+
+export const useSource = (sourceId: Uuid) => {
+  const { get } = useApi();
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR<{ data: Source; headers: Record<string, string>; nextLink?: string }>(
+    ["/sources", sourceId],
+    ([path, sourceId]) => get(`${path}/${sourceId}`),
+    {
+      refreshInterval: 3000,
+    }
+  );
+
+  return {
+    source: response?.data,
+    mutate,
+    isLoading,
+    isValidating,
+    error,
+  };
+};
+
+export const useSourceFlows = (sourceId: Uuid) => {
+  const { get } = useApi();
+  const {
+    data: response,
+    mutate,
+    error,
+    isLoading,
+    isValidating,
+  } = useSWR<{ data: Flow[]; headers: Record<string, string>; nextLink?: string }>(
+    ["/flows", sourceId],
+    ([path, sourceId]) => get(`${path}?source_id=${sourceId}`),
+    {
+      refreshInterval: 3000,
+    }
+  );
+
+  return {
+    flows: response?.data,
+    mutate,
+    isLoading,
+    isValidating,
+    error,
+  };
+};

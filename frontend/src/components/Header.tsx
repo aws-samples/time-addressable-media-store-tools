@@ -1,0 +1,63 @@
+import { TopNavigation } from "@cloudscape-design/components";
+import { useAuth } from "react-oidc-context";
+import { Mode, applyMode } from "@cloudscape-design/global-styles";
+import { APP_TITLE, APP_TITLE_LOGO, SOLUTION_VERSION } from "@/constants";
+import usePreferencesStore from "@/stores/usePreferencesStore";
+import "@/styles/Header.css";
+
+const Header = () => {
+  const mode = usePreferencesStore((state) => state.mode);
+  const setMode = usePreferencesStore((state) => state.setMode);
+  const auth = useAuth();
+
+  applyMode(mode);
+
+  const handleDropdownClick = ({ detail }: { detail: { id: string } }) => {
+    if (detail.id === "signout") {
+      // The configuration passed to signoutRedirect have be built to work with Amazon Cognito
+      // This may need to be tweaked to work correctly with different OIDC providers
+      auth.signoutRedirect({
+        extraQueryParams: {
+          client_id: auth.settings.client_id,
+          logout_uri: auth.settings.redirect_uri,
+          response_type: "code",
+        },
+      });
+    }
+    if (detail.id === "dark") {
+      setMode(Mode.Dark);
+    }
+    if (detail.id === "light") {
+      setMode(Mode.Light);
+    }
+  };
+
+  return (
+    <TopNavigation
+      identity={{
+        href: "/",
+        title: APP_TITLE ?? "TAMS Tools",
+        logo: { src: APP_TITLE_LOGO ?? "/aws.svg" },
+      }}
+      utilities={[
+        {
+          type: "menu-dropdown",
+          text:
+            auth.user?.profile?.email ||
+            auth.user?.profile?.preferred_username ||
+            "User",
+          description: `TAMS Tools Version: ${SOLUTION_VERSION}`,
+          iconName: "user-profile",
+          onItemClick: handleDropdownClick,
+          items: [
+            { id: "signout", text: "Sign out" },
+            { id: "dark", text: "Dark Mode", disabled: mode === Mode.Dark },
+            { id: "light", text: "Light Mode", disabled: mode === Mode.Light },
+          ],
+        },
+      ]}
+    />
+  );
+};
+
+export default Header;
