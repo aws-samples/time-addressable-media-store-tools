@@ -1,3 +1,8 @@
+/**
+ * Python models: backend/components/ingest-ffmpeg/functions/api-ffmpeg-ingestion/schemas.py
+ * Keep these in sync manually.
+ */
+
 import type { Uuid } from "@/types/tams";
 import type { ExecutionStatus } from "@aws-sdk/client-sfn";
 

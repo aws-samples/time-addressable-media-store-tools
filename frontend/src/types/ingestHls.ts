@@ -1,3 +1,8 @@
+/**
+ * Python models: backend/components/ingest-hls/functions/api-hls-ingestion/schemas.py
+ * Keep these in sync manually.
+ */
+
 import type { JobStatus } from "@aws-sdk/client-mediaconvert";
 import type { ChannelState } from "@aws-sdk/client-medialive";
 import type { ExecutionStatus } from "@aws-sdk/client-sfn";

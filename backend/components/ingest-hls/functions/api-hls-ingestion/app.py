@@ -8,6 +8,7 @@ from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, CORSConf
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
+from schemas import ChannelIngestion, JobIngestion, Workflow
 
 tracer = Tracer()
 logger = Logger()
@@ -75,14 +76,14 @@ def get_job_ingestions():
                     input_file = os.path.basename(first_input)
                     manifest_uri = f'{destination_location}{Path(input_file).stem if destination_location.endswith("/") else ""}.m3u8'
                     jobs.append(
-                        {
-                            "id": job["Id"],
-                            "fileName": input_file,
-                            "manifestUri": manifest_uri,
-                            "manifestExists": manifest_exists(manifest_uri),
-                            "status": job["Status"],
-                            "jobPercentComplete": job.get("JobPercentComplete", None),
-                        }
+                        JobIngestion(
+                            id=job["Id"],
+                            fileName=input_file,
+                            manifestUri=manifest_uri,
+                            manifestExists=manifest_exists(manifest_uri),
+                            status=job["Status"],
+                            jobPercentComplete=job.get("JobPercentComplete", None),
+                        )
                     )
     return jobs
 
@@ -110,13 +111,13 @@ def get_channel_ingestions():
                     f"{destination_location}.m3u8" if destination_location else None
                 )
                 channels.append(
-                    {
-                        "id": channel["Id"],
-                        "name": channel["Name"],
-                        "manifestUri": manifest_uri,
-                        "manifestExists": manifest_exists(manifest_uri),
-                        "state": channel["State"],
-                    }
+                    ChannelIngestion(
+                        id=channel["Id"],
+                        name=channel["Name"],
+                        manifestUri=manifest_uri,
+                        manifestExists=manifest_exists(manifest_uri),
+                        state=channel["State"],
+                    )
                 )
     return channels
 
@@ -133,20 +134,18 @@ def get_workflows():
                     execution["name"].rsplit("-", 1)[0].split("-", 1)
                 )
                 workflows.append(
-                    {
-                        "executionArn": execution["executionArn"],
-                        "elementalService": elemental_service,
-                        "elementalId": elemental_id,
-                        "status": execution["status"],
-                        "startDate": execution["startDate"].strftime(
-                            "%Y-%m-%dT%H:%M:%SZ"
-                        ),
-                        "stopDate": (
+                    Workflow(
+                        executionArn=execution["executionArn"],
+                        elementalService=elemental_service,
+                        elementalId=elemental_id,
+                        status=execution["status"],
+                        startDate=execution["startDate"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        stopDate=(
                             execution["stopDate"].strftime("%Y-%m-%dT%H:%M:%SZ")
                             if execution.get("stopDate")
                             else None
                         ),
-                    }
+                    )
                 )
             # pylint: disable=broad-exception-caught
             except Exception as ex:
