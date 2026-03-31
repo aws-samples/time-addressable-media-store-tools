@@ -2,10 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { PAGE_SIZE } from "@/constants";
 import type { CollectionPreferencesProps } from "@cloudscape-design/components";
+import { Mode } from "@cloudscape-design/global-styles";
 
 type Preferences = CollectionPreferencesProps.Preferences;
 
 type PreferencesStore = {
+  mode: Mode;
+  setMode: (mode: Mode) => void;
+
   flowsShowHierarchy: boolean;
   setFlowsShowHierarchy: (hierarchy: boolean) => void;
 
@@ -31,6 +35,9 @@ type PreferencesStore = {
 const usePreferencesStore = create<PreferencesStore>()(
   persist(
     (set) => ({
+      mode: Mode.Dark,
+      setMode: (mode) => set({ mode }),
+
       flowsShowHierarchy: true,
       setFlowsShowHierarchy: (hierarchy) =>
         set({ flowsShowHierarchy: hierarchy }),
