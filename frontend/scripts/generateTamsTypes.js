@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const version = process.argv[2] || 'main';
 const outputPath = path.resolve(__dirname, '../src/types/tams.generated.ts');
-const sourceUrl = `https://raw.githubusercontent.com/bbc/tams/refs/tags/${version}/api/TimeAddressableMediaStore.yaml`;
+const sourceUrl = `https://raw.githubusercontent.com/bbc/tams/${version}/api/TimeAddressableMediaStore.yaml`;
 
 console.log(`Generating TAMS types from version: ${version}`);
 console.log(`Source: ${sourceUrl}`);
@@ -28,7 +28,7 @@ console.log(`Output: ${outputPath}`);
 
 try {
   const { stdout, stderr } = await execAsync(
-    `npx openapi-typescript "${sourceUrl}" -o "${outputPath}"`
+    `openapi-typescript "${sourceUrl}" -o "${outputPath}"`
   );
 
   if (stdout) console.log(stdout);
