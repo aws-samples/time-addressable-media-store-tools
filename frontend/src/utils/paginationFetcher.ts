@@ -1,18 +1,18 @@
 import { AWS_TAMS_ENDPOINT } from "@/constants";
 import type { ApiClient } from "@/types/utils";
 
-const paginationFetcher = async (
+const paginationFetcher = async <T extends Record<string, unknown>>(
   path: string,
   api: ApiClient,
   maxResults?: number,
-): Promise<any[]> => {
+): Promise<T[]> => {
   const { get } = api;
-  let response = await get(path);
+  let response = await get<T[]>(path);
   let records = response.data;
 
   while (response.nextLink && (!maxResults || records.length < maxResults)) {
     const nextPath = response.nextLink.slice(AWS_TAMS_ENDPOINT.length);
-    response = await get(nextPath);
+    response = await get<T[]>(nextPath);
     records = records.concat(response.data);
   }
 
@@ -20,8 +20,12 @@ const paginationFetcher = async (
     records = records.slice(0, maxResults);
   }
 
-  // Remove segments_updated field from record if present. This is required to avoid excessive re-renders for the flows view.
-  return records.map(({ segments_updated, ...remainder }: any) => remainder);
+  // Remove segments_updated field to avoid excessive re-renders
+  return records.map((record) => {
+    const copy = { ...record };
+    delete copy.segments_updated;
+    return copy;
+  }) as T[];
 };
 
 export default paginationFetcher;

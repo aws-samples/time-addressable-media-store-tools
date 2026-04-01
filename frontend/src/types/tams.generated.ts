@@ -1641,7 +1641,7 @@ export interface components {
                  * @description denominator
                  * @default 1
                  */
-                denominator: number;
+                denominator?: number;
             };
             /** @description The timerange of samples available in the Flow, as described by the [TimeRange](#/schemas/timerange) type. Service implementations MUST ignore this if given in a PUT request, and instead manage it internally. */
             timerange?: components["schemas"]["timerange"];

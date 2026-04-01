@@ -2,7 +2,7 @@ import { Table } from "@cloudscape-design/components";
 import type { Flow } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
-type FlowWithEssence = Extract<Flow, { essence_parameters: any }>;
+type FlowWithEssence = Extract<Flow, { essence_parameters: unknown }>;
 type EssenceParameters = FlowWithEssence["essence_parameters"];
 
 type Props = {

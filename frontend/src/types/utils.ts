@@ -2,7 +2,7 @@ import type { DateTime } from "luxon";
 import type { CognitoIdentityCredentialProvider } from "@aws-sdk/credential-providers";
 
 export type ApiClient = {
-  get: <T = any>(path: string) => Promise<{ data: T; nextLink?: string }>;
+  get: <T = unknown>(path: string) => Promise<{ data: T; nextLink?: string }>;
 };
 
 export type GetPresignedUrlParams = {
@@ -10,7 +10,7 @@ export type GetPresignedUrlParams = {
   key: string;
   expiry: number;
   credentials: CognitoIdentityCredentialProvider;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type TimerangeDateTimeResult = {

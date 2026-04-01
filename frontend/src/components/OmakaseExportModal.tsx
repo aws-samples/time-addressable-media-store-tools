@@ -23,7 +23,7 @@ import type { MultiselectProps } from "@cloudscape-design/components";
 type Props = {
   sourceId: Uuid,
   editTimeranges?: Timerange[],
-  flows: any[],
+  flows: Flow[],
   onModalToggle: React.Dispatch<React.SetStateAction<boolean>>,
   isModalOpen: boolean,
 };
@@ -35,15 +35,8 @@ const OmakaseExportModal = ({
   onModalToggle,
   isModalOpen,
 }: Props) => {
-  const handleDismiss = () => {
-    onModalToggle(false);
-    resetForm();
-    setFileName(sourceId);
-    resetJobSpec();
-  };
   const credentials = useAwsCredentials();
   const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
-  const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
   const { operations, getOperationSchema } = useExportOperations();
   const {
     formData,
@@ -53,6 +46,18 @@ const OmakaseExportModal = ({
     resetForm,
     isFormValid,
   } = useExportForm(getOperationSchema);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fileName, setFileName] = useState(sourceId);
+  const addAlertItem = useAlertsStore((state) => state.addAlertItem);
+  const delAlertItem = useAlertsStore((state) => state.delAlertItem);
+
+  const handleDismiss = () => {
+    onModalToggle(false);
+    resetForm();
+    setFileName(sourceId);
+    resetJobSpec();
+  };
+  const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
 
   const availableOperations = useMemo(() => {
     return operations.filter((op) => {
@@ -72,12 +77,7 @@ const OmakaseExportModal = ({
       })) ?? [],
     [flows]
   );
-
   const [selectedFlows, setSelectedFlows] = useState(flowOptions);
-  const [isLoading, setIsLoading] = useState(false);
-  const [fileName, setFileName] = useState(sourceId);
-  const addAlertItem = useAlertsStore((state) => state.addAlertItem);
-  const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
   useEffect(() => {
     setSelectedFlows(flowOptions);

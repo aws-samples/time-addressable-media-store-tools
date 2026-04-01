@@ -13,13 +13,13 @@ import { buildStylesheet } from "./constants.js";
 import { getElements } from "./utils";
 import { useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
-import type { Core, EventObject, NodeSingular } from 'cytoscape';
+import type { Core, EventObject, NodeSingular, ElementDefinition } from 'cytoscape';
 
 const Diagram = () => {
   const { type, id } = useParams();
   const navigate = useNavigate();
   const cyRef = useRef<Core | undefined>(undefined);
-  const [elements, setElements] = useState<any[]>([]);
+  const [elements, setElements] = useState<ElementDefinition[]>([]);
   const api = useApi();
 
   useEffect(() => {

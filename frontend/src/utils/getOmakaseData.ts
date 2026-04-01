@@ -1,6 +1,6 @@
 import { toTimerangeString, parseTimerange } from "@/utils/timerange";
 import paginationFetcher from "@/utils/paginationFetcher";
-import type { Flow, Uuid } from "@/types/tams";
+import type { Flow, Uuid, Segment } from "@/types/tams";
 import type { ApiClient } from "@/types/utils";
 
 type TimerangeMinMax = {
@@ -20,7 +20,7 @@ type FlowWithParsedTimerange = Omit<Flow, "timerange"> & {
 type SegmentationResult = {
   timerange: TimerangeMinMax;
   flowId: Uuid | null;
-  segments: any[] | null;
+  segments: Segment[] | null;
 };
 
 const DEFAULT_SEGMENTATION_DURATION = 300;
@@ -59,7 +59,7 @@ const getFlowAndRelated = async (
     }
 
     flow = (
-      await api.get(
+      await api.get<Flow>(
         `/flows/${filteredSourceFlows[0].id}?include_timerange=true`,
       )
     ).data;
@@ -145,9 +145,9 @@ const parseAndFilterFlows = (flows: Flow[]) => {
         parsedTimerange.start !== undefined &&
         parsedTimerange.end !== undefined
       ) {
-        result.push({ ...flow, timerange: parsedTimerange } as any);
+        result.push({ ...flow, timerange: parsedTimerange } as FlowWithParsedTimerange);
       }
-    } catch (error) {
+    } catch {
       // Skip flows with parsing errors
     }
   }
@@ -250,7 +250,7 @@ const getOmakaseData = async (
     includesEnd: true,
   });
 
-  const segmentsCache: Record<string, any[]> = {};
+  const segmentsCache: Record<string, Segment[]> = {};
 
   let parsedTimerange: string = timerange || "";
   let segmentationResult: SegmentationResult | null = null;
@@ -272,7 +272,7 @@ const getOmakaseData = async (
     }
   }
 
-  const fetchPromises: Promise<[string, any[]]>[] = [];
+  const fetchPromises: Promise<[string, Segment[]]>[] = [];
   // Add simple promises for segments already retrieved
   Object.entries(segmentsCache).forEach((entry) =>
     fetchPromises.push(Promise.resolve(entry)),

@@ -7,14 +7,14 @@ import {
   HAS_OMAKASE_EXPORT_CAPABILITY,
 } from "@/constants";
 import useAlertsStore from "@/stores/useAlertsStore";
+import { JsonSchema } from "@/types/hooks";
 
 type OperationSchema = {
   title: string;
-  schema: any;
+  schema: JsonSchema | null;
 };
 
 type OperationSchemas = Record<string, OperationSchema>;
-
 
 const STATIC_OPERATIONS: OperationSchemas = {
   MEDIACONVERT_EXPORT: { title: "MediaConvert Export", schema: null },

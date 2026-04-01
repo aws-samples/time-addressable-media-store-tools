@@ -59,7 +59,7 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     return keyValues;
   };
 
-  const renderFieldValue = (label: string, value: any) => {
+  const renderFieldValue = (label: string, value: string | number | boolean | undefined) => {
     if (editableFields.includes(label)) {
       return (
         <EditableField
@@ -90,7 +90,7 @@ const EntityDetails = ({ entityType, entity }: Props) => {
             copyButtonAriaLabel="Copy Id"
             copyErrorText="Id failed to copy"
             copySuccessText="Id copied"
-            textToCopy={value}
+            textToCopy={String(value)}
             variant="icon"
           />
         )}

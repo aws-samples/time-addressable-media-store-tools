@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
 import {
   Box,

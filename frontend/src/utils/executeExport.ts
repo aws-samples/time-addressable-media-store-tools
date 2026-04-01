@@ -7,7 +7,7 @@ import type { Uuid, Timerange } from "@/types/tams";
 import type { CognitoIdentityCredentialProvider } from "@aws-sdk/credential-providers";
 
 export const executeExport = async (
-  formData: Record<string, any>,
+  formData: Record<string, unknown>,
   editTimeranges: Timerange[],
   flows: Uuid[],
   sourceId: Uuid,

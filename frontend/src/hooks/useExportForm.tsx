@@ -4,7 +4,7 @@ import { JsonSchema, FormData } from "@/types/hooks"
 const initializeFormData = (operation: string, schema: JsonSchema | null) => {
   const formData: FormData = { operation };
   if (schema?.properties) {
-    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]: [string, any]) => {
+    Object.entries(schema.properties).forEach(([fieldName, fieldSchema]) => {
       formData[fieldName] = fieldSchema.default ?? "";
     });
   }

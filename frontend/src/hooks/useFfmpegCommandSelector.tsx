@@ -13,8 +13,8 @@ export const useFfmpegCommandSelector = (filterTams: boolean) => {
         if (!commandsData) return [];
         const typedCommands = commandsData as Record<string, FfmpegConfig>;
         return Object.entries(typedCommands)
-            .filter(([_, value]) => filterTams ? value.tams : !value.tams)
-            .map(([label, _]) => ({ label, value: label }));
+            .filter(([, value]) => filterTams ? value.tams : !value.tams)
+            .map(([label]) => ({ label, value: label }));
     }, [commandsData, filterTams]);
 
     const ffmpeg = selectedCommand && commandsData

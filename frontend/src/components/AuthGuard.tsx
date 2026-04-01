@@ -13,7 +13,7 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     ) {
       auth.signinRedirect();
     }
-  }, [auth.isAuthenticated, auth.isLoading, auth.activeNavigator]);
+  }, [auth]);
 
   if (auth.isLoading) {
     return <TextContent>Loading...</TextContent>;

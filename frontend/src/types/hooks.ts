@@ -1,16 +1,16 @@
 export type RequestOptions = {
   method?: string;
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
 };
 
 export type JsonSchema = {
-  properties?: Record<string, { default?: any; [key: string]: any }>;
+  properties?: Record<string, { default?: unknown; [key: string]: unknown }>;
   required?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type FormData = {
   operation: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };

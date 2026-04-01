@@ -56,7 +56,7 @@ export const useBulkUpdate = (entityType: string) => {
   const { put } = useApi();
   const { trigger, isMutating } = useSWRMutation(
     [`/tags/bulk-update`, entityType],
-    ([path, entityType], { arg }: { arg: BulkUpdateArg }) => {
+    ([, entityType], { arg }: { arg: BulkUpdateArg }) => {
       const promises = arg.entityIds.map((entityId) =>
         put(
           `/${entityType}/${entityId}/tags/${arg.tagName}`,
@@ -78,7 +78,7 @@ export const useBulkDelete = (entityType: string) => {
   const { del } = useApi();
   const { trigger, isMutating } = useSWRMutation(
     [`/tags/bulk-delete`, entityType],
-    ([path, entityType], { arg }: { arg: BulkDeleteArg }) => {
+    ([, entityType], { arg }: { arg: BulkDeleteArg }) => {
       const promises = arg.entityIds.map((entityId) =>
         del(`/${entityType}/${entityId}/tags/${arg.tagName}`).then(
           (response) => response.data

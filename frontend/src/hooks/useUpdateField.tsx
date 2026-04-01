@@ -4,7 +4,7 @@ import type { Uuid } from "@/types/tams";
 
 type UpdateArg = {
   field: string;
-  value: any;
+  value: unknown;
 };
 
 export const useUpdateField = (entityType: string, id: Uuid) => {

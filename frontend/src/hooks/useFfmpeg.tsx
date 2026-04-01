@@ -17,15 +17,10 @@ type DeleteRuleArgs = {
   outputFlowId: Uuid;
 };
 
-type ApiDataItem = {
-  id: string;
-  targets: JobTarget[] | RuleTarget[];
-};
-
 type CreateRuleArgs = {
   flowId: Uuid;
   outputFlowId: Uuid;
-  payload: any;
+  payload: FfmpegConfig | undefined;
 };
 
 type JobStartArgs = {

@@ -8,7 +8,7 @@ import type { ExecutionStatus } from "@aws-sdk/client-sfn";
 
 export type FfmpegConfig = {
   command: Record<string, string | null>;
-  tams?: Record<string, any>;
+  tams?: Record<string, unknown>;
 }
 
 export type RuleTarget = {
@@ -40,7 +40,7 @@ export type FfmpegJob = {
 export type S3ObjectOutput = {
   bucket?: string;
   key?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type FfmpegExport = {

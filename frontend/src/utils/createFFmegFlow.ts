@@ -5,7 +5,7 @@ import type { CognitoIdentityCredentialProvider } from "@aws-sdk/credential-prov
 
 const createFFmegFlow = async (
   flowId: Uuid,
-  changes: Record<string, any>,
+  changes: Record<string, unknown>,
   credentials: CognitoIdentityCredentialProvider,
 ): Promise<string> => {
   const sfnClient = new SFNClient({

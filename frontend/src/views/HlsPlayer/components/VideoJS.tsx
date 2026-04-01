@@ -1,14 +1,18 @@
 import { useEffect, useRef } from "react";
 import videojs from "video.js";
 
+// Extract types from the videojs function signature
+type PlayerOptions = Parameters<typeof videojs>[1];
+type Player = ReturnType<typeof videojs>;
+
 type Props = {
-  options: videojs.VideoJsPlayerOptions;
-  onReady?: (player: videojs.VideoJsPlayer) => void;
+  options: PlayerOptions;
+  onReady?: (player: Player) => void;
 };
 
 const VideoJS = ({ options, onReady }: Props) => {
   const videoRef = useRef<HTMLDivElement | null>(null);
-  const playerRef = useRef<videojs.VideoJsPlayer | null>(null);
+  const playerRef = useRef<Player | null>(null);
 
   useEffect(() => {
     // Make sure Video.js player is only initialized once
@@ -18,7 +22,7 @@ const VideoJS = ({ options, onReady }: Props) => {
       videoElement.classList.add("vjs-big-play-centered");
       videoRef.current?.appendChild(videoElement);
       const player = (playerRef.current = videojs(videoElement, options, () => {
-        onReady && onReady(player);
+        onReady?.(player);
       }));
     } else {
       const player = playerRef.current;
@@ -36,7 +40,7 @@ const VideoJS = ({ options, onReady }: Props) => {
         playerRef.current = null;
       }
     };
-  }, [options]);
+  }, [options, onReady]);
 
   // wrap player with data-vjs-player` attribute so no additional wrapper are created in the DOM
   return (

@@ -9,7 +9,7 @@ export const getMediaConvertJobSpec = (optionsName: string) => ({
     },
     OutputGroups: [
       {
-        Outputs: (outputOptions as Record<string, any>)[optionsName],
+        Outputs: (outputOptions as Record<string, unknown>)[optionsName],
       },
     ],
     FollowSource: 1,

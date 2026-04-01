@@ -19,9 +19,10 @@ import type { Uuid } from "@/types/tams";
 
 const Flow = () => {
   const { flowId } = useParams<{ flowId: Uuid }>();
-  if (!flowId) return null;
-  const { flow, isLoading: loadingFlow } = useFlow(flowId);
+  const { flow, isLoading: loadingFlow } = useFlow(flowId!);
 
+  if (!flowId) return null;
+  
   return !loadingFlow ? (
     flow ? (
       <SpaceBetween size="l">

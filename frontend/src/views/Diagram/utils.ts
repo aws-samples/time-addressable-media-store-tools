@@ -1,10 +1,9 @@
 import { formatPrecedence, nodeSize } from "./constants";
-import type { Flow, Source, Uuid } from "@/types/tams";
+import type { Flow, Source } from "@/types/tams";
 import type { ApiClient } from "@/types/utils";
 
 type Entity = Flow | Source;
 type EntityGraph = Record<string, Entity>;
-type Position = { x: number; y: number };
 
 const isFlow = (entity: Entity): entity is Flow => {
   return 'source_id' in entity;
@@ -156,7 +155,7 @@ export const getElements = async (api: ApiClient, path: string) => {
   const collectsEdges = entities
     .filter((elem) => isFlow(elem))
     .flatMap((flow) =>
-      flow.flow_collection?.flatMap((col) => [
+      (flow.flow_collection || []).flatMap((col) => [
         {
           data: {
             source: `flows/${flow.id}`,
@@ -175,10 +174,9 @@ export const getElements = async (api: ApiClient, path: string) => {
         },
       ]),
     )
-    .filter((elem) => elem)
     .filter(
       (value, index, self) =>
-        index === self.findIndex((t) => t?.data.id === value?.data.id),
+        index === self.findIndex((t) => t.data.id === value?.data.id),
     );
 
   // Create list of elements representing the represents relationships

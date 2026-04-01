@@ -18,7 +18,7 @@ export const useReplicationConnectionSelector = () => {
         if (!connectionsData) return [];
         const typedConnections = connectionsData as Record<string, ConnectionData>;
         return Object.entries(typedConnections)
-            .map(([label, _]) => ({ label, value: label }));
+            .map(([label]) => ({ label, value: label }));
     }, [connectionsData]);
 
     const connection = selectedConnection && connectionsData

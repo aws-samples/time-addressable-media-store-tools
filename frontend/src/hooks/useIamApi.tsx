@@ -36,9 +36,9 @@ export const useIamApi = (endpoint: string) => {
   return {
     get: (path: string, options: RequestOptions = {}) =>
       makeRequest(path, { ...options, method: "GET" }),
-    post: (path: string, body: any, options: RequestOptions = {}) =>
+    post: (path: string, body: unknown, options: RequestOptions = {}) =>
       makeRequest(path, { ...options, method: "POST", body }),
-    put: (path: string, body: any, options: RequestOptions = {}) =>
+    put: (path: string, body: unknown, options: RequestOptions = {}) =>
       makeRequest(path, { ...options, method: "PUT", body }),
     del: (path: string, options: RequestOptions = {}) =>
       makeRequest(path, { ...options, method: "DELETE" }),

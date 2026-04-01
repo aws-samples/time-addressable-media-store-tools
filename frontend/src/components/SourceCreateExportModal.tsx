@@ -18,18 +18,18 @@ const SourceCreateExportModal = ({
   setModalVisible,
   selectedSourceId,
 }: Props) => {
+  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
+  const [timeranges, setTimeranges] = useState("");
+  const [timerangeError, setTimerangeError] = useState("");
+  const [fileName, setFileName] = useState(selectedSourceId);
+
   const handleDismiss = () => {
     setModalVisible(false);
     setTimeranges("");
     setFileName(selectedSourceId);
     resetJobSpec();
   };
-
-  const { jobSpec, setJobSpec, resetJobSpec } = useMediaConvertJobSpec();
   const { createJob, isStarting } = useMediaConvertJob(handleDismiss);
-  const [timeranges, setTimeranges] = useState("");
-  const [timerangeError, setTimerangeError] = useState("");
-  const [fileName, setFileName] = useState(selectedSourceId);
 
   const handleCreateJob = () => {
     createJob({ jobSpec, sourceId: selectedSourceId, fileName, timeranges });
@@ -37,7 +37,7 @@ const SourceCreateExportModal = ({
 
   const validateTimerange = (value: string) => {
     const timerangeRegex =
-      /^[\[\(]\d+:\d{1,9}_\d+:\d{1,9}[\]\)](,[\[\(]\d+:\d{1,9}_\d+:\d{1,9}[\]\)])*$/;
+      /^[[(]\d+:\d{1,9}_\d+:\d{1,9}[\])](,[[(]\d+:\d{1,9}_\d+:\d{1,9}[\])])*$/;
     if (!value) return "Timerange is required";
     if (!timerangeRegex.test(value))
       return "Invalid timerange format, must match [[(]d+:d{1,9}_d+:d{1,9}[])]";

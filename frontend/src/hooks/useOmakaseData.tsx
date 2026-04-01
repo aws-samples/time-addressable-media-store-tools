@@ -12,7 +12,7 @@ export const useOmakaseData = (type: string, id: Uuid, timerange: Timerange) => 
     isValidating,
   } = useSWR(
     ["/omakase-data", type, id, timerange],
-    async ([_, type, id, timerange]) => {
+    async ([, type, id, timerange]) => {
       const {
         flow,
         relatedFlows,

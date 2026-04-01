@@ -7,8 +7,7 @@ import type { Uuid } from "@/types/tams";
 
 export const HlsPlayer = () => {
   const { type, id } = useParams<{ type: string, id: Uuid }>();
-  if (!type || !id) return null;
-  const { url, isLoading } = useLambdaPresignedUrl(type, id);
+  const { url, isLoading } = useLambdaPresignedUrl(type!, id!);
   const playerRef = useRef<videojs.VideoJsPlayer | null>(null);
 
   const videoJsOptions: videojs.VideoJsPlayerOptions = useMemo(() => ({
@@ -33,6 +32,8 @@ export const HlsPlayer = () => {
   const playerReady = useCallback((player: videojs.VideoJsPlayer) => {
     playerRef.current = player;
   }, []);
+
+  if (!type || !id) return null;
 
   return (
     <Box textAlign="center">
