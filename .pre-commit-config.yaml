@@ -86,13 +86,3 @@ repos:
     hooks:
       - id: prettier
         types_or: [javascript, jsx, ts, tsx, json]
-
-  # GitDefender (preserving existing security tool)
-  - repo: local
-    hooks:
-      - id: git-defender
-        name: GitDefender Security Scan
-        entry: "C:\\Program Files\\GitDefender\\lib\\git-defender\\hooks\\pre-commit"
-        language: system
-        pass_filenames: false
-        always_run: true
