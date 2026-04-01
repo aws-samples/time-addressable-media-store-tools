@@ -28,21 +28,32 @@ const FfmpegRules = () => {
     {
       id: "id",
       header: "Origin Flow",
-      cell: (item) => item.parentId === null && <Link to={`/flows/${item.id}`}>{item.id}</Link>,
+      cell: (item) =>
+        item.parentId === null && (
+          <Link to={`/flows/${item.id}`}>{item.id}</Link>
+        ),
       sortingField: "id",
       isRowHeader: true,
     },
     {
       id: "command",
       header: "FFmpeg Command",
-      cell: (item) => item.parentId && item.ffmpeg && Object.entries(item.ffmpeg.command).map((arg) => arg.join(" ")).join(" "),
+      cell: (item) =>
+        item.parentId &&
+        item.ffmpeg &&
+        Object.entries(item.ffmpeg.command)
+          .map((arg) => arg.join(" "))
+          .join(" "),
       sortingField: "command",
       maxWidth: 200,
     },
     {
       id: "outputFlow",
       header: "Destination Flow",
-      cell: (item) => item.parentId && <Link to={`/flows/${item.outputFlow}`}>{item.outputFlow}</Link>,
+      cell: (item) =>
+        item.parentId && (
+          <Link to={`/flows/${item.outputFlow}`}>{item.outputFlow}</Link>
+        ),
       sortingField: "outputFlow",
     },
     {

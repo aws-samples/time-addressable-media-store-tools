@@ -13,10 +13,10 @@ import { useFfmpegCommandSelector } from "@/hooks/useFfmpegCommandSelector";
 import type { Uuid } from "@/types/tams";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedFlowIds: Uuid[],
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedFlowIds: Uuid[];
+};
 
 const FlowCreateExportModal = ({
   modalVisible,
@@ -28,7 +28,8 @@ const FlowCreateExportModal = ({
   const { start } = useExportStart();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
-  const { commands, ffmpeg, selectedCommand, setSelectedCommand } = useFfmpegCommandSelector(false);
+  const { commands, ffmpeg, selectedCommand, setSelectedCommand } =
+    useFfmpegCommandSelector(false);
 
   const handleDismiss = () => {
     setModalVisible(false);

@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { Input, Button, SpaceBetween } from "@cloudscape-design/components";
 import { useUpdateField } from "@/hooks/useUpdateField";
-import type { Uuid } from "@/types/tams"
+import type { Uuid } from "@/types/tams";
 import type { InputProps } from "@cloudscape-design/components";
 
 type Props = {
-  entityType: string,
-  entityId: Uuid,
-  field: string,
-  value: string,
-  children: React.ReactNode
-}
+  entityType: string;
+  entityId: Uuid;
+  field: string;
+  value: string;
+  children: React.ReactNode;
+};
 
-const EditableField = ({ entityType, entityId, field, value, children }: Props) => {
+const EditableField = ({
+  entityType,
+  entityId,
+  field,
+  value,
+  children,
+}: Props) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const { update, isUpdating } = useUpdateField(entityType, entityId);

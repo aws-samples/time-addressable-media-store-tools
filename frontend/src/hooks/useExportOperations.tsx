@@ -21,7 +21,9 @@ const STATIC_OPERATIONS: OperationSchemas = {
 };
 
 export const useExportOperations = () => {
-  const [operationSchemas, setOperationSchemas] = useState<OperationSchemas>({});
+  const [operationSchemas, setOperationSchemas] = useState<OperationSchemas>(
+    {},
+  );
   const credentials = useAwsCredentials();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
@@ -32,7 +34,7 @@ export const useExportOperations = () => {
       Object.entries(operationSchemas).map(([key, { title }]) => ({
         value: key,
         label: title,
-      }))
+      })),
     );
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export const useExportOperations = () => {
           credentials,
         });
         const response = await client.send(
-          new GetParameterCommand({ Name: OMAKASE_EXPORT_EVENT_PARAMETER })
+          new GetParameterCommand({ Name: OMAKASE_EXPORT_EVENT_PARAMETER }),
         );
         if (!response.Parameter?.Value) {
           throw new Error("No parameter value returned from SSM");

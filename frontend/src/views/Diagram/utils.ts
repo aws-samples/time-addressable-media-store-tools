@@ -6,7 +6,7 @@ type Entity = Flow | Source;
 type EntityGraph = Record<string, Entity>;
 
 const isFlow = (entity: Entity): entity is Flow => {
-  return 'source_id' in entity;
+  return "source_id" in entity;
 };
 
 const getEntities = async (
@@ -31,7 +31,9 @@ const getEntities = async (
     }
   } else {
     // Handle source flows in parallel
-    const { data: source_flows } = await api.get<Flow[]>(`/flows?source_id=${resp.id}`);
+    const { data: source_flows } = await api.get<Flow[]>(
+      `/flows?source_id=${resp.id}`,
+    );
     source_flows.forEach((flow) => {
       const flowPath = `/flows/${flow.id}`;
       graph[flowPath] = flow;

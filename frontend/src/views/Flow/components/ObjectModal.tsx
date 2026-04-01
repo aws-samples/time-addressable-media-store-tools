@@ -10,11 +10,11 @@ import ValueWithLabel from "@/components/ValueWithLabel";
 import { useObjects } from "@/hooks/useObjects";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  objectId: string,
-  setObjectId: React.Dispatch<React.SetStateAction<string>>,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  objectId: string;
+  setObjectId: React.Dispatch<React.SetStateAction<string>>;
+};
 
 const ObjectModal = ({
   modalVisible,
@@ -31,7 +31,10 @@ const ObjectModal = ({
     setObjectId("");
   };
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+  const handleLinkClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => {
     e.preventDefault();
     setModalVisible(false);
     setObjectId("");

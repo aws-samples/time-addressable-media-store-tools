@@ -13,9 +13,9 @@ import getLambdaPresignedUrl from "@/utils/getLambdaPresignedUrl";
 import type { Flow, Source } from "@/types/tams";
 
 type Props = {
-  type: string,
-  entity: Source | Flow,
-}
+  type: string;
+  entity: Source | Flow;
+};
 
 const EntityHeader = ({ type, entity }: Props) => {
   const entityType = `${type.toLowerCase()}s`;

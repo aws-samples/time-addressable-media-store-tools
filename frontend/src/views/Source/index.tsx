@@ -19,7 +19,7 @@ import type { Uuid } from "@/types/tams";
 const Source = () => {
   const { sourceId } = useParams<{ sourceId: Uuid }>();
   const { source, isLoading: loadingSource } = useSource(sourceId!);
-  
+
   if (!sourceId) return null;
 
   return !loadingSource ? (

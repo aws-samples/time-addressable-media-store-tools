@@ -24,7 +24,9 @@ import type { TableProps } from "@cloudscape-design/components";
 const MediaConvertHlsIngestion = () => {
   const { jobs, isLoading } = useJobs();
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<JobIngestion | undefined>(undefined);
+  const [selectedItem, setSelectedItem] = useState<JobIngestion | undefined>(
+    undefined,
+  );
 
   const preferences = {
     pageSize: PAGE_SIZE,

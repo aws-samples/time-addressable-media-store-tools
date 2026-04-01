@@ -6,17 +6,19 @@ import {
 } from "@cloudscape-design/components";
 import validateJson from "@/utils/validateJson";
 import type { FormFieldProps, InputProps } from "@cloudscape-design/components";
-import type { Timerange } from "@/types/tams"
+import type { Timerange } from "@/types/tams";
 
 type Props = {
-  timeranges: Timerange | Timerange[],
-  onTimerangesChange?: (value: string) => void,
-  fileName: string,
-  setFileName: React.Dispatch<React.SetStateAction<string>>,
-  jobSpec: string,
-  onJobSpecChange: (value: string) => void,
-  timerangeProps?: Partial<FormFieldProps> & { inputProps?: Partial<InputProps> },
-  readOnly?: boolean,
+  timeranges: Timerange | Timerange[];
+  onTimerangesChange?: (value: string) => void;
+  fileName: string;
+  setFileName: React.Dispatch<React.SetStateAction<string>>;
+  jobSpec: string;
+  onJobSpecChange: (value: string) => void;
+  timerangeProps?: Partial<FormFieldProps> & {
+    inputProps?: Partial<InputProps>;
+  };
+  readOnly?: boolean;
 };
 
 const MediaConvertExportForm = ({
@@ -48,7 +50,10 @@ const MediaConvertExportForm = ({
         />
       </FormField>
 
-      <FormField label="Output Filename" description="Provide the output filename. Folders are supported using '/'">
+      <FormField
+        label="Output Filename"
+        description="Provide the output filename. Folders are supported using '/'"
+      >
         <Input
           value={fileName}
           onChange={({ detail }) => setFileName(detail.value)}

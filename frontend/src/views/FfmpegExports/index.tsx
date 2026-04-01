@@ -23,10 +23,10 @@ import type { TableProps } from "@cloudscape-design/components";
 const FfmpegExports = () => {
   const credentials = useAwsCredentials();
   const preferences = usePreferencesStore(
-    (state) => state.ffmpegExportsPreferences
+    (state) => state.ffmpegExportsPreferences,
   );
   const setPreferences = usePreferencesStore(
-    (state) => state.setFfmpegExportsPreferences
+    (state) => state.setFfmpegExportsPreferences,
   );
   const { exports, isLoading } = useExports();
 
@@ -57,7 +57,7 @@ const FfmpegExports = () => {
       id: "flowIds",
       header: "Flows",
       cell: (item) => (
-        <SpaceBetween size="xs" >
+        <SpaceBetween size="xs">
           {item.flowIds.map((flowId) => (
             <Link key={flowId} to={`/flows/${flowId}`}>
               {flowId}
@@ -151,7 +151,7 @@ const FfmpegExports = () => {
       sorting: {
         defaultState: {
           sortingColumn: columnDefinitions.find(
-            (col) => col.id === "startDate"
+            (col) => col.id === "startDate",
           )!,
           isDescending: true,
         },

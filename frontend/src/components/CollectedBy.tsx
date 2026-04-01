@@ -3,9 +3,9 @@ import { TextContent } from "@cloudscape-design/components";
 import type { Uuid } from "@/types/tams";
 
 type Props = {
-  entityType: string,
-  collectedBy: Uuid[],
-}
+  entityType: string;
+  collectedBy: Uuid[];
+};
 
 const CollectedBy = ({ entityType, collectedBy }: Props) => {
   return collectedBy ? (

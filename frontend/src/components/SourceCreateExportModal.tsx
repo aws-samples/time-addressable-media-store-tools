@@ -8,10 +8,10 @@ import { useMediaConvertJobSpec } from "@/hooks/useMediaConvertJobSpec";
 import type { Uuid } from "@/types/tams";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedSourceId: Uuid,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedSourceId: Uuid;
+};
 
 const SourceCreateExportModal = ({
   modalVisible,

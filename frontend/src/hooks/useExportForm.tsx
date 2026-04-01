@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { JsonSchema, FormData } from "@/types/hooks"
+import { JsonSchema, FormData } from "@/types/hooks";
 
 const initializeFormData = (operation: string, schema: JsonSchema | null) => {
   const formData: FormData = { operation };
@@ -11,7 +11,9 @@ const initializeFormData = (operation: string, schema: JsonSchema | null) => {
   return formData;
 };
 
-export const useExportForm = (getOperationSchema: (operation: string) => JsonSchema | null) => {
+export const useExportForm = (
+  getOperationSchema: (operation: string) => JsonSchema | null,
+) => {
   const [formData, setFormData] = useState<FormData>({
     operation: "MEDIACONVERT_EXPORT",
   });
@@ -32,7 +34,7 @@ export const useExportForm = (getOperationSchema: (operation: string) => JsonSch
 
   const isFormValid = useMemo(() => {
     return !formSchema?.required?.some(
-      (fieldName) => !formData[fieldName]?.trim()
+      (fieldName) => !formData[fieldName]?.trim(),
     );
   }, [formSchema?.required, formData]);
 

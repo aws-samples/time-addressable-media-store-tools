@@ -10,7 +10,6 @@ type AlertsStore = {
   addAlertItems: (alertItems: AlertItem[]) => void;
 };
 
-
 const useAlertsStore = create<AlertsStore>((set) => ({
   alertItems: [],
   addAlertItem: (alertItem) =>

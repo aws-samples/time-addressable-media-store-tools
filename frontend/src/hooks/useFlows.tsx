@@ -2,7 +2,7 @@ import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import paginationFetcher from "@/utils/paginationFetcher";
-import type { Uuid, Flow, Timerange } from "@/types/tams"
+import type { Uuid, Flow, Timerange } from "@/types/tams";
 
 type UpdateArg = {
   flowId: Uuid;
@@ -23,7 +23,6 @@ type SetReadOnlyArg = {
   readOnly: boolean;
 };
 
-
 const useFlowsQuery = (url: string | null) => {
   const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR<Flow[]>(
@@ -31,7 +30,7 @@ const useFlowsQuery = (url: string | null) => {
     (path) => paginationFetcher(path, api),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -56,12 +55,16 @@ export const useFlow = (flowId: Uuid) => {
     error,
     isLoading,
     isValidating,
-  } = useSWR<{ data: Flow; headers: Record<string, string>; nextLink?: string }>(
+  } = useSWR<{
+    data: Flow;
+    headers: Record<string, string>;
+    nextLink?: string;
+  }>(
     ["/flows", flowId],
     ([path, flowId]) => get(`${path}/${flowId}?include_timerange=true`),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -78,9 +81,12 @@ export const useDelete = () => {
   const { trigger, isMutating } = useSWRMutation(
     "/flows",
     (path, { arg }: { arg: DeleteArg }) =>
-      del(`${path}/${arg.flowId}`).then((response) =>
-        new Promise(resolve => setTimeout(() => resolve(response.data), 1000))
-      ) // setTimeout used to artificially wait until basic deletes are complete.
+      del(`${path}/${arg.flowId}`).then(
+        (response) =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve(response.data), 1000),
+          ),
+      ), // setTimeout used to artificially wait until basic deletes are complete.
   );
 
   return {
@@ -91,10 +97,12 @@ export const useDelete = () => {
 
 export const useDeleteTimerange = () => {
   const { del } = useApi();
-  const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }: { arg: DeleteTimerangeArg }) =>
-    del(`${path}/${arg.flowId}/segments?timerange=${arg.timerange}`).then(
-      (response) => response.data
-    )
+  const { trigger, isMutating } = useSWRMutation(
+    "/flows",
+    (path, { arg }: { arg: DeleteTimerangeArg }) =>
+      del(`${path}/${arg.flowId}/segments?timerange=${arg.timerange}`).then(
+        (response) => response.data,
+      ),
   );
 
   return {
@@ -105,10 +113,12 @@ export const useDeleteTimerange = () => {
 
 export const useFlowStatusTag = () => {
   const { put } = useApi();
-  const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }: { arg: UpdateArg }) =>
-    put(`${path}/${arg.flowId}/tags/flow_status`, arg.status).then(
-      (response) => response.data
-    )
+  const { trigger, isMutating } = useSWRMutation(
+    "/flows",
+    (path, { arg }: { arg: UpdateArg }) =>
+      put(`${path}/${arg.flowId}/tags/flow_status`, arg.status).then(
+        (response) => response.data,
+      ),
   );
 
   return {
@@ -119,10 +129,12 @@ export const useFlowStatusTag = () => {
 
 export const usePutReadOnly = () => {
   const { put } = useApi();
-  const { trigger, isMutating } = useSWRMutation("/flows", (path, { arg }: { arg: SetReadOnlyArg }) =>
-    put(`${path}/${arg.flowId}/read_only`, arg.readOnly).then(
-      (response) => response.data
-    )
+  const { trigger, isMutating } = useSWRMutation(
+    "/flows",
+    (path, { arg }: { arg: SetReadOnlyArg }) =>
+      put(`${path}/${arg.flowId}/read_only`, arg.readOnly).then(
+        (response) => response.data,
+      ),
   );
 
   return {

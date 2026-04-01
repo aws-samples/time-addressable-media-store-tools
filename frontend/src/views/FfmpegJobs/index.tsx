@@ -24,7 +24,8 @@ const columnDefinitions: TableProps.ColumnDefinition<JobItem>[] = [
   {
     id: "id",
     header: "Origin Flow",
-    cell: (item) => item.parentId === null && <Link to={`/flows/${item.id}`}>{item.id}</Link>,
+    cell: (item) =>
+      item.parentId === null && <Link to={`/flows/${item.id}`}>{item.id}</Link>,
     sortingField: "id",
     isRowHeader: true,
     width: 310,
@@ -39,14 +40,22 @@ const columnDefinitions: TableProps.ColumnDefinition<JobItem>[] = [
   {
     id: "command",
     header: "FFmpeg Command",
-    cell: (item) => item.parentId && item.ffmpeg && Object.entries(item.ffmpeg?.command).map((arg) => arg.join(" ")).join(" "),
+    cell: (item) =>
+      item.parentId &&
+      item.ffmpeg &&
+      Object.entries(item.ffmpeg?.command)
+        .map((arg) => arg.join(" "))
+        .join(" "),
     sortingField: "command",
     maxWidth: 200,
   },
   {
     id: "outputFlow",
     header: "Destination Flow",
-    cell: (item) => item.parentId &&  <Link to={`/flows/${item.outputFlow}`}>{item.outputFlow}</Link>,
+    cell: (item) =>
+      item.parentId && (
+        <Link to={`/flows/${item.outputFlow}`}>{item.outputFlow}</Link>
+      ),
     sortingField: "outputFlow",
     width: 310,
   },
@@ -54,7 +63,8 @@ const columnDefinitions: TableProps.ColumnDefinition<JobItem>[] = [
     id: "status",
     header: "Status",
     cell: (item) =>
-      item.parentId && item.status && (
+      item.parentId &&
+      item.status && (
         <>
           <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
             {item.status}
@@ -98,8 +108,12 @@ const collectionPreferencesProps = {
 };
 
 const FfmpegJobs = () => {
-  const preferences = usePreferencesStore((state) => state.ffmpegJobsPreferences);
-  const setPreferences = usePreferencesStore((state) => state.setFfmpegJobsPreferences);
+  const preferences = usePreferencesStore(
+    (state) => state.ffmpegJobsPreferences,
+  );
+  const setPreferences = usePreferencesStore(
+    (state) => state.setFfmpegJobsPreferences,
+  );
   const { jobs, isLoading } = useJobs();
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(jobs ?? [], {
@@ -122,8 +136,10 @@ const FfmpegJobs = () => {
       pagination: { pageSize: preferences.pageSize },
       sorting: {
         defaultState: {
-          sortingColumn: columnDefinitions.find((col) => col.id === "startDate")!,
-          isDescending: true
+          sortingColumn: columnDefinitions.find(
+            (col) => col.id === "startDate",
+          )!,
+          isDescending: true,
         },
       },
       selection: {},

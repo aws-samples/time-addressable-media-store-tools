@@ -20,12 +20,16 @@ import { useStateMachine } from "@/hooks/useStateMachine";
 import { useReplicationConnectionSelector } from "@/hooks/useReplicationConnectionSelector";
 
 type Props = {
-  originType: string,
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
+  originType: string;
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const ReplicationModal = ({ originType, modalVisible, setModalVisible }: Props) => {
+const ReplicationModal = ({
+  originType,
+  modalVisible,
+  setModalVisible,
+}: Props) => {
   const [action, setAction] = useState(AWS_REPLICATION_BATCH_ARN);
   const [timerange, setTimerange] = useState("");
   const [originId, setOriginId] = useState("");
@@ -33,7 +37,8 @@ const ReplicationModal = ({ originType, modalVisible, setModalVisible }: Props) 
   const { execute } = useStateMachine();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
-  const { connections, connection, selectedConnection, setSelectedConnection } = useReplicationConnectionSelector();
+  const { connections, connection, selectedConnection, setSelectedConnection } =
+    useReplicationConnectionSelector();
 
   const actions = [
     {
@@ -104,8 +109,12 @@ const ReplicationModal = ({ originType, modalVisible, setModalVisible }: Props) 
       <SpaceBetween size="xs">
         <FormField description="Replication Action">
           <Select
-            selectedOption={actions.find(({ value }) => value === action) ?? null}
-            onChange={({ detail }) => setAction(detail.selectedOption.value ?? "")}
+            selectedOption={
+              actions.find(({ value }) => value === action) ?? null
+            }
+            onChange={({ detail }) =>
+              setAction(detail.selectedOption.value ?? "")
+            }
             options={actions}
           />
         </FormField>
@@ -114,9 +123,10 @@ const ReplicationModal = ({ originType, modalVisible, setModalVisible }: Props) 
           label="Origin TAMS Store"
         >
           <Select
-            selectedOption={connections.find(
-              ({ value }) => value === selectedConnection
-            ) ?? null}
+            selectedOption={
+              connections.find(({ value }) => value === selectedConnection) ??
+              null
+            }
             onChange={({ detail }) =>
               setSelectedConnection(detail.selectedOption.value ?? "")
             }

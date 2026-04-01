@@ -13,7 +13,7 @@ export const useObjects = (objectId: string) => {
     ([path, objectId]) => get(`${path}/${objectId}?accept_get_urls=`),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {

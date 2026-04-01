@@ -7,11 +7,19 @@ import type { ButtonDropdownProps } from "@cloudscape-design/components";
 
 type MenuItem = ButtonDropdownProps.Item | ButtonDropdownProps.ItemGroup;
 
-const SourceActionsButton = ({ selectedItems }: { selectedItems: readonly Source[] }) => {
+const SourceActionsButton = ({
+  selectedItems,
+}: {
+  selectedItems: readonly Source[];
+}) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
 
-  const handleOnClick = ({ detail }: { detail: ButtonDropdownProps.ItemClickDetails }) => {
+  const handleOnClick = ({
+    detail,
+  }: {
+    detail: ButtonDropdownProps.ItemClickDetails;
+  }) => {
     setActionId(detail.id);
     setModalVisible(true);
   };

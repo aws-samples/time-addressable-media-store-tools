@@ -11,17 +11,15 @@ import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useIamApi from "@/hooks/useIamApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import type { ChannelIngestion } from "@/types/ingestHls"
+import type { ChannelIngestion } from "@/types/ingestHls";
 
 export const useChannels = () => {
   const api = useIamApi(AWS_HLS_INGEST_ENDPOINT);
-  const { data, mutate, error, isLoading, isValidating } = useSWR<ChannelIngestion[]>(
-    "/channel-ingestion",
-    (path) => api.get(path),
-    {
-      refreshInterval: 3000,
-    }
-  );
+  const { data, mutate, error, isLoading, isValidating } = useSWR<
+    ChannelIngestion[]
+  >("/channel-ingestion", (path) => api.get(path), {
+    refreshInterval: 3000,
+  });
 
   return {
     channels: data,
@@ -42,7 +40,7 @@ export const useChannelStart = () => {
         credentials,
       });
       return client.send(new StartChannelCommand(arg));
-    }
+    },
   );
 
   return {
@@ -61,7 +59,7 @@ export const useChannelStop = () => {
         credentials,
       });
       return client.send(new StopChannelCommand(arg));
-    }
+    },
   );
 
   return {

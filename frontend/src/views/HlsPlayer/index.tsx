@@ -6,28 +6,31 @@ import { useLambdaPresignedUrl } from "@/hooks/useLambdaPresignedUrl";
 import type { Uuid } from "@/types/tams";
 
 export const HlsPlayer = () => {
-  const { type, id } = useParams<{ type: string, id: Uuid }>();
+  const { type, id } = useParams<{ type: string; id: Uuid }>();
   const { url, isLoading } = useLambdaPresignedUrl(type!, id!);
   const playerRef = useRef<videojs.VideoJsPlayer | null>(null);
 
-  const videoJsOptions: videojs.VideoJsPlayerOptions = useMemo(() => ({
-    liveui: true,
-    autoplay: true,
-    controls: true,
-    responsive: true,
-    fluid: true,
-    html5: {
-      vhs: {
-        overrideNative: true,
+  const videoJsOptions: videojs.VideoJsPlayerOptions = useMemo(
+    () => ({
+      liveui: true,
+      autoplay: true,
+      controls: true,
+      responsive: true,
+      fluid: true,
+      html5: {
+        vhs: {
+          overrideNative: true,
+        },
       },
-    },
-    sources: [
-      {
-        src: url!,
-        type: "application/x-mpegURL",
-      },
-    ],
-  }), [url]);
+      sources: [
+        {
+          src: url!,
+          type: "application/x-mpegURL",
+        },
+      ],
+    }),
+    [url],
+  );
 
   const playerReady = useCallback((player: videojs.VideoJsPlayer) => {
     playerRef.current = player;

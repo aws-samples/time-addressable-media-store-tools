@@ -27,7 +27,11 @@ export const useLastN = (flowId: Uuid, n: number) => {
   };
 };
 
-export const useSegments = (flowId: Uuid, timerange: Timerange, maxResults: number = 3000) => {
+export const useSegments = (
+  flowId: Uuid,
+  timerange: Timerange,
+  maxResults: number = 3000,
+) => {
   const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR<Segment[]>(
     `/flows/${flowId}/segments`,
@@ -50,7 +54,11 @@ export const useSegments = (flowId: Uuid, timerange: Timerange, maxResults: numb
   };
 };
 
-export const useFlowsSegments = (flows: Flow[], timerange: Timerange, maxResults: number = 3000) => {
+export const useFlowsSegments = (
+  flows: Flow[],
+  timerange: Timerange,
+  maxResults: number = 3000,
+) => {
   const api = useApi();
   const params = timerange
     ? `?timerange=${timerange}&reverse_order=false&limit=300`

@@ -44,14 +44,14 @@ const Layout = () => {
           allPaths.push(
             lastPath.endsWith("/")
               ? lastPath + subPath
-              : `${lastPath}/${subPath}`
+              : `${lastPath}/${subPath}`,
           );
           return allPaths;
         },
-        ["/"]
+        ["/"],
       );
     return hrefs.map((href) => ({
-      text: href === "/" ? "home" : href.split("/").at(-1) ?? "",
+      text: href === "/" ? "home" : (href.split("/").at(-1) ?? ""),
       href,
     }));
   };
@@ -120,7 +120,10 @@ const Layout = () => {
         navigationOpen={navigationOpen}
         onNavigationChange={({ detail }) => setNavigationOpen(detail.open)}
         navigation={
-          <SideNavigation onFollow={followLink} items={getNavItems() as SideNavigationProps.Item[]} />
+          <SideNavigation
+            onFollow={followLink}
+            items={getNavItems() as SideNavigationProps.Item[]}
+          />
         }
         toolsHide
         content={

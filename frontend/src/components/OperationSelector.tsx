@@ -2,14 +2,18 @@ import { FormField, Select } from "@cloudscape-design/components";
 import type { SelectProps } from "@cloudscape-design/components";
 
 type Props = {
-  operations: SelectProps.Option[],
-  selectedOperation: string,
-  onChange: (operation: string) => void,
+  operations: SelectProps.Option[];
+  selectedOperation: string;
+  onChange: (operation: string) => void;
 };
 
-const OperationSelector = ({ operations, selectedOperation, onChange }: Props) => {
+const OperationSelector = ({
+  operations,
+  selectedOperation,
+  onChange,
+}: Props) => {
   const selectedOption = operations.find(
-    (op) => op.value === selectedOperation
+    (op) => op.value === selectedOperation,
   );
 
   return (

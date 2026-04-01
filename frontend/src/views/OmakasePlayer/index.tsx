@@ -6,15 +6,14 @@ import { useOmakaseData } from "@/hooks/useOmakaseData";
 import { useParams } from "react-router-dom";
 import { Component, useState } from "react";
 
-
 type ErrorBoundaryProps = {
   children: React.ReactNode;
-}
+};
 
 type ErrorBoundaryState = {
   hasError: boolean;
   error: Error | null;
-}
+};
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   firstError: Error | null = null;
@@ -77,8 +76,9 @@ export const OmakaseHlsPlayer = () => {
   }
   if (!isLoading) {
     const hasSegments =
-      Object.values(flowSegments || {}).find((segments) => segments.length > 0) !=
-      undefined;
+      Object.values(flowSegments || {}).find(
+        (segments) => segments.length > 0,
+      ) != undefined;
 
     if (!hasSegments) {
       return <Box textAlign="center">Selected timerange has no segments</Box>;
@@ -100,7 +100,6 @@ export const OmakaseHlsPlayer = () => {
         />
       </Box>
     </ErrorBoundary>
-
   ) : (
     <Box textAlign="center">
       Loading Media <Spinner />

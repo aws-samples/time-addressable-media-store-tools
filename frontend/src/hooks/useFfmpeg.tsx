@@ -10,7 +10,12 @@ import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useIamApi from "@/hooks/useIamApi";
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 import type { Uuid, Timerange } from "@/types/tams";
-import type { FfmpegConfig, FfmpegExport, JobTarget, RuleTarget } from "@/types/ingestFFmpeg";
+import type {
+  FfmpegConfig,
+  FfmpegExport,
+  JobTarget,
+  RuleTarget,
+} from "@/types/ingestFFmpeg";
 
 type DeleteRuleArgs = {
   flowId: Uuid;
@@ -24,10 +29,10 @@ type CreateRuleArgs = {
 };
 
 type JobStartArgs = {
-  inputFlow: Uuid,
-  timerange: Timerange,
+  inputFlow: Uuid;
+  timerange: Timerange;
   ffmpeg: FfmpegConfig;
-  outputFlow: Uuid,
+  outputFlow: Uuid;
 };
 
 type ExportStartArgs = {
@@ -36,8 +41,10 @@ type ExportStartArgs = {
   ffmpeg: FfmpegConfig;
 };
 
-
-const hierachyFetcher = async <T extends JobTarget | RuleTarget>(api: ReturnType<typeof useIamApi>, path: string) => {
+const hierachyFetcher = async <T extends JobTarget | RuleTarget>(
+  api: ReturnType<typeof useIamApi>,
+  path: string,
+) => {
   const data: { id: string; targets: T[] }[] = await api.get(path);
   return [
     ...data.map(({ id }) => ({ key: id, id, parentId: null })),
@@ -46,7 +53,7 @@ const hierachyFetcher = async <T extends JobTarget | RuleTarget>(api: ReturnType
         key: target.executionArn ?? `${id}_${target.outputFlow}`,
         parentId: id,
         ...target,
-      }))
+      })),
     ),
   ];
 };
@@ -58,7 +65,7 @@ export const useRules = () => {
     (path) => hierachyFetcher<RuleTarget>(api, path),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -77,7 +84,7 @@ export const useCreateRule = () => {
     async (path, { arg }: { arg: CreateRuleArgs }) => {
       await api.put(`${path}/${arg.flowId}/${arg.outputFlowId}`, arg.payload);
       await new Promise((resolve) => setTimeout(resolve, 1000)); // setTimeout used to artificially wait until basic puts are complete.
-    }
+    },
   );
 
   return {
@@ -93,7 +100,7 @@ export const useDeleteRule = () => {
     async (path, { arg }: { arg: DeleteRuleArgs }) => {
       await api.del(`${path}/${arg.flowId}/${arg.outputFlowId}`);
       await new Promise((resolve) => setTimeout(resolve, 1000)); // setTimeout used to artificially wait until basic deletes are complete.
-    }
+    },
   );
 
   return {
@@ -115,9 +122,9 @@ export const useJobStart = () => {
         new StartExecutionCommand({
           stateMachineArn: AWS_FFMPEG_BATCH_ARN,
           input: JSON.stringify(arg),
-        })
+        }),
       );
-    }
+    },
   );
 
   return {
@@ -133,7 +140,7 @@ export const useJobs = () => {
     (path) => hierachyFetcher<JobTarget>(api, path),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -147,13 +154,11 @@ export const useJobs = () => {
 
 export const useExports = () => {
   const api = useIamApi(AWS_FFMPEG_ENDPOINT);
-  const { data, mutate, error, isLoading, isValidating } = useSWR<FfmpegExport[]>(
-    "/ffmpeg-exports",
-    (path) => api.get(path),
-    {
-      refreshInterval: 3000,
-    }
-  );
+  const { data, mutate, error, isLoading, isValidating } = useSWR<
+    FfmpegExport[]
+  >("/ffmpeg-exports", (path) => api.get(path), {
+    refreshInterval: 3000,
+  });
 
   return {
     exports: data,
@@ -177,9 +182,9 @@ export const useExportStart = () => {
         new StartExecutionCommand({
           stateMachineArn: AWS_FFMPEG_EXPORT_ARN,
           input: JSON.stringify(arg),
-        })
+        }),
       );
-    }
+    },
   );
 
   return {

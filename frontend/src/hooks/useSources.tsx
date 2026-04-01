@@ -10,7 +10,7 @@ export const useSources = () => {
     (path) => paginationFetcher(path, api),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -30,13 +30,13 @@ export const useSource = (sourceId: Uuid) => {
     error,
     isLoading,
     isValidating,
-  } = useSWR<{ data: Source; headers: Record<string, string>; nextLink?: string }>(
-    ["/sources", sourceId],
-    ([path, sourceId]) => get(`${path}/${sourceId}`),
-    {
-      refreshInterval: 3000,
-    }
-  );
+  } = useSWR<{
+    data: Source;
+    headers: Record<string, string>;
+    nextLink?: string;
+  }>(["/sources", sourceId], ([path, sourceId]) => get(`${path}/${sourceId}`), {
+    refreshInterval: 3000,
+  });
 
   return {
     source: response?.data,
@@ -55,12 +55,16 @@ export const useSourceFlows = (sourceId: Uuid) => {
     error,
     isLoading,
     isValidating,
-  } = useSWR<{ data: Flow[]; headers: Record<string, string>; nextLink?: string }>(
+  } = useSWR<{
+    data: Flow[];
+    headers: Record<string, string>;
+    nextLink?: string;
+  }>(
     ["/flows", sourceId],
     ([path, sourceId]) => get(`${path}?source_id=${sourceId}`),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {

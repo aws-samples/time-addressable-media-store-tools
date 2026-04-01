@@ -7,11 +7,19 @@ import type { ButtonDropdownProps } from "@cloudscape-design/components";
 
 type MenuItem = ButtonDropdownProps.Item | ButtonDropdownProps.ItemGroup;
 
-const FlowActionsButton = ({ selectedItems }: { selectedItems: readonly Flow[] }) => {
+const FlowActionsButton = ({
+  selectedItems,
+}: {
+  selectedItems: readonly Flow[];
+}) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
 
-  const handleOnClick = ({ detail }: { detail: ButtonDropdownProps.ItemClickDetails }) => {
+  const handleOnClick = ({
+    detail,
+  }: {
+    detail: ButtonDropdownProps.ItemClickDetails;
+  }) => {
     setActionId(detail.id);
     setModalVisible(true);
   };
@@ -42,9 +50,9 @@ const FlowActionsButton = ({ selectedItems }: { selectedItems: readonly Flow[] }
       disabled:
         selectedItems.length === 0 ||
         selectedItems.some((item) => !item.container),
-      disabledReason:
-        selectedItems.some((item) => !item.container) ?
-          "The container property must have a value on all selected flows." : undefined,
+      disabledReason: selectedItems.some((item) => !item.container)
+        ? "The container property must have a value on all selected flows."
+        : undefined,
       items: [
         {
           text: "Create FFmpeg Export",

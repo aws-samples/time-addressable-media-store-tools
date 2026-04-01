@@ -4,5621 +4,5665 @@
  */
 
 export interface paths {
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Root Endpoints
-         * @description List of paths available from this API.
-         */
-        get: operations["GET_root"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Root Endpoints
-         * @description Return root path headers
-         */
-        head: operations["HEAD_root"];
-        patch?: never;
-        trace?: never;
+  "/": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/service": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Service Information
-         * @description Provide information about the service.
-         */
-        get: operations["GET_service"];
-        put?: never;
-        /**
-         * Update Service Information
-         * @description Update the service info.
-         */
-        post: operations["POST_service"];
-        delete?: never;
-        options?: never;
-        /**
-         * Service Information
-         * @description Return service path headers
-         */
-        head: operations["HEAD_service"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Root Endpoints
+     * @description List of paths available from this API.
+     */
+    get: operations["GET_root"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Root Endpoints
+     * @description Return root path headers
+     */
+    head: operations["HEAD_root"];
+    patch?: never;
+    trace?: never;
+  };
+  "/service": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/service/storage-backends": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Storage Backend Information
-         * @description Provide information about the storage backends available on this service instance. These are populated on deployment of the service instance.
-         */
-        get: operations["GET_storage-backends"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * Storage Backend Information
-         * @description Return storage backends path headers
-         */
-        head: operations["HEAD_storage-backends"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Service Information
+     * @description Provide information about the service.
+     */
+    get: operations["GET_service"];
+    put?: never;
+    /**
+     * Update Service Information
+     * @description Update the service info.
+     */
+    post: operations["POST_service"];
+    delete?: never;
+    options?: never;
+    /**
+     * Service Information
+     * @description Return service path headers
+     */
+    head: operations["HEAD_service"];
+    patch?: never;
+    trace?: never;
+  };
+  "/service/storage-backends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/service/webhooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Webhook URLs
-         * @description Get the list of registered webhook URLs.
-         *     Service implementations SHOULD take steps to avoid displaying URLs to users other than those who have suitable permissions (e.g. the owning user).
-         *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [/service](#/operations/GET_service) endpoint.
-         */
-        get: operations["GET_webhooks"];
-        put?: never;
-        /**
-         * Register webhook details
-         * @description Register to receive event notifications as webhooks on a specified URL. Webhook messages will conform to the
-         *     format in the `webhooks` section of the API docs, depending on the event type (as defined in the same section).
-         *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms`
-         *     list on the service endpoint.
-         *
-         *     HTTP requests from the service SHOULD include a `api_key_name` header with the 'api_key_value' value. Clients SHOULD verify this against the value they provided when registering the webhook.
-         *
-         *     API implementations MAY partially support event filtering and transformations.
-         *     API implementations SHALL return a 400 response code if the filtering or transformation specified in the request is not supported.
-         *
-         *     API implementations SHOULD consider the security implementations of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar. API implementations SHOULD take appropriate steps to authorize the modification of existing webhooks. This may take the form of RBAC, or ABAC.
-         */
-        post: operations["POST_webhooks"];
-        delete?: never;
-        options?: never;
-        /**
-         * List Webhook URLs
-         * @description Return webhooks path headers
-         */
-        head: operations["HEAD_webhooks"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Storage Backend Information
+     * @description Provide information about the storage backends available on this service instance. These are populated on deployment of the service instance.
+     */
+    get: operations["GET_storage-backends"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * Storage Backend Information
+     * @description Return storage backends path headers
+     */
+    head: operations["HEAD_storage-backends"];
+    patch?: never;
+    trace?: never;
+  };
+  "/service/webhooks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/service/webhooks/{webhookId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Webhook identifier. */
-                webhookId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Webhook details
-         * @description Get the details of a webhook. Service implementations SHOULD take steps to avoid displaying URLs to users other than those who have suitable permissions (e.g. the owning user).
-         *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [`/service`](#/operations/GET_service) endpoint.
-         */
-        get: operations["GET_webhooks-webhookId"];
-        /**
-         * Update webhook details
-         * @description Update the configuration of an existing webhook.
-         *
-         *     Webhook messages will conform to the format in the `webhooks` section of the API docs, depending on the event type (as defined in the same section).
-         *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [`/service`](#/operations/GET_service) endpoint.
-         *
-         *     HTTP events sent by the service to a client webhook's endpoint SHOULD include a `api_key_name` header with the 'api_key_value' value.
-         *     Clients SHOULD verify this against the value they provided when registering the webhook.
-         *
-         *     Service implementations MAY partially support event filtering and transformations.
-         *     Service implementations SHALL return a 400 response code if the filtering or transformation specified in the request is not supported.
-         *
-         *     Service implementations SHOULD consider the security implications of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar.
-         *     Service implementations SHOULD take appropriate steps to authorize the modification of existing webhooks.
-         *     This may take the form of RBAC, or ABAC.
-         */
-        put: operations["PUT_webhooks"];
-        post?: never;
-        /**
-         * Delete Webhook
-         * @description Deletes the webhook.
-         *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the service endpoint.
-         *
-         *     Service implementations SHOULD consider the security implementations of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar.
-         *     Service implementations SHOULD take appropriate steps to authorize the deleting of webhooks.
-         *     This may take the form of RBAC, or ABAC.
-         */
-        delete: operations["DELETE_webhooks-webhookId"];
-        options?: never;
-        /**
-         * Webhook details
-         * @description Return webhook path headers
-         */
-        head: operations["HEAD_webhooks-webhookId"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Webhook URLs
+     * @description Get the list of registered webhook URLs.
+     *     Service implementations SHOULD take steps to avoid displaying URLs to users other than those who have suitable permissions (e.g. the owning user).
+     *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [/service](#/operations/GET_service) endpoint.
+     */
+    get: operations["GET_webhooks"];
+    put?: never;
+    /**
+     * Register webhook details
+     * @description Register to receive event notifications as webhooks on a specified URL. Webhook messages will conform to the
+     *     format in the `webhooks` section of the API docs, depending on the event type (as defined in the same section).
+     *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms`
+     *     list on the service endpoint.
+     *
+     *     HTTP requests from the service SHOULD include a `api_key_name` header with the 'api_key_value' value. Clients SHOULD verify this against the value they provided when registering the webhook.
+     *
+     *     API implementations MAY partially support event filtering and transformations.
+     *     API implementations SHALL return a 400 response code if the filtering or transformation specified in the request is not supported.
+     *
+     *     API implementations SHOULD consider the security implementations of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar. API implementations SHOULD take appropriate steps to authorize the modification of existing webhooks. This may take the form of RBAC, or ABAC.
+     */
+    post: operations["POST_webhooks"];
+    delete?: never;
+    options?: never;
+    /**
+     * List Webhook URLs
+     * @description Return webhooks path headers
+     */
+    head: operations["HEAD_webhooks"];
+    patch?: never;
+    trace?: never;
+  };
+  "/service/webhooks/{webhookId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Webhook identifier. */
+        webhookId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/sources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Sources
-         * @description List the Sources registered in the TAMS service instance and their details.
-         */
-        get: operations["GET_sources"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Sources
-         * @description Return Sources path headers
-         */
-        head: operations["HEAD_sources"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Webhook details
+     * @description Get the details of a webhook. Service implementations SHOULD take steps to avoid displaying URLs to users other than those who have suitable permissions (e.g. the owning user).
+     *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [`/service`](#/operations/GET_service) endpoint.
+     */
+    get: operations["GET_webhooks-webhookId"];
+    /**
+     * Update webhook details
+     * @description Update the configuration of an existing webhook.
+     *
+     *     Webhook messages will conform to the format in the `webhooks` section of the API docs, depending on the event type (as defined in the same section).
+     *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the [`/service`](#/operations/GET_service) endpoint.
+     *
+     *     HTTP events sent by the service to a client webhook's endpoint SHOULD include a `api_key_name` header with the 'api_key_value' value.
+     *     Clients SHOULD verify this against the value they provided when registering the webhook.
+     *
+     *     Service implementations MAY partially support event filtering and transformations.
+     *     Service implementations SHALL return a 400 response code if the filtering or transformation specified in the request is not supported.
+     *
+     *     Service implementations SHOULD consider the security implications of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar.
+     *     Service implementations SHOULD take appropriate steps to authorize the modification of existing webhooks.
+     *     This may take the form of RBAC, or ABAC.
+     */
+    put: operations["PUT_webhooks"];
+    post?: never;
+    /**
+     * Delete Webhook
+     * @description Deletes the webhook.
+     *     Availability of this endpoint is indicated by the name "webhooks" appearing in the `event_stream_mechanisms` list on the service endpoint.
+     *
+     *     Service implementations SHOULD consider the security implementations of providing webhooks, and include appropriate mitigations against Server Side Request Forgery (SSRF) attacks and similar.
+     *     Service implementations SHOULD take appropriate steps to authorize the deleting of webhooks.
+     *     This may take the form of RBAC, or ABAC.
+     */
+    delete: operations["DELETE_webhooks-webhookId"];
+    options?: never;
+    /**
+     * Webhook details
+     * @description Return webhook path headers
+     */
+    head: operations["HEAD_webhooks-webhookId"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/sources/{sourceId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Source Details
-         * @description Returns Source metadata.
-         */
-        get: operations["GET_sources-sourceId"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * Source Details
-         * @description Return Source headers
-         */
-        head: operations["HEAD_sources-sourceId"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Sources
+     * @description List the Sources registered in the TAMS service instance and their details.
+     */
+    get: operations["GET_sources"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Sources
+     * @description Return Sources path headers
+     */
+    head: operations["HEAD_sources"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources/{sourceId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/sources/{sourceId}/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * List Source Tags
-         * @description Returns the Source tags.
-         */
-        get: operations["GET_sources-sourceId-tags"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Source Tags
-         * @description Return Source tags path headers
-         */
-        head: operations["HEAD_sources-sourceId-tags"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Source Details
+     * @description Returns Source metadata.
+     */
+    get: operations["GET_sources-sourceId"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * Source Details
+     * @description Return Source headers
+     */
+    head: operations["HEAD_sources-sourceId"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources/{sourceId}/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/sources/{sourceId}/tags/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Source Tag Value
-         * @description Return the tag value associated with the tag name.
-         */
-        get: operations["GET_sources-sourceId-tags-name"];
-        /**
-         * Create or Update Source Tag
-         * @description Create or update the Source tag
-         */
-        put: operations["PUT_sources-sourceId-tags-name"];
-        post?: never;
-        /**
-         * Delete Source Tag
-         * @description Delete a specific tag on a Source
-         */
-        delete: operations["DELETE_sources-sourceId-tags-name"];
-        options?: never;
-        /**
-         * Source Tag Value
-         * @description Return Source tag path headers
-         */
-        head: operations["HEAD_sources-sourceId-tags-name"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Source Tags
+     * @description Returns the Source tags.
+     */
+    get: operations["GET_sources-sourceId-tags"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Source Tags
+     * @description Return Source tags path headers
+     */
+    head: operations["HEAD_sources-sourceId-tags"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources/{sourceId}/tags/{name}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/sources/{sourceId}/description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Source Description
-         * @description Returns the Source description property. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`.
-         */
-        get: operations["GET_sources-sourceId-description"];
-        /**
-         * Create or Update Source Description
-         * @description Create or update the description property. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`.
-         */
-        put: operations["PUT_sources-sourceId-description"];
-        post?: never;
-        /**
-         * Delete Source Description
-         * @description Delete the description property.
-         */
-        delete: operations["DELETE_sources-sourceId-description"];
-        options?: never;
-        /**
-         * Source Description
-         * @description Return Source description path headers
-         */
-        head: operations["HEAD_sources-sourceId-description"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Source Tag Value
+     * @description Return the tag value associated with the tag name.
+     */
+    get: operations["GET_sources-sourceId-tags-name"];
+    /**
+     * Create or Update Source Tag
+     * @description Create or update the Source tag
+     */
+    put: operations["PUT_sources-sourceId-tags-name"];
+    post?: never;
+    /**
+     * Delete Source Tag
+     * @description Delete a specific tag on a Source
+     */
+    delete: operations["DELETE_sources-sourceId-tags-name"];
+    options?: never;
+    /**
+     * Source Tag Value
+     * @description Return Source tag path headers
+     */
+    head: operations["HEAD_sources-sourceId-tags-name"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources/{sourceId}/description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/sources/{sourceId}/label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Source Label
-         * @description Returns the Source label property. This should be a very short, human-readable label that may be displayed in listings of Sources.
-         */
-        get: operations["GET_sources-sourceId-label"];
-        /**
-         * Create or Update Source Label
-         * @description Create or update the label property. This should be a very short, human-readable label that may be displayed in listings of Sources.
-         */
-        put: operations["PUT_sources-sourceId-label"];
-        post?: never;
-        /**
-         * Delete Source Label
-         * @description Delete the label property.
-         */
-        delete: operations["DELETE_sources-sourceId-label"];
-        options?: never;
-        /**
-         * Source Label
-         * @description Return Source label path headers
-         */
-        head: operations["HEAD_sources-sourceId-label"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Source Description
+     * @description Returns the Source description property. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`.
+     */
+    get: operations["GET_sources-sourceId-description"];
+    /**
+     * Create or Update Source Description
+     * @description Create or update the description property. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`.
+     */
+    put: operations["PUT_sources-sourceId-description"];
+    post?: never;
+    /**
+     * Delete Source Description
+     * @description Delete the description property.
+     */
+    delete: operations["DELETE_sources-sourceId-description"];
+    options?: never;
+    /**
+     * Source Description
+     * @description Return Source description path headers
+     */
+    head: operations["HEAD_sources-sourceId-description"];
+    patch?: never;
+    trace?: never;
+  };
+  "/sources/{sourceId}/label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Flows
-         * @description List the Flows registered in the TAMS service instance.
-         */
-        get: operations["GET_flows"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Flows
-         * @description Return Flows path headers
-         */
-        head: operations["HEAD_flows"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Source Label
+     * @description Returns the Source label property. This should be a very short, human-readable label that may be displayed in listings of Sources.
+     */
+    get: operations["GET_sources-sourceId-label"];
+    /**
+     * Create or Update Source Label
+     * @description Create or update the label property. This should be a very short, human-readable label that may be displayed in listings of Sources.
+     */
+    put: operations["PUT_sources-sourceId-label"];
+    post?: never;
+    /**
+     * Delete Source Label
+     * @description Delete the label property.
+     */
+    delete: operations["DELETE_sources-sourceId-label"];
+    options?: never;
+    /**
+     * Source Label
+     * @description Return Source label path headers
+     */
+    head: operations["HEAD_sources-sourceId-label"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flows/{flowId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Details
-         * @description Returns Flow metadata.
-         */
-        get: operations["GET_flows-flowId"];
-        /**
-         * Create or Replace Flow
-         * @description Create or replace the Flow metadata.
-         *
-         *     Clients should aim to populate as many of the Flow metadata fields as possible and practical. The fewer parameters that are set, the higher the likelihood that reading clients will have to retrieve the media to determine technical metadata to e.g. configure decoders.
-         *
-         *     Some parameters may be ignored/overridden by service implementations. This is to enable the Flow json-blob to be re-used with no/minimal editing in various use cases. Such parameters are called out in their description.
-         *
-         *     Service implementations SHOULD verify that Flow metadata is compatible with the associated Source.
-         *     Service implementations MAY accept modification/addition of parameters, and reflect such changes in the Source, where it will not bring any Flows of the Source into conflict.
-         *     Where metadata would result in any Flow of the Source coming into conflict, the request SHOULD be rejected with a 400 response.
-         *     Examples of conflicting metadata include `format` not matching, or the `role` in `source_collection` and `flow_collection` not matching.
-         *     It may also be possible for service implementations to detect some instances where multiple Flows should not be considered of the same Source, such as audio Flows with different numbers of tracks.
-         *     Further guidance on when Flows/Sources may be considered the same/different may be found in the [Practical Guidance for Media](https://specs.amwa.tv/ms-04/releases/v1.0.0/docs/3.0._Practical_Guidance_for_Media.html) section of AMWA MS-04.
-         */
-        put: operations["PUT_flows-flowId"];
-        post?: never;
-        /**
-         * Delete Flow
-         * @description Deletes the Flow and associated Segments.
-         *     If Flow Segment deletion takes too long then this request will return 202 Accepted and the `Location` header will point to a Flow Delete Request to monitor deletion progress
-         */
-        delete: operations["DELETE_flows-flowId"];
-        options?: never;
-        /**
-         * Flow Details
-         * @description Return Flow path headers
-         */
-        head: operations["HEAD_flows-flowId"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Flows
+     * @description List the Flows registered in the TAMS service instance.
+     */
+    get: operations["GET_flows"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Flows
+     * @description Return Flows path headers
+     */
+    head: operations["HEAD_flows"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * List Flow Tags
-         * @description Returns the Flow tags.
-         */
-        get: operations["GET_flows-flowId-tags"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Flow Tags
-         * @description Return Flow tags path headers
-         */
-        head: operations["HEAD_flows-flowId-tags"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Details
+     * @description Returns Flow metadata.
+     */
+    get: operations["GET_flows-flowId"];
+    /**
+     * Create or Replace Flow
+     * @description Create or replace the Flow metadata.
+     *
+     *     Clients should aim to populate as many of the Flow metadata fields as possible and practical. The fewer parameters that are set, the higher the likelihood that reading clients will have to retrieve the media to determine technical metadata to e.g. configure decoders.
+     *
+     *     Some parameters may be ignored/overridden by service implementations. This is to enable the Flow json-blob to be re-used with no/minimal editing in various use cases. Such parameters are called out in their description.
+     *
+     *     Service implementations SHOULD verify that Flow metadata is compatible with the associated Source.
+     *     Service implementations MAY accept modification/addition of parameters, and reflect such changes in the Source, where it will not bring any Flows of the Source into conflict.
+     *     Where metadata would result in any Flow of the Source coming into conflict, the request SHOULD be rejected with a 400 response.
+     *     Examples of conflicting metadata include `format` not matching, or the `role` in `source_collection` and `flow_collection` not matching.
+     *     It may also be possible for service implementations to detect some instances where multiple Flows should not be considered of the same Source, such as audio Flows with different numbers of tracks.
+     *     Further guidance on when Flows/Sources may be considered the same/different may be found in the [Practical Guidance for Media](https://specs.amwa.tv/ms-04/releases/v1.0.0/docs/3.0._Practical_Guidance_for_Media.html) section of AMWA MS-04.
+     */
+    put: operations["PUT_flows-flowId"];
+    post?: never;
+    /**
+     * Delete Flow
+     * @description Deletes the Flow and associated Segments.
+     *     If Flow Segment deletion takes too long then this request will return 202 Accepted and the `Location` header will point to a Flow Delete Request to monitor deletion progress
+     */
+    delete: operations["DELETE_flows-flowId"];
+    options?: never;
+    /**
+     * Flow Details
+     * @description Return Flow path headers
+     */
+    head: operations["HEAD_flows-flowId"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/tags/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Tag Value
-         * @description Return the tag value associated with the tag name.
-         */
-        get: operations["GET_flows-flowId-tags-name"];
-        /**
-         * Create or Update Flow Tag
-         * @description Create or update the tag.
-         */
-        put: operations["PUT_flows-flowId-tags-name"];
-        post?: never;
-        /**
-         * Delete Flow Tag
-         * @description Delete the tag.
-         */
-        delete: operations["DELETE_flows-flowId-tags-name"];
-        options?: never;
-        /**
-         * Flow Tag Value
-         * @description Return Flow tag path headers
-         */
-        head: operations["HEAD_flows-flowId-tags-name"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Flow Tags
+     * @description Returns the Flow tags.
+     */
+    get: operations["GET_flows-flowId-tags"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Flow Tags
+     * @description Return Flow tags path headers
+     */
+    head: operations["HEAD_flows-flowId-tags"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/tags/{name}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Description
-         * @description Returns the Flow description property. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`.
-         */
-        get: operations["GET_flows-flowId-description"];
-        /**
-         * Create or Update Flow Description
-         * @description Create or update the description property. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`.
-         */
-        put: operations["PUT_flows-flowId-description"];
-        post?: never;
-        /**
-         * Delete Flow Description
-         * @description Delete the description property.
-         */
-        delete: operations["DELETE_flows-flowId-description"];
-        options?: never;
-        /**
-         * Flow Description
-         * @description Return Flow description path headers
-         */
-        head: operations["HEAD_flows-flowId-description"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Tag Value
+     * @description Return the tag value associated with the tag name.
+     */
+    get: operations["GET_flows-flowId-tags-name"];
+    /**
+     * Create or Update Flow Tag
+     * @description Create or update the tag.
+     */
+    put: operations["PUT_flows-flowId-tags-name"];
+    post?: never;
+    /**
+     * Delete Flow Tag
+     * @description Delete the tag.
+     */
+    delete: operations["DELETE_flows-flowId-tags-name"];
+    options?: never;
+    /**
+     * Flow Tag Value
+     * @description Return Flow tag path headers
+     */
+    head: operations["HEAD_flows-flowId-tags-name"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Label
-         * @description Returns the Flow label property. This should be a very short, human-readable label that may be displayed in listings of Flows.
-         */
-        get: operations["GET_flows-flowId-label"];
-        /**
-         * Create or Update Flow Label
-         * @description Create or update the label property. This should be a very short, human-readable label that may be displayed in listings of Flows.
-         */
-        put: operations["PUT_flows-flowId-label"];
-        post?: never;
-        /**
-         * Delete Flow Label
-         * @description Delete the label property.
-         */
-        delete: operations["DELETE_flows-flowId-label"];
-        options?: never;
-        /**
-         * Flow Label
-         * @description Return Flow label path headers
-         */
-        head: operations["HEAD_flows-flowId-label"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Description
+     * @description Returns the Flow description property. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`.
+     */
+    get: operations["GET_flows-flowId-description"];
+    /**
+     * Create or Update Flow Description
+     * @description Create or update the description property. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`.
+     */
+    put: operations["PUT_flows-flowId-description"];
+    post?: never;
+    /**
+     * Delete Flow Description
+     * @description Delete the description property.
+     */
+    delete: operations["DELETE_flows-flowId-description"];
+    options?: never;
+    /**
+     * Flow Description
+     * @description Return Flow description path headers
+     */
+    head: operations["HEAD_flows-flowId-description"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/read_only": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Read-Only
-         * @description Returns the Flow read_only property. If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow.
-         */
-        get: operations["GET_flows-flowId-read-only"];
-        /**
-         * Set Flow Read-Only
-         * @description Set the read-only property. If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow.
-         */
-        put: operations["PUT_flows-flowId-read-only"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * Flow Read-Only
-         * @description Return Flow read_only path headers
-         */
-        head: operations["HEAD_flows-flowId-read-only"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Label
+     * @description Returns the Flow label property. This should be a very short, human-readable label that may be displayed in listings of Flows.
+     */
+    get: operations["GET_flows-flowId-label"];
+    /**
+     * Create or Update Flow Label
+     * @description Create or update the label property. This should be a very short, human-readable label that may be displayed in listings of Flows.
+     */
+    put: operations["PUT_flows-flowId-label"];
+    post?: never;
+    /**
+     * Delete Flow Label
+     * @description Delete the label property.
+     */
+    delete: operations["DELETE_flows-flowId-label"];
+    options?: never;
+    /**
+     * Flow Label
+     * @description Return Flow label path headers
+     */
+    head: operations["HEAD_flows-flowId-label"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/read_only": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/flow_collection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Collection
-         * @description Returns the Flow collection property. A list of Flows that are collected together by this Flow.
-         */
-        get: operations["GET_flows-flowId-flow-collection"];
-        /**
-         * Create or Update Flow Collection
-         * @description Create or update the Flow collection property. A list of Flows that are collected together by this Flow.
-         *
-         *     Service implementations SHOULD verify that Flow metadata is compatible with the associated Source.
-         *     Service implementations MAY accept modification/addition of parameters, and reflect such changes in the Source, where it will not bring any Flows of the Source into conflict.
-         *     Where metadata would result in any Flow of the Source coming into conflict, the request SHOULD be rejected with a 400 response.
-         */
-        put: operations["PUT_flows-flowId-flow-collection"];
-        post?: never;
-        /**
-         * Delete Flow Collection
-         * @description Delete the Flow collection property.
-         */
-        delete: operations["DELETE_flows-flowId-flow-collection"];
-        options?: never;
-        /**
-         * Flow Collection
-         * @description Returns the Flow collection path headers
-         */
-        head: operations["HEAD_flows-flowId-flow-collection"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Read-Only
+     * @description Returns the Flow read_only property. If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow.
+     */
+    get: operations["GET_flows-flowId-read-only"];
+    /**
+     * Set Flow Read-Only
+     * @description Set the read-only property. If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow.
+     */
+    put: operations["PUT_flows-flowId-read-only"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * Flow Read-Only
+     * @description Return Flow read_only path headers
+     */
+    head: operations["HEAD_flows-flowId-read-only"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/flow_collection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/max_bit_rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Maximum Bit Rate
-         * @description Returns the Flow max bit rate property.
-         *
-         *     The maximum bit rate of the Flow Segments in 1000 bits/second.
-         *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
-         */
-        get: operations["GET_flows-flowId-max-bit-rate"];
-        /**
-         * Create or Update Flow Maximum Bit Rate
-         * @description Create or update the max bit rate property.
-         *
-         *     The maximum bit rate of the Flow Segments in 1000 bits/second.
-         *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
-         */
-        put: operations["PUT_flows-flowId-max-bit-rate"];
-        post?: never;
-        /**
-         * Delete Flow Maximum Bit Rate
-         * @description Delete the Flow max bit rate property.
-         */
-        delete: operations["DELETE_flows-flowId-max-bit-rate"];
-        options?: never;
-        /**
-         * Flow Maximum Bit Rate
-         * @description Returns the Flow max bit rate path headers
-         */
-        head: operations["HEAD_flows-flowId-max-bit-rate"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Collection
+     * @description Returns the Flow collection property. A list of Flows that are collected together by this Flow.
+     */
+    get: operations["GET_flows-flowId-flow-collection"];
+    /**
+     * Create or Update Flow Collection
+     * @description Create or update the Flow collection property. A list of Flows that are collected together by this Flow.
+     *
+     *     Service implementations SHOULD verify that Flow metadata is compatible with the associated Source.
+     *     Service implementations MAY accept modification/addition of parameters, and reflect such changes in the Source, where it will not bring any Flows of the Source into conflict.
+     *     Where metadata would result in any Flow of the Source coming into conflict, the request SHOULD be rejected with a 400 response.
+     */
+    put: operations["PUT_flows-flowId-flow-collection"];
+    post?: never;
+    /**
+     * Delete Flow Collection
+     * @description Delete the Flow collection property.
+     */
+    delete: operations["DELETE_flows-flowId-flow-collection"];
+    options?: never;
+    /**
+     * Flow Collection
+     * @description Returns the Flow collection path headers
+     */
+    head: operations["HEAD_flows-flowId-flow-collection"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/max_bit_rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/avg_bit_rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Average Bit Rate
-         * @description Returns the Flow average bit rate property.
-         *
-         *     The average bit rate of the Flow Segments in 1000 bits/second.
-         *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
-         */
-        get: operations["GET_flows-flowId-avg-bit-rate"];
-        /**
-         * Create or Update Flow Average Bit Rate
-         * @description Create or update the average bit rate property.
-         *
-         *     The average bit rate of the Flow Segments in 1000 bits/second.
-         *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
-         */
-        put: operations["PUT_flows-flowId-avg-bit-rate"];
-        post?: never;
-        /**
-         * Delete Flow Average Bit Rate
-         * @description Delete the Flow average bit rate property.
-         */
-        delete: operations["DELETE_flows-flowId-avg-bit-rate"];
-        options?: never;
-        /**
-         * Flow Average Bit Rate
-         * @description Returns the Flow average bit rate path headers
-         */
-        head: operations["HEAD_flows-flowId-avg-bit-rate"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Maximum Bit Rate
+     * @description Returns the Flow max bit rate property.
+     *
+     *     The maximum bit rate of the Flow Segments in 1000 bits/second.
+     *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
+     */
+    get: operations["GET_flows-flowId-max-bit-rate"];
+    /**
+     * Create or Update Flow Maximum Bit Rate
+     * @description Create or update the max bit rate property.
+     *
+     *     The maximum bit rate of the Flow Segments in 1000 bits/second.
+     *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
+     */
+    put: operations["PUT_flows-flowId-max-bit-rate"];
+    post?: never;
+    /**
+     * Delete Flow Maximum Bit Rate
+     * @description Delete the Flow max bit rate property.
+     */
+    delete: operations["DELETE_flows-flowId-max-bit-rate"];
+    options?: never;
+    /**
+     * Flow Maximum Bit Rate
+     * @description Returns the Flow max bit rate path headers
+     */
+    head: operations["HEAD_flows-flowId-max-bit-rate"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/avg_bit_rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/segments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        /**
-         * List Flow Segments
-         * @description Returns the Flow Segments.
-         *
-         *     The Flow Segment provides information about the Media Object.
-         *     The Storage Backend type, which is indicated in the [/service/storage-backends](#/operations/GET_storage-backends) resource, determines the information that is included in the response to allow the Flow Segment's Media Object to be downloaded by the client.
-         *     The examples provided here are for the "http_object_store" Storage Backend type which MUST include a `get_urls` property that contains the HTTP URLs for downloading the Media Object - service implementations should generate this internally.
-         *
-         *     The Flow Segment may include timing adjustment information that the client needs to apply when extracting the samples from the Media Object.
-         *     The timestamp of a sample on the Flow Segment's timeline (`segment_ts`) is the timestamp of that sample embedded in or derived from the internal timing of the Media Object (`media_object_ts`) adjusted by `ts_offset`: `segment_ts = media_object_ts + ts_offset`.
-         *
-         *     It may also use a subset of the samples in the Media Object, and if the `include_object_timerange=true` parameter is set, the object's timerange will also be returned to aid identifying which samples to skip.
-         *
-         *     Clients should use the pagination options to limit the results to a timerange and/or count.
-         *     Service implementations may also limit the results returned.
-         *     This will be signalled via the paging headers in the response.
-         *     The list of Flow Segments can be empty.
-         *     A request for Segments from a non-existent Flow will return an empty list, not a 404.
-         *
-         *     Note that for codecs with temporal re-ordering, the timerange representes the _presentation_ timeline, and clients may need to check the `key_frame_count` property and/or read backwards from the start of the requested timerange to retrieve enough reference material to start decoding.
-         *
-         *     When making requests to the provided `get_urls`, clients should include credentials if the provided URL is on the same origin as the API itself, akin to the `same-origin` mode in the [WhatWG Fetch Standard](https://fetch.spec.whatwg.org/#concept-request-credentials-mode).
-         */
-        get: operations["GET_flows-flowId-segments"];
-        put?: never;
-        /**
-         * Create Flow Segments
-         * @description Register either a single new Flow Segment or an array of Segments, attaching the Object id given to a point in the Flow timeline.
-         *
-         *     The Segment may use a newly-written Media Object, or re-use an existing Media Object from another Flow.
-         *
-         *     For newly-written Media Objects, the client is responsible for ensuring that the Segment written to the TAMS service instance obeys the following restrictions:
-         *       - All samples in the Object SHOULD be used by the Segment.
-         *       - If the Segment does not use all samples in the Object, `object_timerange` MUST be set to the timerange of media in the object, on the Media Object's timeline
-         *       - The timestamps of each sample in the Media Object MUST equal its position on the Flow timeline, OR `ts_offset` MUST be set such that `media_object_ts + ts_offset = segment_ts`
-         *       - The timerange of the Segment MUST NOT overlap any other Segment in the same Flow. The behaviour is undefined if there is an overlap with existing Segments and a service may return a 400 error response.
-         *
-         *     A service instance SHOULD reject registrations of Flow Segments with a 400 error response if it references a newly created Media Object in the local TAMS storage that was not intended to be used for the Flow.
-         *     A service instance SHOULD accept Flow Segments that reference an existing Media Object in the local TAMS storage that was originally created for another Flow.
-         *
-         *     A service instance MAY support Media Objects that are held in external storage in another TAMS or other media storage system.
-         *     The Flow Segment may in that case require the `get_urls` property to provide the information needed by clients to access the Media Object.
-         *
-         *     The list of instances of an object (and associated `get_urls` entries) can be modified via the [`/objects`](#/operations/GET_objects) endpoints, which provides a mechanism to register new instances of an object.
-         *
-         *     Clients MAY modify Flow Segments, but this should only be done in exceptional circumstances to correct metadata such as `key_frame_count`, as such operations will likely break the idempotency of Segments.
-         *     If a client needs to modify a Flow Segment, then the client SHOULD first delete the existing Segment and then write a new one.
-         *     The behaviour is undefined if the Segment exists and the service may return a 400 error response.
-         *
-         *     For successful creation of all Segments in the request a 201 response should be provided.
-         *     If an error is detected when processing a list of Segments then processing should continue to try and process the remaining Segments.
-         *     A 200 response should be returned listing the failed Segments.
-         *
-         *     Clients are expected to decide how to break content into Media Objects, however those Objects SHOULD be large enough to avoid excessive round trip overheads in the underlying store (_e.g._ of the order of several megabytes) and where codecs with temporal re-ordering are used, Object SHOULD contain complete GOPs or decodable units.
-         *
-         *     For Media Objects that have been re-used from other Flows, the `timerange` MAY specify only part of the duration of the object:
-         *       - The `timerange` field indicates the new Segment's position in the Flow
-         *       - The timerange of the Segment MUST NOT overlap any other Segment in the same Flow.
-         *       - The Flow Segment's `timerange` start and end, once offset by `ts_offset`, MUST be contained entirely within the Media Object's `timerange`
-         *
-         *     When re-using Media Objects, requests which change object properties (e.g. `key_frame_count` or `object_timerange`) SHOULD be rejected.
-         */
-        post: operations["POST_flows-flowId-segments"];
-        /**
-         * Delete Flow Segment
-         * @description Deletes the Flow Segments. If the deletion takes too long then this request will return 202 Accepted and the `Location` header will point to a Flow Delete Request to monitor deletion progress
-         */
-        delete: operations["DELETE_flows-flowId-segments"];
-        options?: never;
-        /**
-         * List Flow Segments
-         * @description Return Flow Segments path headers
-         */
-        head: operations["HEAD_flows-flowId-segments"];
-        patch?: never;
-        trace?: never;
+    /**
+     * Flow Average Bit Rate
+     * @description Returns the Flow average bit rate property.
+     *
+     *     The average bit rate of the Flow Segments in 1000 bits/second.
+     *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
+     */
+    get: operations["GET_flows-flowId-avg-bit-rate"];
+    /**
+     * Create or Update Flow Average Bit Rate
+     * @description Create or update the average bit rate property.
+     *
+     *     The average bit rate of the Flow Segments in 1000 bits/second.
+     *     A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote.
+     */
+    put: operations["PUT_flows-flowId-avg-bit-rate"];
+    post?: never;
+    /**
+     * Delete Flow Average Bit Rate
+     * @description Delete the Flow average bit rate property.
+     */
+    delete: operations["DELETE_flows-flowId-avg-bit-rate"];
+    options?: never;
+    /**
+     * Flow Average Bit Rate
+     * @description Returns the Flow average bit rate path headers
+     */
+    head: operations["HEAD_flows-flowId-avg-bit-rate"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/segments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/flows/{flowId}/storage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Allocate Initial Flow Storage
-         * @description Allocate initial storage locations for writing Media Objects.
-         *
-         *     The Storage Backend type, which is indicated in the [/service](#/operations/GET_service) resource, determines the information provided in the response.
-         *     The examples and description below are for the "http_object_store" Storage Backend type.
-         *     This Storage Backend type provides HTTP URLs for uploading and downloading Media Objects in buckets.
-         *
-         *     The response will include a PUT URL that a client uses to upload the Media Object.
-         *     The client is expected to register the Flow Segment using the [/flows/{flowId}/segments](#/operations/POST_flows-flowId-segments) endpoint once the upload is complete.
-         *     Service implementations need to handle situations where Objects were uploaded but no Flow Segment was registered successfully.
-         *
-         *     When making requests to the provided `put_url`, clients should include credentials if the provided URL is on the same origin as the API itself, akin to the `same-origin` mode in the [WhatWG Fetch Standard](https://fetch.spec.whatwg.org/#concept-request-credentials-mode).
-         */
-        post: operations["POST_flows-flowId-storage"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * List Flow Segments
+     * @description Returns the Flow Segments.
+     *
+     *     The Flow Segment provides information about the Media Object.
+     *     The Storage Backend type, which is indicated in the [/service/storage-backends](#/operations/GET_storage-backends) resource, determines the information that is included in the response to allow the Flow Segment's Media Object to be downloaded by the client.
+     *     The examples provided here are for the "http_object_store" Storage Backend type which MUST include a `get_urls` property that contains the HTTP URLs for downloading the Media Object - service implementations should generate this internally.
+     *
+     *     The Flow Segment may include timing adjustment information that the client needs to apply when extracting the samples from the Media Object.
+     *     The timestamp of a sample on the Flow Segment's timeline (`segment_ts`) is the timestamp of that sample embedded in or derived from the internal timing of the Media Object (`media_object_ts`) adjusted by `ts_offset`: `segment_ts = media_object_ts + ts_offset`.
+     *
+     *     It may also use a subset of the samples in the Media Object, and if the `include_object_timerange=true` parameter is set, the object's timerange will also be returned to aid identifying which samples to skip.
+     *
+     *     Clients should use the pagination options to limit the results to a timerange and/or count.
+     *     Service implementations may also limit the results returned.
+     *     This will be signalled via the paging headers in the response.
+     *     The list of Flow Segments can be empty.
+     *     A request for Segments from a non-existent Flow will return an empty list, not a 404.
+     *
+     *     Note that for codecs with temporal re-ordering, the timerange representes the _presentation_ timeline, and clients may need to check the `key_frame_count` property and/or read backwards from the start of the requested timerange to retrieve enough reference material to start decoding.
+     *
+     *     When making requests to the provided `get_urls`, clients should include credentials if the provided URL is on the same origin as the API itself, akin to the `same-origin` mode in the [WhatWG Fetch Standard](https://fetch.spec.whatwg.org/#concept-request-credentials-mode).
+     */
+    get: operations["GET_flows-flowId-segments"];
+    put?: never;
+    /**
+     * Create Flow Segments
+     * @description Register either a single new Flow Segment or an array of Segments, attaching the Object id given to a point in the Flow timeline.
+     *
+     *     The Segment may use a newly-written Media Object, or re-use an existing Media Object from another Flow.
+     *
+     *     For newly-written Media Objects, the client is responsible for ensuring that the Segment written to the TAMS service instance obeys the following restrictions:
+     *       - All samples in the Object SHOULD be used by the Segment.
+     *       - If the Segment does not use all samples in the Object, `object_timerange` MUST be set to the timerange of media in the object, on the Media Object's timeline
+     *       - The timestamps of each sample in the Media Object MUST equal its position on the Flow timeline, OR `ts_offset` MUST be set such that `media_object_ts + ts_offset = segment_ts`
+     *       - The timerange of the Segment MUST NOT overlap any other Segment in the same Flow. The behaviour is undefined if there is an overlap with existing Segments and a service may return a 400 error response.
+     *
+     *     A service instance SHOULD reject registrations of Flow Segments with a 400 error response if it references a newly created Media Object in the local TAMS storage that was not intended to be used for the Flow.
+     *     A service instance SHOULD accept Flow Segments that reference an existing Media Object in the local TAMS storage that was originally created for another Flow.
+     *
+     *     A service instance MAY support Media Objects that are held in external storage in another TAMS or other media storage system.
+     *     The Flow Segment may in that case require the `get_urls` property to provide the information needed by clients to access the Media Object.
+     *
+     *     The list of instances of an object (and associated `get_urls` entries) can be modified via the [`/objects`](#/operations/GET_objects) endpoints, which provides a mechanism to register new instances of an object.
+     *
+     *     Clients MAY modify Flow Segments, but this should only be done in exceptional circumstances to correct metadata such as `key_frame_count`, as such operations will likely break the idempotency of Segments.
+     *     If a client needs to modify a Flow Segment, then the client SHOULD first delete the existing Segment and then write a new one.
+     *     The behaviour is undefined if the Segment exists and the service may return a 400 error response.
+     *
+     *     For successful creation of all Segments in the request a 201 response should be provided.
+     *     If an error is detected when processing a list of Segments then processing should continue to try and process the remaining Segments.
+     *     A 200 response should be returned listing the failed Segments.
+     *
+     *     Clients are expected to decide how to break content into Media Objects, however those Objects SHOULD be large enough to avoid excessive round trip overheads in the underlying store (_e.g._ of the order of several megabytes) and where codecs with temporal re-ordering are used, Object SHOULD contain complete GOPs or decodable units.
+     *
+     *     For Media Objects that have been re-used from other Flows, the `timerange` MAY specify only part of the duration of the object:
+     *       - The `timerange` field indicates the new Segment's position in the Flow
+     *       - The timerange of the Segment MUST NOT overlap any other Segment in the same Flow.
+     *       - The Flow Segment's `timerange` start and end, once offset by `ts_offset`, MUST be contained entirely within the Media Object's `timerange`
+     *
+     *     When re-using Media Objects, requests which change object properties (e.g. `key_frame_count` or `object_timerange`) SHOULD be rejected.
+     */
+    post: operations["POST_flows-flowId-segments"];
+    /**
+     * Delete Flow Segment
+     * @description Deletes the Flow Segments. If the deletion takes too long then this request will return 202 Accepted and the `Location` header will point to a Flow Delete Request to monitor deletion progress
+     */
+    delete: operations["DELETE_flows-flowId-segments"];
+    options?: never;
+    /**
+     * List Flow Segments
+     * @description Return Flow Segments path headers
+     */
+    head: operations["HEAD_flows-flowId-segments"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flows/{flowId}/storage": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
     };
-    "/objects/{objectId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Media Object Information
-         * @description Contains Flows that references the Media Object and other information.
-         *
-         *     The paging query parameters and headers are required for the list of Flow references in the Media Object.
-         *     Service implementations should return a complete list of Flow references within reason and API clients should expect paging to happen in some rare cases where a Media Object is used in many Flows.
-         */
-        get: operations["GET_objects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * Media Object Information
-         * @description Return Flow references and other information about Media Objects.
-         */
-        head: operations["HEAD_objects"];
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Allocate Initial Flow Storage
+     * @description Allocate initial storage locations for writing Media Objects.
+     *
+     *     The Storage Backend type, which is indicated in the [/service](#/operations/GET_service) resource, determines the information provided in the response.
+     *     The examples and description below are for the "http_object_store" Storage Backend type.
+     *     This Storage Backend type provides HTTP URLs for uploading and downloading Media Objects in buckets.
+     *
+     *     The response will include a PUT URL that a client uses to upload the Media Object.
+     *     The client is expected to register the Flow Segment using the [/flows/{flowId}/segments](#/operations/POST_flows-flowId-segments) endpoint once the upload is complete.
+     *     Service implementations need to handle situations where Objects were uploaded but no Flow Segment was registered successfully.
+     *
+     *     When making requests to the provided `put_url`, clients should include credentials if the provided URL is on the same origin as the API itself, akin to the `same-origin` mode in the [WhatWG Fetch Standard](https://fetch.spec.whatwg.org/#concept-request-credentials-mode).
+     */
+    post: operations["POST_flows-flowId-storage"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/objects/{objectId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/objects/{objectId}/instances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Register a Media Object instance
-         * @description Request the service to create an Object instance on a new Storage Backend. Or add a new uncontrolled URL to `get_urls`.
-         *
-         *     To request the duplication of the Object to a new Storage Backend, clients POST a `storage_id` to this endpoint that does not currently have an instance of the Object. The API will then:
-         *
-         *     - Allocate storage for Media Object `objectId` on Storage Backend `storage_id`
-         *     - Copy the Media Object from an existing location to the newly allocated storage
-         *     - Start advertising the new copy in `get_urls` once ready
-         *
-         *     The API instances SHOULD be capable of handling the case where the only existant instances are uncontrolled.
-         *
-         *     Where a client has written a new uncontrolled Object instance, the client is responsible for ensuring that the Object written is complete and correct before registering it with this method.
-         *
-         *     All instances of an Object MUST be identical.
-         */
-        post: operations["POST_objects-instances"];
-        /**
-         * Delete a Media Object instance
-         * @description Delete an instance of a Media Object.
-         *
-         *     One of `storage_id` or `label` MUST be specified in the query parameters. `storage_id` SHOULD be used where `controlled` is `True` for the instance.
-         *
-         *     API instances should remove the Media Object instance from the `get_urls` list and then, if the instance is controlled, delete the Object instance from storage.
-         *
-         *     API instances SHOULD prevent clients from deleting all Object instances. Additionally, API instances MAY prevent clients from deleting all controlled Object instances. Where clients wish to remove all copies of an Object from the store, they should do so by deleting all Flows or Flow Segments which reference the Object.
-         */
-        delete: operations["DELETE_objects-instances"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /**
+     * Media Object Information
+     * @description Contains Flows that references the Media Object and other information.
+     *
+     *     The paging query parameters and headers are required for the list of Flow references in the Media Object.
+     *     Service implementations should return a complete list of Flow references within reason and API clients should expect paging to happen in some rare cases where a Media Object is used in many Flows.
+     */
+    get: operations["GET_objects"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * Media Object Information
+     * @description Return Flow references and other information about Media Objects.
+     */
+    head: operations["HEAD_objects"];
+    patch?: never;
+    trace?: never;
+  };
+  "/objects/{objectId}/instances": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flow-delete-requests": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Flow Delete Requests
-         * @description List deletion requests currently being worked on, for monitoring in development.
-         *
-         *     This will not necessarily list all requests, nor return a consistent set in any particular order, and should not be relied upon by clients. However if there are any requests in the system, it will always return at least one.
-         */
-        get: operations["GET_flow-delete-requests"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * List Flow Delete Requests
-         * @description Return flow-delete-requests path headers
-         */
-        head: operations["HEAD_flow-delete-requests"];
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Register a Media Object instance
+     * @description Request the service to create an Object instance on a new Storage Backend. Or add a new uncontrolled URL to `get_urls`.
+     *
+     *     To request the duplication of the Object to a new Storage Backend, clients POST a `storage_id` to this endpoint that does not currently have an instance of the Object. The API will then:
+     *
+     *     - Allocate storage for Media Object `objectId` on Storage Backend `storage_id`
+     *     - Copy the Media Object from an existing location to the newly allocated storage
+     *     - Start advertising the new copy in `get_urls` once ready
+     *
+     *     The API instances SHOULD be capable of handling the case where the only existant instances are uncontrolled.
+     *
+     *     Where a client has written a new uncontrolled Object instance, the client is responsible for ensuring that the Object written is complete and correct before registering it with this method.
+     *
+     *     All instances of an Object MUST be identical.
+     */
+    post: operations["POST_objects-instances"];
+    /**
+     * Delete a Media Object instance
+     * @description Delete an instance of a Media Object.
+     *
+     *     One of `storage_id` or `label` MUST be specified in the query parameters. `storage_id` SHOULD be used where `controlled` is `True` for the instance.
+     *
+     *     API instances should remove the Media Object instance from the `get_urls` list and then, if the instance is controlled, delete the Object instance from storage.
+     *
+     *     API instances SHOULD prevent clients from deleting all Object instances. Additionally, API instances MAY prevent clients from deleting all controlled Object instances. Where clients wish to remove all copies of an Object from the store, they should do so by deleting all Flows or Flow Segments which reference the Object.
+     */
+    delete: operations["DELETE_objects-instances"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/flow-delete-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flow-delete-requests/{request-id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                "request-id": string;
-            };
-            cookie?: never;
-        };
-        /**
-         * Flow Delete Request Details
-         * @description Get information about a timerange of Flow Segments that are being deleted.
-         *
-         *     A deletion request is created when a client DELETEs a long timerange of Segments, which takes longer than a single HTTP request.
-         *     Clients will be redirected here to monitor the request's progress.
-         */
-        get: operations["GET_flow-delete-requests-request-id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /**
-         * Flow Delete Request Details
-         * @description Return Flow delete request path headers
-         */
-        head: operations["HEAD_flow-delete-requests-request-id"];
-        patch?: never;
-        trace?: never;
+    /**
+     * List Flow Delete Requests
+     * @description List deletion requests currently being worked on, for monitoring in development.
+     *
+     *     This will not necessarily list all requests, nor return a consistent set in any particular order, and should not be relied upon by clients. However if there are any requests in the system, it will always return at least one.
+     */
+    get: operations["GET_flow-delete-requests"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * List Flow Delete Requests
+     * @description Return flow-delete-requests path headers
+     */
+    head: operations["HEAD_flow-delete-requests"];
+    patch?: never;
+    trace?: never;
+  };
+  "/flow-delete-requests/{request-id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        "request-id": string;
+      };
+      cookie?: never;
     };
+    /**
+     * Flow Delete Request Details
+     * @description Get information about a timerange of Flow Segments that are being deleted.
+     *
+     *     A deletion request is created when a client DELETEs a long timerange of Segments, which takes longer than a single HTTP request.
+     *     Clients will be redirected here to monitor the request's progress.
+     */
+    get: operations["GET_flow-delete-requests-request-id"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    /**
+     * Flow Delete Request Details
+     * @description Return Flow delete request path headers
+     */
+    head: operations["HEAD_flow-delete-requests-request-id"];
+    patch?: never;
+    trace?: never;
+  };
 }
 export interface webhooks {
-    "flows/created": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the new Flow was created
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "flows/created";
-                        event: {
-                            flow: components["schemas"]["flow"];
-                        };
-                    };
-                };
-            };
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "flows/created": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "flows/updated": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the new Flow was created
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "flows/created";
+            event: {
+              flow: components["schemas"]["flow"];
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the Flow was modified
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "flows/updated";
-                        event: {
-                            flow: components["schemas"]["flow"];
-                        };
-                    };
-                };
-            };
-            responses: never;
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: never;
     };
-    "flows/deleted": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the Flow was modified
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "flows/deleted";
-                        event: {
-                            flow_id: components["schemas"]["uuid"];
-                        };
-                    };
-                };
-            };
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "flows/updated": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "flows/segments_added": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the Flow was modified
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "flows/updated";
+            event: {
+              flow: components["schemas"]["flow"];
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the most recent Segment in the timerange was added (and the message generated)
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "flows/segments_added";
-                        event: {
-                            flow_id: components["schemas"]["uuid"];
-                            segments: components["schemas"]["flow-segment"][];
-                        };
-                    };
-                };
-            };
-            responses: never;
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: never;
     };
-    "flows/segments_deleted": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the most recent Segment in the timerange was added (and the message generated)
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "flows/segments_deleted";
-                        event: {
-                            flow_id: components["schemas"]["uuid"];
-                            /** @description The timerange of Segments that have been deleted. The timerange MUST intersect with a Segment which has been deleted at both start and end (e.g. it cannot start or end in empty space). */
-                            timerange: components["schemas"]["timerange"];
-                        };
-                    };
-                };
-            };
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "flows/deleted": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "sources/created": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the Flow was modified
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "flows/deleted";
+            event: {
+              flow_id: components["schemas"]["uuid"];
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the new Source was created
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "sources/created";
-                        event: {
-                            source: components["schemas"]["source"];
-                        };
-                    };
-                };
-            };
-            responses: never;
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: never;
     };
-    "sources/updated": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the Source was modified
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "sources/updated";
-                        event: {
-                            source: components["schemas"]["source"];
-                        };
-                    };
-                };
-            };
-            responses: never;
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "flows/segments_added": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "sources/deleted": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the most recent Segment in the timerange was added (and the message generated)
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "flows/segments_added";
+            event: {
+              flow_id: components["schemas"]["uuid"];
+              segments: components["schemas"]["flow-segment"][];
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @description Timestamp at which the Source was modified
-                         */
-                        event_timestamp: string;
-                        /** @constant */
-                        event_type: "sources/deleted";
-                        event: {
-                            source_id: components["schemas"]["uuid"];
-                        };
-                    };
-                };
-            };
-            responses: never;
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: never;
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "flows/segments_deleted": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the most recent Segment in the timerange was added (and the message generated)
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "flows/segments_deleted";
+            event: {
+              flow_id: components["schemas"]["uuid"];
+              /** @description The timerange of Segments that have been deleted. The timerange MUST intersect with a Segment which has been deleted at both start and end (e.g. it cannot start or end in empty space). */
+              timerange: components["schemas"]["timerange"];
+            };
+          };
+        };
+      };
+      responses: never;
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "sources/created": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the new Source was created
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "sources/created";
+            event: {
+              source: components["schemas"]["source"];
+            };
+          };
+        };
+      };
+      responses: never;
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "sources/updated": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the Source was modified
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "sources/updated";
+            event: {
+              source: components["schemas"]["source"];
+            };
+          };
+        };
+      };
+      responses: never;
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "sources/deleted": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          "application/json": {
+            /**
+             * Format: date-time
+             * @description Timestamp at which the Source was modified
+             */
+            event_timestamp: string;
+            /** @constant */
+            event_type: "sources/deleted";
+            event: {
+              source_id: components["schemas"]["uuid"];
+            };
+          };
+        };
+      };
+      responses: never;
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export interface components {
-    schemas: {
+  schemas: {
+    /**
+     * Event Stream Mechanism
+     * @description Describes an event stream mechanism available in this service instance
+     */
+    "event-stream-common": {
+      /** @description Name of this type of event stream mechanism. Must be unique. Any name defined in this specification is reserved */
+      name: string;
+      /** @description Location (e.g. a URL) at which documentation for this event stream mechanism may be found */
+      docs?: string;
+      /** @description Configuration options required to make use of this mechanism */
+      config?: Record<string, never>;
+    };
+    /**
+     * Service
+     * @description Provides information about the service instance
+     */
+    service: {
+      /** @description The service instance name. This should be a very short, human-readable name that may be displayed in listings of Service instances. */
+      name?: string;
+      /** @description The service instance description. This should be a human-readable description that may be showed in detailed views of Service instances. The description should be longer and more detailed than `name`. */
+      description?: string;
+      /** @description The type identifier for the service instance. The value must start with 'urn:x-tams:service' */
+      type: string;
+      /** @description The version of the TAMS API specification this service instance implements */
+      api_version: string;
+      /** @description The version of software providing this service. Note: Different implementations and software houses may use different conventions for their version identification. As such, this field is intentionally permissive and intended to be informative only. Client implementations should avoid using this field to determine compatibility. */
+      service_version?: string;
+      /** @description List the types of event stream that this service implementation supports */
+      event_stream_mechanisms?: components["schemas"]["event-stream-common"][];
+    };
+    /**
+     * Update Service Info
+     * @description Post update to the service info
+     */
+    "service-post": {
+      /** @description The service instance name */
+      name?: string;
+      /** @description The service instance description */
+      description?: string;
+    };
+    /**
+     * Storage Backend
+     * @description Provides technical, and logic metadata about a storage backend
+     */
+    "storage-backend": {
+      /**
+       * @description The generic Storage Backend type. Used to identify the required workflow for reading and writing media. Any `store_product` should be compatible, as much is required for basic interoperability between TAMS implementations, with their associated generic `store_type`.
+       * @enum {string}
+       */
+      store_type?: "http_object_store";
+      /** @description The cloud (or other) provider of the Storage Backend */
+      provider?: string;
+      /** @description The region in the cloud this Storage Backend resides */
+      region?: string;
+      /** @description The availability zone in the cloud region this Storage Backend resides. Note that many cloud providers randomize availability zone identifiers such that they are consistent within a cloud account, but not necessarily between accounts. Caution should be exercised when using this parameter. */
+      availability_zone?: string;
+      /** @description The storage product name. */
+      store_product?: string;
+    };
+    /**
+     * UUID
+     * @description A Universally Unique Identifier (UUID) as defined in [RFC9562](https://www.rfc-editor.org/rfc/rfc9562)
+     */
+    uuid: string;
+    /**
+     * Storage Backends List
+     * @description Information about the storage backends available on this service instance.
+     */
+    "storage-backends-list": (components["schemas"]["storage-backend"] &
+      unknown & {
+        /** @description Storage backend identifier */
+        id?: components["schemas"]["uuid"];
+        /** @description Freeform string label for a storage backend. */
+        label?: string;
+        /** @description If set to `true`, this is the default storage backend. The default storage backend will be used if the client does not specify a storage backend id when requesting the allocation of storage. If this parameter is not set, assume `false`. Service instances may either set one storage backend as default, or none - indicating that clients must always specify a storage backend. */
+        default_storage?: boolean;
+      })[];
+    /**
+     * Query String Tag value list
+     * @description A list of tag values, formatted for use in query string parameters
+     */
+    "url-tag-list": string;
+    /**
+     * Tags
+     * @description Key is a freeform string. Value is a freeform string, or an array of freeform strings.
+     */
+    tags: {
+      [key: string]: string | string[];
+    };
+    /**
+     * Register Webhook
+     * @description Register to receive updates via webhook
+     */
+    webhook: {
+      /** @description The URL to which the service instance should make HTTP POST requests with event data */
+      url: string;
+      /** @description The HTTP header name that is added to the event POST */
+      api_key_name?: string;
+      /** @description List of event types to receive */
+      events: (
+        | "flows/created"
+        | "flows/updated"
+        | "flows/deleted"
+        | "flows/segments_added"
+        | "flows/segments_deleted"
+        | "sources/created"
+        | "sources/updated"
+        | "sources/deleted"
+      )[];
+      /** @description Limit Flow and Flow Segment events to Flows in the given list of Flow IDs */
+      flow_ids?: components["schemas"]["uuid"][];
+      /** @description Limit Flow, Flow Segment and Source events to Sources in the given list of Source IDs */
+      source_ids?: components["schemas"]["uuid"][];
+      /** @description Limit Flow and Flow Segment events to those with Flow that is collected by a Flow Collection in the given list of Flow Collection IDs */
+      flow_collected_by_ids?: components["schemas"]["uuid"][];
+      /** @description Limit Flow, Flow Segment and Source events to those with Source that is collected by a Source Collection in the given list of Source Collection IDs */
+      source_collected_by_ids?: components["schemas"]["uuid"][];
+      /** @description List of labels of URLs to include in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `accept_get_urls` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint, except that the labels are represented using a JSON array rather than a (comma separated list) string. */
+      accept_get_urls?: string[];
+      /** @description List of labels of `storage_id`s to include in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `accept_storage_ids` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint, except that the IDs are represented using a JSON array rather than a (comma separated list) string. */
+      accept_storage_ids?: components["schemas"]["uuid"][];
+      /** @description Whether to include presigned/non-presigned URLs in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `presigned` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint. */
+      presigned?: boolean;
+      /** @description Whether to include storage metadata in the `get_urls` property in `flows/segments_added` events. This option is the same as the `verbose_storage` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint. */
+      verbose_storage?: boolean;
+      tags?: components["schemas"]["tags"];
+    };
+    /**
+     * Webhook Details
+     * @description Details of an existing registered webhook
+     */
+    "webhook-with-id": components["schemas"]["webhook"] & {
+      /** @description Webhook identifier */
+      id: components["schemas"]["uuid"];
+    };
+    /**
+     * Error status metadata
+     * @description Provides more information for an error status.
+     */
+    error: {
+      /** @description The error type name. */
+      type: string;
+      /** @description Summary description of the error and causes. */
+      summary: string;
+      /** @description Stack trace leading to error (as a list of strings) */
+      traceback?: string[];
+      /**
+       * Format: date-time
+       * @description Time at which the error ocurred, to aid in log correlation
+       */
+      time: string;
+    };
+    /**
+     * Webhook Detail
+     * @description Describes a Webhook
+     */
+    "webhook-get": components["schemas"]["webhook-with-id"] & {
+      /** @description Provides more information for the error status, as described by the [Error](../schemas/error#top) type */
+      error?: components["schemas"]["error"];
+      /**
+       * @description Status of the Webhook. `created` indicates the webhook has been successfully registered but is yet to begin sending events or, depending on the service implementation, the worker responsible for sending the events has yet to start. `started` indicates the webhook is active and sending events. `disabled` indicates the webhook has been disabled by a client and is not currently sending events. `error` indicates an error condition has been encountered and the webhook has been disabled by the service instance. More information about the error condition will be indicated by the service instance in the `error` parameter. Service implementations SHOULD implement appropriate retries and only enter the `error` state when absolutely necesary. A webhook in the `error` or `disabled` state may be re-enabled by a client by setting the status to `created`. A webhook in the `created` or `started` state may be disabled by a client by setting the status to `disabled`. Attempting to transition an `error` status to `disabled` SHOULD be rejected.
+       * @enum {string}
+       */
+      status: "created" | "started" | "disabled" | "error";
+    };
+    /**
+     * Register Webhook
+     * @description Register to receive updates via webhook
+     */
+    "webhook-post": components["schemas"]["webhook"] & {
+      /** @description The value that the HTTP header 'api_key_name' will be set to */
+      api_key_value?: string;
+      /**
+       * @description Status of the Webhook. `created` will register the webhook in the created state and the service instance will attempt to start sending events. `disabled` will register the webhook in a disabled state and will not send events. Assumed to be `created` if not set.
+       * @enum {string}
+       */
+      status?: "created" | "disabled";
+    };
+    /**
+     * Modify Webhook
+     * @description Modify existing webhook
+     */
+    "webhook-put": components["schemas"]["webhook-with-id"] & {
+      /** @description The value that the HTTP header 'api_key_name' will be set to */
+      api_key_value?: string;
+      /**
+       * @description Status of the Webhook. `created` indicates the webhook has been successfully registered but is yet to begin sending events or, depending on the service implementation, the worker responsible for sending the events has yet to start. `started` indicates the webhook is active and sending events. `disabled` indicates the webhook has been disabled by a client and is not currently sending events. `error` indicates an error condition has been encountered and the webhook has been disabled by the service instance. More information about the error condition will be indicated by the service instance in the `error` parameter. Service implementations SHOULD implement appropriate retries and only enter the `error` state when absolutely necesary. A webhook in the `error` or `disabled` state may be re-enabled by a client by setting the status to `created`. A webhook in the `created` or `started` state may be disabled by a client by setting the status to `disabled`. Attempting to transition an `error` status to `disabled` SHOULD be rejected.
+       * @enum {string}
+       */
+      status: "created" | "disabled";
+    };
+    /**
+     * Content Format
+     * Format: uri
+     * @description Identifies the content format for a Flow or Source using a URN string
+     * @enum {string}
+     */
+    "content-format":
+      | "urn:x-nmos:format:video"
+      | "urn:x-tam:format:image"
+      | "urn:x-nmos:format:audio"
+      | "urn:x-nmos:format:data"
+      | "urn:x-nmos:format:multi";
+    /**
+     * Collection Item
+     * @description Describes how an entity (Source or Flow) is collected into another entity of the same type
+     */
+    "collection-item": {
+      /** @description Source or Flow Identifier of the member of this collection. Sources MUST only collect Sources, and Flows MUST only collect Flows. Must already be registered in this service instance */
+      id: components["schemas"]["uuid"];
+      /** @description A human-readable role of the element in this collection (e.g. 'R' to denote a right audio channel in a collection of mono audio Sources) */
+      role: string;
+    };
+    /**
+     * Source
+     * @description Describes a Source: an abstract representation of a piece of media as defined in <https://specs.amwa.tv/ms-04/releases/v1.0.0/docs/2.2._Explanation_-_Source.html>
+     *
+     *     Sources may be elemental (and represented directly by a Flow), or may represent a collection of other Sources, e.g. a Source collecting video and audio together.
+     */
+    source: {
+      /** @description Source identifier */
+      id: components["schemas"]["uuid"];
+      /** @description The primary content type URN for the Source. */
+      format: components["schemas"]["content-format"];
+      /** @description Freeform string label for the Source. This should be a very short, human-readable label that may be displayed in listings of Sources. */
+      label?: string;
+      /** @description Freeform text describing the Source. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`. */
+      description?: string;
+      /** @description A string identifier for the entity that created the Source. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the systems. */
+      created_by?: string;
+      /** @description A string identifier for the entity that updated the Source metadata most recently. Service implementations SHOULD set suitable default values for `updated_by` based on the principal accessing the system. */
+      updated_by?: string;
+      /**
+       * Format: date-time
+       * @description The date-time the Source was created in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
+       */
+      created?: string;
+      /**
+       * Format: date-time
+       * @description The date-time the Source metadata was last updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
+       */
+      updated?: string;
+      tags?: components["schemas"]["tags"];
+      /** @description List of Sources that are collected together by this Source. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally. Source collections can be inferred from Flow collection definitions. */
+      source_collection?: components["schemas"]["collection-item"][];
+      /** @description Sources that reference this Source to include it in a collection. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally. Source collections can be inferred from Flow collection definitions. */
+      collected_by?: components["schemas"]["uuid"][];
+    };
+    /**
+     * TimeRange
+     * @description A timerange of timestamps. It is represented using one or two timestamps with inclusivity and exclusivity markers.
+     *
+     *     E.g.
+     *     * `[0:0_10:0)` represents 10 seconds of media starting at timestamp `0:0` and ending before `10:0`.
+     *     * `(5:0_` represents a timerange starting after `5:0` and to eternity.
+     *     * `[1694429247:0_1694429248:0)` is a 1 second TAI timerange starting at 2023-09-11T10:46:50.0Z UTC.
+     *     * `[1694429247:0]` is an instantaneous TAI timerange at 2023-09-11T10:46:50.0Z UTC.
+     *       This is equivalent to `[1694429247:0_1694429247:0]`.
+     *       The short syntax is preferred due to ease of identification as instantaneous.
+     *       Instantaneous TimeRanges cannot use exclusive markers (i.e. `(` or `)`).
+     *     * A `[` or `]` indicates that bound is inclusive, and a `(` or `)` indicates that bound is exclusive.
+     *
+     *     Details of the format can be found in the [Timestamps in TAMS](https://github.com/bbc/tams/blob/main/docs/appnotes/0008-timestamps-in-TAMS.md) application note.
+     */
+    timerange: string;
+    /**
+     * MIME Type
+     * @description A Mime Type without parameters as defined in [RFC2045](https://www.rfc-editor.org/rfc/rfc2045#section-5.1) and [RFC7231](https://www.rfc-editor.org/rfc/rfc7231#section-3.1.1.1)
+     */
+    "mime-type": string;
+    /**
+     * Container Mapping
+     * @description Defines the location of Flow essence data in a container track
+     */
+    "container-mapping": {
+      /** @description A zero-based and sequential track index in the container. This assumes a reliable ordering of tracks */
+      track_index?: number;
+      /** @description A zero-based and sequential track index in the container for a particular Flow format. A container with a video and 2 audio tracks would have a format_track_index 0 for the video Flow and format_track_index 0 and 1 for the audio Flows. This assumes a reliable ordering of tracks for each Flow format */
+      format_track_index?: number;
+      /** @description Mapping for channels in audio tracks to the Flow channels */
+      audio_track?: {
+        /** @description Array of (zero-based) container channel numbers in Flow order */
+        channel_numbers?: number[];
+        /** @description Inclusive range of (zero-based) container channel numbers */
+        channel_range?: string;
+      };
+      /** @description Mapping to MPEG-2 Transport Stream containers, ISO/IEC 13818-1 or ITU-T Recommendation H.222.0 */
+      mp2ts_container?: {
+        /** @description The packet ID for the elementary stream packets */
+        pid?: number;
+      };
+      /** @description Mapping to Material Exchange Format containers, SMPTE ST 377-1 */
+      mxf_container?: {
+        /** @description The package UID. Either a SMPTE UMID URN or UUID URN */
+        package_uid?: string;
+        /** @description The track ID in the package */
+        track_id?: number;
+      };
+      /** @description Mapping to ISO Base Media File Format (e.g. MP4 and MOV) containers, ISO/IEC 14496-12 */
+      isobmff_container?: {
+        /** @description The track ID */
+        track_id?: number;
+      };
+    };
+    /**
+     * Flow Collection
+     * @description Describes how Flows are collected into another Flow
+     */
+    "flow-collection": (components["schemas"]["collection-item"] & {
+      /** @description Describes the mapping of the Flow essence from this Flow collection's container */
+      container_mapping?: components["schemas"]["container-mapping"];
+    })[];
+    /**
+     * Flow Core
+     * @description Describes a Flow (common properties to all Flows, imported by type-specific specifications)
+     */
+    "flow-core": {
+      /** @description Flow identifier */
+      id: components["schemas"]["uuid"];
+      /** @description Source identifier */
+      source_id: components["schemas"]["uuid"];
+      /** @description Freeform string label for the Flow. This should be a very short, human-readable label that may be displayed in listings of Flows. */
+      label?: string;
+      /** @description Freeform text describing the Flow. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`. */
+      description?: string;
+      /** @description A string identifier for the entity that created the Flow. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the system, and MAY permit clients to edit the value, subject to suitable permissions-based limitations. */
+      created_by?: string;
+      /** @description A string identifier for the entity that updated the Flow metadata most recently. Service implementations SHOULD set suitable default values for `updated_by` based on the principal accessing the system, and MAY permit clients to edit the value, subject to suitable permissions-based limitations. */
+      updated_by?: string;
+      /** @description Key value is a freeform string. WARNING: When updating a Flow with `tags` set, `tags` will be replaced with the provided dictionary. `tags` WILL NOT be merged with the provided values. When `tags` is not set in the request, `tags` will be unset (i.e. set to `{}`). To update individual tags, clients should use the [Create or Update Flow Tag](#/operations/PUT_flows-flowId-tags-name) endpoint. */
+      tags?: components["schemas"]["tags"];
+      /** @description A change to the Flow metadata, not including metadata_version, metadata_updated, segments_updated, or Segments, results in a new version. If the metadata_version for Flow instances is identical then the metadata is identical. Service implementations SHOULD set suitable default values for `metadata_version` whenever Flow metadata is changed and `metadata_version` is either not set by the client, or set to it's existing value. Service implementations MAY permit clients to edit the value, subject to suitable permissions-based limitations. Where media is transfered between TAMS service instances without changing the Flow metadata, clients SHOULD maintain the `metadata_version`. To support this, service implementations SHOULD always accept the setting of `metadata_version` by the client on initial Flow creation. Service implementations SHOULD update this field where metadata is updated via child endpoints. Note that this specification places no requirements on incremental versioning. Service implementations may, for example, choose to use hashes or date-time version identifiers. */
+      metadata_version?: string;
+      /** @description An indication of how many lossy encodings the Flow content has been through. This parameter provides a hint to clients as to which is the "highest qualty" Flow available to them. A Flow with a higher generation may contain less of the original information than a Flow with a lower generation. Where a Flow is captured straight from the orginating device (e.g. camera/microphone) in its highest quality, and there is no possibility of the content becoming available in a higher quality (e.g. via capture from ST2110 or SDI), it SHOULD have a `generation` of `0`. Where the originating device outputs multiple qualities of the Source, `generation` should represent the encoding processes each has been through as accurately as possible. */
+      generation?: number;
+      /**
+       * Format: date-time
+       * @description The date-time the Flow was created in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
+       */
+      created?: string;
+      /**
+       * Format: date-time
+       * @description The date-time the Flow metadata was updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
+       */
+      metadata_updated?: string;
+      /**
+       * Format: date-time
+       * @description The date-time the Flow Segments were updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
+       */
+      segments_updated?: string;
+      /** @description If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow. */
+      read_only?: boolean;
+      /** @description A MIME type identification of the (lossy or lossless) coding used for the Flow content. Note that the `type` component of the container MIME type (i.e. the component before the `/`) may be different to the `type` component of the codec MIME type. e.g. An audio Flow may have `audio/aac` coded content may be wrapped in a `video/mp2t` container. Mime types from the [IANA registry](https://www.iana.org/assignments/media-types/media-types.xhtml) should be preferred. Where multiple MIME types are possible, the most common should be preferred. Where this is insufficient, the maintainers of the TAMS repository may create an application note advising which MIME type to use. */
+      codec?: components["schemas"]["mime-type"];
+      /** @description The container MIME type for Flow Segments. Note that the `type` component of the container MIME type (i.e. the component before the `/`) may be different to the `type` component of the codec MIME type. e.g. An audio Flow may have `audio/aac` coded content may be wrapped in a `video/mp2t` container. Where multiple types exist for a subtype (e.g. `video/mp4`, `audio/mp4`, `application/mp4`), the closest MIME type to the Flow `format` should be used (e.g. `audio/mp4` for a Flow `format` of `urn:x-nmos:format:audio`). Mime types from the [IANA registry](https://www.iana.org/assignments/media-types/media-types.xhtml) should be preferred. Where multiple MIME types are possible, the most common should be preferred. Where this is insufficient, the maintainers of the TAMS repository may create an application note advising which MIME type to use. */
+      container?: components["schemas"]["mime-type"];
+      /** @description The average bit rate of the Flow Segments in 1000 bits/second. A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote. */
+      avg_bit_rate?: number;
+      /** @description The maximum bit rate of the Flow Segments in 1000 bits/second. A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote. */
+      max_bit_rate?: number;
+      /** @description The target Flow Segment duration in seconds. The duration for each Segment may vary around this target value. See also the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote for how this property can be used to calculate buffer sizes. */
+      segment_duration?: {
+        /** @description numerator */
+        numerator: number;
         /**
-         * Event Stream Mechanism
-         * @description Describes an event stream mechanism available in this service instance
+         * @description denominator
+         * @default 1
          */
-        "event-stream-common": {
-            /** @description Name of this type of event stream mechanism. Must be unique. Any name defined in this specification is reserved */
-            name: string;
-            /** @description Location (e.g. a URL) at which documentation for this event stream mechanism may be found */
-            docs?: string;
-            /** @description Configuration options required to make use of this mechanism */
-            config?: Record<string, never>;
-        };
+        denominator?: number;
+      };
+      /** @description The timerange of samples available in the Flow, as described by the [TimeRange](#/schemas/timerange) type. Service implementations MUST ignore this if given in a PUT request, and instead manage it internally. */
+      timerange?: components["schemas"]["timerange"];
+      /** @description List of Flows that are collected together by this Flow. */
+      flow_collection?: components["schemas"]["flow-collection"];
+      /** @description Flows that reference this Flow to include it in a collection. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally */
+      collected_by?: components["schemas"]["uuid"][];
+      /** @description Describes the mapping of the Flow essence from the this Flow's container */
+      container_mapping?: components["schemas"]["container-mapping"];
+    };
+    /**
+     * Video Flow
+     * @description Describes a video Flow
+     */
+    "flow-video": components["schemas"]["flow-core"] & {
+      /**
+       * @description The primary content type URN for the Flow.
+       * @enum {string}
+       */
+      format: "urn:x-nmos:format:video";
+      /**
+       * Video Flow Essence Parameters
+       * @description Describes the parameters of the essence inside this video Flow
+       */
+      essence_parameters: {
+        /** @description The width of the picture in pixels. */
+        frame_width: number;
+        /** @description The height of the picture in pixels. */
+        frame_height: number;
+        /** @description The number of significant bits used to represent the video component sample. If codec is `video/raw`, bit_depth must be set. */
+        bit_depth?: number;
         /**
-         * Service
-         * @description Provides information about the service instance
-         */
-        service: {
-            /** @description The service instance name. This should be a very short, human-readable name that may be displayed in listings of Service instances. */
-            name?: string;
-            /** @description The service instance description. This should be a human-readable description that may be showed in detailed views of Service instances. The description should be longer and more detailed than `name`. */
-            description?: string;
-            /** @description The type identifier for the service instance. The value must start with 'urn:x-tams:service' */
-            type: string;
-            /** @description The version of the TAMS API specification this service instance implements */
-            api_version: string;
-            /** @description The version of software providing this service. Note: Different implementations and software houses may use different conventions for their version identification. As such, this field is intentionally permissive and intended to be informative only. Client implementations should avoid using this field to determine compatibility. */
-            service_version?: string;
-            /** @description List the types of event stream that this service implementation supports */
-            event_stream_mechanisms?: components["schemas"]["event-stream-common"][];
-        };
-        /**
-         * Update Service Info
-         * @description Post update to the service info
-         */
-        "service-post": {
-            /** @description The service instance name */
-            name?: string;
-            /** @description The service instance description */
-            description?: string;
-        };
-        /**
-         * Storage Backend
-         * @description Provides technical, and logic metadata about a storage backend
-         */
-        "storage-backend": {
-            /**
-             * @description The generic Storage Backend type. Used to identify the required workflow for reading and writing media. Any `store_product` should be compatible, as much is required for basic interoperability between TAMS implementations, with their associated generic `store_type`.
-             * @enum {string}
-             */
-            store_type?: "http_object_store";
-            /** @description The cloud (or other) provider of the Storage Backend */
-            provider?: string;
-            /** @description The region in the cloud this Storage Backend resides */
-            region?: string;
-            /** @description The availability zone in the cloud region this Storage Backend resides. Note that many cloud providers randomize availability zone identifiers such that they are consistent within a cloud account, but not necessarily between accounts. Caution should be exercised when using this parameter. */
-            availability_zone?: string;
-            /** @description The storage product name. */
-            store_product?: string;
-        };
-        /**
-         * UUID
-         * @description A Universally Unique Identifier (UUID) as defined in [RFC9562](https://www.rfc-editor.org/rfc/rfc9562)
-         */
-        uuid: string;
-        /**
-         * Storage Backends List
-         * @description Information about the storage backends available on this service instance.
-         */
-        "storage-backends-list": (components["schemas"]["storage-backend"] & unknown & {
-            /** @description Storage backend identifier */
-            id?: components["schemas"]["uuid"];
-            /** @description Freeform string label for a storage backend. */
-            label?: string;
-            /** @description If set to `true`, this is the default storage backend. The default storage backend will be used if the client does not specify a storage backend id when requesting the allocation of storage. If this parameter is not set, assume `false`. Service instances may either set one storage backend as default, or none - indicating that clients must always specify a storage backend. */
-            default_storage?: boolean;
-        })[];
-        /**
-         * Query String Tag value list
-         * @description A list of tag values, formatted for use in query string parameters
-         */
-        "url-tag-list": string;
-        /**
-         * Tags
-         * @description Key is a freeform string. Value is a freeform string, or an array of freeform strings.
-         */
-        tags: {
-            [key: string]: string | string[];
-        };
-        /**
-         * Register Webhook
-         * @description Register to receive updates via webhook
-         */
-        webhook: {
-            /** @description The URL to which the service instance should make HTTP POST requests with event data */
-            url: string;
-            /** @description The HTTP header name that is added to the event POST */
-            api_key_name?: string;
-            /** @description List of event types to receive */
-            events: ("flows/created" | "flows/updated" | "flows/deleted" | "flows/segments_added" | "flows/segments_deleted" | "sources/created" | "sources/updated" | "sources/deleted")[];
-            /** @description Limit Flow and Flow Segment events to Flows in the given list of Flow IDs */
-            flow_ids?: components["schemas"]["uuid"][];
-            /** @description Limit Flow, Flow Segment and Source events to Sources in the given list of Source IDs */
-            source_ids?: components["schemas"]["uuid"][];
-            /** @description Limit Flow and Flow Segment events to those with Flow that is collected by a Flow Collection in the given list of Flow Collection IDs */
-            flow_collected_by_ids?: components["schemas"]["uuid"][];
-            /** @description Limit Flow, Flow Segment and Source events to those with Source that is collected by a Source Collection in the given list of Source Collection IDs */
-            source_collected_by_ids?: components["schemas"]["uuid"][];
-            /** @description List of labels of URLs to include in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `accept_get_urls` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint, except that the labels are represented using a JSON array rather than a (comma separated list) string. */
-            accept_get_urls?: string[];
-            /** @description List of labels of `storage_id`s to include in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `accept_storage_ids` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint, except that the IDs are represented using a JSON array rather than a (comma separated list) string. */
-            accept_storage_ids?: components["schemas"]["uuid"][];
-            /** @description Whether to include presigned/non-presigned URLs in the `get_urls` property in `flows/segments_added` events. Where multiple `get_urls` filter query parameters are provided, the included `get_urls` will match all filters. This option is the same as the `presigned` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint. */
-            presigned?: boolean;
-            /** @description Whether to include storage metadata in the `get_urls` property in `flows/segments_added` events. This option is the same as the `verbose_storage` query parameter for the [/flows/{flowId}/segments](#/operations/GET_flows-flowId-segments) API endpoint. */
-            verbose_storage?: boolean;
-            tags?: components["schemas"]["tags"];
-        };
-        /**
-         * Webhook Details
-         * @description Details of an existing registered webhook
-         */
-        "webhook-with-id": components["schemas"]["webhook"] & {
-            /** @description Webhook identifier */
-            id: components["schemas"]["uuid"];
-        };
-        /**
-         * Error status metadata
-         * @description Provides more information for an error status.
-         */
-        error: {
-            /** @description The error type name. */
-            type: string;
-            /** @description Summary description of the error and causes. */
-            summary: string;
-            /** @description Stack trace leading to error (as a list of strings) */
-            traceback?: string[];
-            /**
-             * Format: date-time
-             * @description Time at which the error ocurred, to aid in log correlation
-             */
-            time: string;
-        };
-        /**
-         * Webhook Detail
-         * @description Describes a Webhook
-         */
-        "webhook-get": components["schemas"]["webhook-with-id"] & {
-            /** @description Provides more information for the error status, as described by the [Error](../schemas/error#top) type */
-            error?: components["schemas"]["error"];
-            /**
-             * @description Status of the Webhook. `created` indicates the webhook has been successfully registered but is yet to begin sending events or, depending on the service implementation, the worker responsible for sending the events has yet to start. `started` indicates the webhook is active and sending events. `disabled` indicates the webhook has been disabled by a client and is not currently sending events. `error` indicates an error condition has been encountered and the webhook has been disabled by the service instance. More information about the error condition will be indicated by the service instance in the `error` parameter. Service implementations SHOULD implement appropriate retries and only enter the `error` state when absolutely necesary. A webhook in the `error` or `disabled` state may be re-enabled by a client by setting the status to `created`. A webhook in the `created` or `started` state may be disabled by a client by setting the status to `disabled`. Attempting to transition an `error` status to `disabled` SHOULD be rejected.
-             * @enum {string}
-             */
-            status: "created" | "started" | "disabled" | "error";
-        };
-        /**
-         * Register Webhook
-         * @description Register to receive updates via webhook
-         */
-        "webhook-post": components["schemas"]["webhook"] & {
-            /** @description The value that the HTTP header 'api_key_name' will be set to */
-            api_key_value?: string;
-            /**
-             * @description Status of the Webhook. `created` will register the webhook in the created state and the service instance will attempt to start sending events. `disabled` will register the webhook in a disabled state and will not send events. Assumed to be `created` if not set.
-             * @enum {string}
-             */
-            status?: "created" | "disabled";
-        };
-        /**
-         * Modify Webhook
-         * @description Modify existing webhook
-         */
-        "webhook-put": components["schemas"]["webhook-with-id"] & {
-            /** @description The value that the HTTP header 'api_key_name' will be set to */
-            api_key_value?: string;
-            /**
-             * @description Status of the Webhook. `created` indicates the webhook has been successfully registered but is yet to begin sending events or, depending on the service implementation, the worker responsible for sending the events has yet to start. `started` indicates the webhook is active and sending events. `disabled` indicates the webhook has been disabled by a client and is not currently sending events. `error` indicates an error condition has been encountered and the webhook has been disabled by the service instance. More information about the error condition will be indicated by the service instance in the `error` parameter. Service implementations SHOULD implement appropriate retries and only enter the `error` state when absolutely necesary. A webhook in the `error` or `disabled` state may be re-enabled by a client by setting the status to `created`. A webhook in the `created` or `started` state may be disabled by a client by setting the status to `disabled`. Attempting to transition an `error` status to `disabled` SHOULD be rejected.
-             * @enum {string}
-             */
-            status: "created" | "disabled";
-        };
-        /**
-         * Content Format
-         * Format: uri
-         * @description Identifies the content format for a Flow or Source using a URN string
+         * @description Interlaced video mode for frames in this Flow
          * @enum {string}
          */
-        "content-format": "urn:x-nmos:format:video" | "urn:x-tam:format:image" | "urn:x-nmos:format:audio" | "urn:x-nmos:format:data" | "urn:x-nmos:format:multi";
+        interlace_mode?:
+          | "progressive"
+          | "interlaced_tff"
+          | "interlaced_bff"
+          | "interlaced_psf";
         /**
-         * Collection Item
-         * @description Describes how an entity (Source or Flow) is collected into another entity of the same type
+         * @description Colorspace used for the video
+         * @enum {string}
          */
-        "collection-item": {
-            /** @description Source or Flow Identifier of the member of this collection. Sources MUST only collect Sources, and Flows MUST only collect Flows. Must already be registered in this service instance */
-            id: components["schemas"]["uuid"];
-            /** @description A human-readable role of the element in this collection (e.g. 'R' to denote a right audio channel in a collection of mono audio Sources) */
-            role: string;
+        colorspace?: "BT601" | "BT709" | "BT2020" | "BT2100";
+        /**
+         * @description Transfer characteristic
+         * @enum {string}
+         */
+        transfer_characteristic?: "SDR" | "HLG" | "PQ";
+        /** @description The display aspect ratio. i.e. display_width / display_height */
+        aspect_ratio?: {
+          /** @description numerator */
+          numerator: number;
+          /** @description denominator */
+          denominator: number;
+        };
+        /** @description The pixel aspect ratio. This is usually 1:1 (i.e. square pixels) for modern video. Some, usually older, video formats use non-square pixels e.g. some Standard Definition video. This is where that may be indicated. */
+        pixel_aspect_ratio?: {
+          /** @description numerator */
+          numerator: number;
+          /** @description denominator */
+          denominator: number;
         };
         /**
-         * Source
-         * @description Describes a Source: an abstract representation of a piece of media as defined in <https://specs.amwa.tv/ms-04/releases/v1.0.0/docs/2.2._Explanation_-_Source.html>
-         *
-         *     Sources may be elemental (and represented directly by a Flow), or may represent a collection of other Sources, e.g. a Source collecting video and audio together.
+         * @description Picture component representation.
+         * @enum {string}
          */
-        source: {
-            /** @description Source identifier */
-            id: components["schemas"]["uuid"];
-            /** @description The primary content type URN for the Source. */
-            format: components["schemas"]["content-format"];
-            /** @description Freeform string label for the Source. This should be a very short, human-readable label that may be displayed in listings of Sources. */
-            label?: string;
-            /** @description Freeform text describing the Source. This should be a human-readable description that may be showed in detailed views of Sources. The description should be longer and more detailed than `label`. */
-            description?: string;
-            /** @description A string identifier for the entity that created the Source. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the systems. */
-            created_by?: string;
-            /** @description A string identifier for the entity that updated the Source metadata most recently. Service implementations SHOULD set suitable default values for `updated_by` based on the principal accessing the system. */
-            updated_by?: string;
-            /**
-             * Format: date-time
-             * @description The date-time the Source was created in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
-             */
-            created?: string;
-            /**
-             * Format: date-time
-             * @description The date-time the Source metadata was last updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
-             */
-            updated?: string;
-            tags?: components["schemas"]["tags"];
-            /** @description List of Sources that are collected together by this Source. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally. Source collections can be inferred from Flow collection definitions. */
-            source_collection?: components["schemas"]["collection-item"][];
-            /** @description Sources that reference this Source to include it in a collection. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally. Source collections can be inferred from Flow collection definitions. */
-            collected_by?: components["schemas"]["uuid"][];
+        component_type?: "YCbCr" | "RGB";
+        /** @description Horizontal chroma component sub-sampling. When unc_type is set to a YUV type, horiz_chroma_subs must be set. */
+        horiz_chroma_subs?: number;
+        /** @description Vertical chroma component sub-sampling. When unc_type is set to a YUV type, vert_chroma_subs must be set. */
+        vert_chroma_subs?: number;
+        /** Uncompressed Video Parameters */
+        unc_parameters?: {
+          /**
+           * @description Uncompressed picture packing type. If codec is `video/raw`, unc_type must be set.
+           * @enum {string}
+           */
+          unc_type:
+            | "planar"
+            | "YUYV"
+            | "UYVY"
+            | "AYUV"
+            | "v210"
+            | "v216"
+            | "RGB"
+            | "RGBx"
+            | "xRGB"
+            | "BGRx"
+            | "xBGR"
+            | "RGBA"
+            | "ARGB"
+            | "BGRA"
+            | "ABGR"
+            | "alpha";
+        };
+        /** AVC Codec Parameters */
+        avc_parameters?: {
+          /** @description AVC / H.264 profile byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
+          profile: number;
+          /** @description AVC / H.264 level byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
+          level: number;
+          /** @description AVC / H.264 flags byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
+          flags: number;
         };
         /**
-         * TimeRange
-         * @description A timerange of timestamps. It is represented using one or two timestamps with inclusivity and exclusivity markers.
-         *
-         *     E.g.
-         *     * `[0:0_10:0)` represents 10 seconds of media starting at timestamp `0:0` and ending before `10:0`.
-         *     * `(5:0_` represents a timerange starting after `5:0` and to eternity.
-         *     * `[1694429247:0_1694429248:0)` is a 1 second TAI timerange starting at 2023-09-11T10:46:50.0Z UTC.
-         *     * `[1694429247:0]` is an instantaneous TAI timerange at 2023-09-11T10:46:50.0Z UTC.
-         *       This is equivalent to `[1694429247:0_1694429247:0]`.
-         *       The short syntax is preferred due to ease of identification as instantaneous.
-         *       Instantaneous TimeRanges cannot use exclusive markers (i.e. `(` or `)`).
-         *     * A `[` or `]` indicates that bound is inclusive, and a `(` or `)` indicates that bound is exclusive.
-         *
-         *     Details of the format can be found in the [Timestamps in TAMS](https://github.com/bbc/tams/blob/main/docs/appnotes/0008-timestamps-in-TAMS.md) application note.
+         * Fixed Frame Rate
+         * @description The fixed number of frames per second. MUST be set if `vfr` is `false` or omitted. MUST NOT be set if `vfr` is `true`.
          */
-        timerange: string;
-        /**
-         * MIME Type
-         * @description A Mime Type without parameters as defined in [RFC2045](https://www.rfc-editor.org/rfc/rfc2045#section-5.1) and [RFC7231](https://www.rfc-editor.org/rfc/rfc7231#section-3.1.1.1)
-         */
-        "mime-type": string;
-        /**
-         * Container Mapping
-         * @description Defines the location of Flow essence data in a container track
-         */
-        "container-mapping": {
-            /** @description A zero-based and sequential track index in the container. This assumes a reliable ordering of tracks */
-            track_index?: number;
-            /** @description A zero-based and sequential track index in the container for a particular Flow format. A container with a video and 2 audio tracks would have a format_track_index 0 for the video Flow and format_track_index 0 and 1 for the audio Flows. This assumes a reliable ordering of tracks for each Flow format */
-            format_track_index?: number;
-            /** @description Mapping for channels in audio tracks to the Flow channels */
-            audio_track?: {
-                /** @description Array of (zero-based) container channel numbers in Flow order */
-                channel_numbers?: number[];
-                /** @description Inclusive range of (zero-based) container channel numbers */
-                channel_range?: string;
-            };
-            /** @description Mapping to MPEG-2 Transport Stream containers, ISO/IEC 13818-1 or ITU-T Recommendation H.222.0 */
-            mp2ts_container?: {
-                /** @description The packet ID for the elementary stream packets */
-                pid?: number;
-            };
-            /** @description Mapping to Material Exchange Format containers, SMPTE ST 377-1 */
-            mxf_container?: {
-                /** @description The package UID. Either a SMPTE UMID URN or UUID URN */
-                package_uid?: string;
-                /** @description The track ID in the package */
-                track_id?: number;
-            };
-            /** @description Mapping to ISO Base Media File Format (e.g. MP4 and MOV) containers, ISO/IEC 14496-12 */
-            isobmff_container?: {
-                /** @description The track ID */
-                track_id?: number;
-            };
+        frame_rate?: {
+          /** @description numerator */
+          numerator: number;
+          /**
+           * @description denominator
+           * @default 1
+           */
+          denominator?: number;
         };
         /**
-         * Flow Collection
-         * @description Describes how Flows are collected into another Flow
+         * @description If `true`, the frame rate of the Flow is variable and `frame_rate` MUST NOT be set. If `false` or omitted, the frame rate of the Flow is fixed and `frame_rate` MUST be set.
+         * @default false
          */
-        "flow-collection": (components["schemas"]["collection-item"] & {
-            /** @description Describes the mapping of the Flow essence from this Flow collection's container */
-            container_mapping?: components["schemas"]["container-mapping"];
-        })[];
-        /**
-         * Flow Core
-         * @description Describes a Flow (common properties to all Flows, imported by type-specific specifications)
-         */
-        "flow-core": {
-            /** @description Flow identifier */
-            id: components["schemas"]["uuid"];
-            /** @description Source identifier */
-            source_id: components["schemas"]["uuid"];
-            /** @description Freeform string label for the Flow. This should be a very short, human-readable label that may be displayed in listings of Flows. */
-            label?: string;
-            /** @description Freeform text describing the Flow. This should be a human-readable description that may be showed in detailed views of Flows. The description should be longer and more detailed than `label`. */
-            description?: string;
-            /** @description A string identifier for the entity that created the Flow. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the system, and MAY permit clients to edit the value, subject to suitable permissions-based limitations. */
-            created_by?: string;
-            /** @description A string identifier for the entity that updated the Flow metadata most recently. Service implementations SHOULD set suitable default values for `updated_by` based on the principal accessing the system, and MAY permit clients to edit the value, subject to suitable permissions-based limitations. */
-            updated_by?: string;
-            /** @description Key value is a freeform string. WARNING: When updating a Flow with `tags` set, `tags` will be replaced with the provided dictionary. `tags` WILL NOT be merged with the provided values. When `tags` is not set in the request, `tags` will be unset (i.e. set to `{}`). To update individual tags, clients should use the [Create or Update Flow Tag](#/operations/PUT_flows-flowId-tags-name) endpoint. */
-            tags?: components["schemas"]["tags"];
-            /** @description A change to the Flow metadata, not including metadata_version, metadata_updated, segments_updated, or Segments, results in a new version. If the metadata_version for Flow instances is identical then the metadata is identical. Service implementations SHOULD set suitable default values for `metadata_version` whenever Flow metadata is changed and `metadata_version` is either not set by the client, or set to it's existing value. Service implementations MAY permit clients to edit the value, subject to suitable permissions-based limitations. Where media is transfered between TAMS service instances without changing the Flow metadata, clients SHOULD maintain the `metadata_version`. To support this, service implementations SHOULD always accept the setting of `metadata_version` by the client on initial Flow creation. Service implementations SHOULD update this field where metadata is updated via child endpoints. Note that this specification places no requirements on incremental versioning. Service implementations may, for example, choose to use hashes or date-time version identifiers. */
-            metadata_version?: string;
-            /** @description An indication of how many lossy encodings the Flow content has been through. This parameter provides a hint to clients as to which is the "highest qualty" Flow available to them. A Flow with a higher generation may contain less of the original information than a Flow with a lower generation. Where a Flow is captured straight from the orginating device (e.g. camera/microphone) in its highest quality, and there is no possibility of the content becoming available in a higher quality (e.g. via capture from ST2110 or SDI), it SHOULD have a `generation` of `0`. Where the originating device outputs multiple qualities of the Source, `generation` should represent the encoding processes each has been through as accurately as possible. */
-            generation?: number;
-            /**
-             * Format: date-time
-             * @description The date-time the Flow was created in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
-             */
-            created?: string;
-            /**
-             * Format: date-time
-             * @description The date-time the Flow metadata was updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
-             */
-            metadata_updated?: string;
-            /**
-             * Format: date-time
-             * @description The date-time the Flow Segments were updated in a given context, e.g. in the service instance. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally
-             */
-            segments_updated?: string;
-            /** @description If set to 'true', service implementations SHOULD reject client requests to update Flow metadata (other than the read_only property), and Flow Segments. Service implementations should also reject requests to the [`/flows/{flowId}/storage`](#/operations/POST_flows-flowId-storage) endpoint for the Flow, and requests to delete the Flow. */
-            read_only?: boolean;
-            /** @description A MIME type identification of the (lossy or lossless) coding used for the Flow content. Note that the `type` component of the container MIME type (i.e. the component before the `/`) may be different to the `type` component of the codec MIME type. e.g. An audio Flow may have `audio/aac` coded content may be wrapped in a `video/mp2t` container. Mime types from the [IANA registry](https://www.iana.org/assignments/media-types/media-types.xhtml) should be preferred. Where multiple MIME types are possible, the most common should be preferred. Where this is insufficient, the maintainers of the TAMS repository may create an application note advising which MIME type to use. */
-            codec?: components["schemas"]["mime-type"];
-            /** @description The container MIME type for Flow Segments. Note that the `type` component of the container MIME type (i.e. the component before the `/`) may be different to the `type` component of the codec MIME type. e.g. An audio Flow may have `audio/aac` coded content may be wrapped in a `video/mp2t` container. Where multiple types exist for a subtype (e.g. `video/mp4`, `audio/mp4`, `application/mp4`), the closest MIME type to the Flow `format` should be used (e.g. `audio/mp4` for a Flow `format` of `urn:x-nmos:format:audio`). Mime types from the [IANA registry](https://www.iana.org/assignments/media-types/media-types.xhtml) should be preferred. Where multiple MIME types are possible, the most common should be preferred. Where this is insufficient, the maintainers of the TAMS repository may create an application note advising which MIME type to use. */
-            container?: components["schemas"]["mime-type"];
-            /** @description The average bit rate of the Flow Segments in 1000 bits/second. A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote. */
-            avg_bit_rate?: number;
-            /** @description The maximum bit rate of the Flow Segments in 1000 bits/second. A precise definition can be found in the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote. */
-            max_bit_rate?: number;
-            /** @description The target Flow Segment duration in seconds. The duration for each Segment may vary around this target value. See also the [Setting Flow Bit Rate Properties](https://github.com/bbc/tams/blob/main/docs/appnotes/0013-setting-flow-bit-rate-properties.md) AppNote for how this property can be used to calculate buffer sizes. */
-            segment_duration?: {
-                /** @description numerator */
-                numerator: number;
-                /**
-                 * @description denominator
-                 * @default 1
-                 */
-                denominator?: number;
-            };
-            /** @description The timerange of samples available in the Flow, as described by the [TimeRange](#/schemas/timerange) type. Service implementations MUST ignore this if given in a PUT request, and instead manage it internally. */
-            timerange?: components["schemas"]["timerange"];
-            /** @description List of Flows that are collected together by this Flow. */
-            flow_collection?: components["schemas"]["flow-collection"];
-            /** @description Flows that reference this Flow to include it in a collection. This attribute is intended to be read-only. Service implementations SHOULD ignore this if given in a PUT request, and instead manage it internally */
-            collected_by?: components["schemas"]["uuid"][];
-            /** @description Describes the mapping of the Flow essence from the this Flow's container */
-            container_mapping?: components["schemas"]["container-mapping"];
-        };
-        /**
-         * Video Flow
-         * @description Describes a video Flow
-         */
-        "flow-video": components["schemas"]["flow-core"] & {
-            /**
-             * @description The primary content type URN for the Flow.
-             * @enum {string}
-             */
-            format: "urn:x-nmos:format:video";
-            /**
-             * Video Flow Essence Parameters
-             * @description Describes the parameters of the essence inside this video Flow
-             */
-            essence_parameters: {
-                /** @description The width of the picture in pixels. */
-                frame_width: number;
-                /** @description The height of the picture in pixels. */
-                frame_height: number;
-                /** @description The number of significant bits used to represent the video component sample. If codec is `video/raw`, bit_depth must be set. */
-                bit_depth?: number;
-                /**
-                 * @description Interlaced video mode for frames in this Flow
-                 * @enum {string}
-                 */
-                interlace_mode?: "progressive" | "interlaced_tff" | "interlaced_bff" | "interlaced_psf";
-                /**
-                 * @description Colorspace used for the video
-                 * @enum {string}
-                 */
-                colorspace?: "BT601" | "BT709" | "BT2020" | "BT2100";
-                /**
-                 * @description Transfer characteristic
-                 * @enum {string}
-                 */
-                transfer_characteristic?: "SDR" | "HLG" | "PQ";
-                /** @description The display aspect ratio. i.e. display_width / display_height */
-                aspect_ratio?: {
-                    /** @description numerator */
-                    numerator: number;
-                    /** @description denominator */
-                    denominator: number;
-                };
-                /** @description The pixel aspect ratio. This is usually 1:1 (i.e. square pixels) for modern video. Some, usually older, video formats use non-square pixels e.g. some Standard Definition video. This is where that may be indicated. */
-                pixel_aspect_ratio?: {
-                    /** @description numerator */
-                    numerator: number;
-                    /** @description denominator */
-                    denominator: number;
-                };
-                /**
-                 * @description Picture component representation.
-                 * @enum {string}
-                 */
-                component_type?: "YCbCr" | "RGB";
-                /** @description Horizontal chroma component sub-sampling. When unc_type is set to a YUV type, horiz_chroma_subs must be set. */
-                horiz_chroma_subs?: number;
-                /** @description Vertical chroma component sub-sampling. When unc_type is set to a YUV type, vert_chroma_subs must be set. */
-                vert_chroma_subs?: number;
-                /** Uncompressed Video Parameters */
-                unc_parameters?: {
-                    /**
-                     * @description Uncompressed picture packing type. If codec is `video/raw`, unc_type must be set.
-                     * @enum {string}
-                     */
-                    unc_type: "planar" | "YUYV" | "UYVY" | "AYUV" | "v210" | "v216" | "RGB" | "RGBx" | "xRGB" | "BGRx" | "xBGR" | "RGBA" | "ARGB" | "BGRA" | "ABGR" | "alpha";
-                };
-                /** AVC Codec Parameters */
-                avc_parameters?: {
-                    /** @description AVC / H.264 profile byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
-                    profile: number;
-                    /** @description AVC / H.264 level byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
-                    level: number;
-                    /** @description AVC / H.264 flags byte. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#using_the_codecs_parameter */
-                    flags: number;
-                };
-                /**
-                 * Fixed Frame Rate
-                 * @description The fixed number of frames per second. MUST be set if `vfr` is `false` or omitted. MUST NOT be set if `vfr` is `true`.
-                 */
-                frame_rate?: {
-                    /** @description numerator */
-                    numerator: number;
-                    /**
-                     * @description denominator
-                     * @default 1
-                     */
-                    denominator?: number;
-                };
-                /**
-                 * @description If `true`, the frame rate of the Flow is variable and `frame_rate` MUST NOT be set. If `false` or omitted, the frame rate of the Flow is fixed and `frame_rate` MUST be set.
-                 * @default false
-                 */
-                vfr?: boolean;
-            };
-        };
-        /**
-         * Audio Flow
-         * @description Describes an audio Flow
-         */
-        "flow-audio": components["schemas"]["flow-core"] & {
-            /**
-             * @description The primary content type URN for the Flow.
-             * @enum {string}
-             */
-            format: "urn:x-nmos:format:audio";
-            /**
-             * Audio Flow Essence Parameters
-             * @description Describes the parameters of the essence inside this audio Flow
-             */
-            essence_parameters: {
-                /** @description The fixed number of samples per second. */
-                sample_rate: number;
-                /** @description The channel count. */
-                channels: number;
-                /** @description The number of significant bits used to represent the audio sample. The minumum number of bytes then equals `round_up(bit_depth / 8)`. If codec is `audio/x-raw-int` bit_depth must be set. If codec is `audio/x-raw-float` bit_depth must be set to 32 or 64 */
-                bit_depth?: number;
-                /** Audio Codec Parameters */
-                codec_parameters?: {
-                    /** @description The fixed number of samples per coded audio frame. */
-                    coded_frame_size?: number;
-                    /** @description The MPEG-4 Object Type Identification. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#mpeg-4_audio */
-                    mp4_oti?: number;
-                };
-                /** Uncompressed Audio Parameters */
-                unc_parameters?: {
-                    /**
-                     * @description The uncompressed audio multi-channel representation type. If codec is `audio/x-raw-int` or `audio/x-raw-float`, unc_type must be set.
-                     * @enum {string}
-                     */
-                    unc_type: "interleaved" | "planar" | "pairs";
-                };
-            };
-        };
-        /**
-         * Image Flow
-         * @description Describes a still image Flow, for use by thumbnail tracks etc
-         */
-        "flow-image": components["schemas"]["flow-core"] & {
-            /**
-             * @description The primary content type URN for the Flow.
-             * @enum {string}
-             */
-            format: "urn:x-tam:format:image";
-            /**
-             * Image Flow Essence Parameters
-             * @description Describes the parameters of the essence inside this image Flow
-             */
-            essence_parameters: {
-                /** @description The width of the picture in pixels. */
-                frame_width: number;
-                /** @description The height of the picture in pixels. */
-                frame_height: number;
-                /** @description The display aspect ratio. i.e. display_width / display_height */
-                aspect_ratio?: {
-                    /** @description numerator */
-                    numerator: number;
-                    /** @description denominator */
-                    denominator: number;
-                };
-            };
-        };
-        /**
-         * Data Flow
-         * @description Describes a data Flow
-         */
-        "flow-data": components["schemas"]["flow-core"] & {
-            /**
-             * @description The primary content type URN for the Flow.
-             * @enum {string}
-             */
-            format: "urn:x-nmos:format:data";
-            /**
-             * Data Flow Essence Parameters
-             * @description Describes the parameters of the essence inside this data Flow
-             */
-            essence_parameters: {
-                /** @description The type of information encoded in the Flow, identified using a URN. e.g. The data_type may be urn:x-tams:data:bounding-box, and the codec `application/json`. */
-                data_type?: string;
-            };
-        };
-        /**
-         * Multi-essence Flow
-         * @description Describes a multi-essence Flow
-         */
-        "flow-multi": components["schemas"]["flow-core"] & {
-            /**
-             * @description The primary content type URN for the Flow.
-             * @enum {string}
-             */
-            format: "urn:x-nmos:format:multi";
-        };
-        /**
-         * Flow
-         * @description Describes a Flow
-         */
-        flow: components["schemas"]["flow-video"] | components["schemas"]["flow-audio"] | components["schemas"]["flow-image"] | components["schemas"]["flow-data"] | components["schemas"]["flow-multi"];
-        /**
-         * Deletion Request
-         * @description Describes an ongoing deletion request
-         */
-        "deletion-request": {
-            /** @description Deletion Request ID */
-            id: components["schemas"]["uuid"];
-            /** @description ID of the Flow to which the deletion request relates */
-            flow_id: components["schemas"]["uuid"];
-            /** @description The timerange of Flow Segments to be deleted in this request, as described by the [TimeRange](#/schemas/timerange) type */
-            timerange_to_delete: components["schemas"]["timerange"];
-            /** @description The timerange of Flow Segments not yet deleted by this request, as described by the [TimeRange](#/schemas/timerange) type */
-            timerange_remaining?: components["schemas"]["timerange"];
-            /** @description Whether the Flow should be deleted once the timerange has been */
-            delete_flow: boolean;
-            /**
-             * Format: date-time
-             * @description Date/Time when this deletion request was created
-             */
-            created?: string;
-            /** @description A string identifier for the entity that created the deletion request. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the system. */
-            created_by?: string;
-            /**
-             * Format: date-time
-             * @description Date/Time when this deletion request was updated
-             */
-            updated?: string;
-            /**
-             * Format: date-time
-             * @description Date/Time when this deletion request will be deleted
-             */
-            expiry?: string;
-            /**
-             * @description Status of the delete request
-             * @enum {string}
-             */
-            status: "created" | "started" | "done" | "error";
-            /** @description Provides more information for the error status, as described by the [Error](#/schemas/error) type */
-            error?: components["schemas"]["error"];
-        };
-        /**
-         * Query String GET URL Label list
-         * @description A list of Media Object GET URL Labels, formatted for use in query string parameters
-         */
-        "url-label-list": string;
-        /**
-         * Query String UUID list
-         * @description A list of Universally Unique Identifiers (UUIDs) as defined in [RFC9562](https://www.rfc-editor.org/rfc/rfc9562), formatted for use in query string parameters
-         */
-        "uuid-list": string;
-        /**
-         * Timestamp
-         * @description A signed nanosecond resolution timestamp represented as "{sign?}{seconds}:{nanoseconds}". The intended
-         *     interpretation of the value is assumed to be defined elsewhere.
-         *
-         *     E.g.
-         *     * "1:40000000" is the timestamp of the 27th video frame for 25 Hz video with origin at "0:0".
-         *     * "1694429247:40000000" is the TAI timestamp for a video frame at 2023-09-11T10:46:50.04Z UTC.
-         *
-         *     Details of the format can be found in the [Timestamps in TAMS](https://github.com/bbc/tams/blob/main/docs/appnotes/0008-timestamps-in-TAMS.md) application note.
-         */
-        timestamp: string;
-        /**
-         * Object
-         * @description Provides the location and metadata of the media files corresponding to a Media Object.
-         */
-        "object-core": {
-            /** @description A list of URLs to which a GET request can be made to directly retrieve the contents of the Media Object. This is required by the `http_object_store` Storage Backend type, which is the only one currently described. Clients may choose any URL in the list and treat the content returned as identical, however servers may sort the list such that the preferred URL is first. Storage Backend metadata for controlled URLs should be populated by the TAMS instance based on the Storage Backend the Meda Object instance resides in. */
-            get_urls?: (components["schemas"]["storage-backend"] & {
-                /** @description Storage Backend identifier */
-                storage_id?: components["schemas"]["uuid"];
-                /** @description A URL to which a GET request can be made to directly retrieve the contents of the media object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
-                url: string;
-                /** @description If `true`, this URL is pre-signed. If this parameter is unset, the URL is NOT pre-signed. */
-                presigned?: boolean;
-                /** @description Label identifying this URL. If the URL is controlled by the service instance, this is the Storage Backend's label. If the URL is uncontrolled, this is the label provided when a client registered the URL. If the 'label' is not set then this URL can't be filtered for using the 'accept_get_urls' API query parameter. */
-                label?: string;
-                /** @description If `true`, this URL is on a Storage Backend controlled by this service instance. If `false`, this URL is uncontrolled and does not have it's lifecycle managed by this instance. If this parameter is unset, assume `true`. */
-                controlled?: boolean;
-            })[];
-            /** @description The number of key frames in the Media Object. This should be set greater than zero when the Media Object contains key frames that serve as a stream access point */
-            key_frame_count?: number;
-        };
-        /**
-         * Flow Segment
-         * @description Provides the location and metadata of the media files corresponding to timerange segments of a Flow.
-         */
-        "flow-segment": {
-            /** @description The object store identifier for the Media Object. */
-            object_id: string;
-            /** @description The timestamp offset between the sample timestamps stored in the media file and the corresponding timestamp in the Segment, ie. ts_offset = segment ts - media object ts. Assumed to be 0:0 if not set. Format as described by the [Timestamp](../schemas/timestamp#top) type */
-            ts_offset?: components["schemas"]["timestamp"];
-            /** @description The timerange for the samples contained in the Segment. The timerange start is always inclusive. If samples have a duration then the timerange end is exclusive and covers at least the duration of the last sample. The exclusive timerange end will typically be set to the timestamp of the next sample. If the samples don't have a duration then the timerange end is inclusive. Format is described by the [TimeRange](../schemas/timerange#top) type. Note that where temporal re-ordering is used, the timerange and samples refers to the presentation timeline. */
-            timerange: components["schemas"]["timerange"];
-            /** @description The difference between the exclusive end of the `timerange` and the last sample timestamp. Format as described by the [Timestamp](../schemas/timestamp#top) type, but cannot be negative */
-            last_duration?: components["schemas"]["timestamp"];
-            /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. */
-            object_timerange?: components["schemas"]["timerange"];
-            /**
-             * @deprecated
-             * @description The start of the Segment represented as a count of samples from the start of the Media Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. Assumed to be 0 if not set. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
-             */
-            sample_offset?: number;
-            /**
-             * @deprecated
-             * @description The count of samples in the Segment (which may be fewer than in the Media Object). The count could be less than expected given the Segment duration and rate if there are gaps. If not set, every sample from sample_offset onwards is used. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
-             */
-            sample_count?: number;
-        } & components["schemas"]["object-core"];
-        /**
-         * Flow Segment Post
-         * @description Provides the location and metadata of the media files corresponding to timerange Segments of a Flow.
-         */
-        "flow-segment-post": {
-            /** @description The Object identifier for the Media Object. */
-            object_id: string;
-            /** @description The timestamp offset between the sample timestamps stored in, or inferred from, the media file and the corresponding timestamp in the Segment, ie. ts_offset = segment ts - media object ts. Assumed to be 0:0 if not set. Format as described by the [Timestamp](#/schemas/timestamp) type */
-            ts_offset?: components["schemas"]["timestamp"];
-            /** @description The timerange for the samples contained in the Segment. The timerange start is always inclusive. If samples have a duration then the timerange end is exclusive and covers at least the duration of the last sample. The exclusive timerange end will typically be set to the timestamp of the next sample. If the samples don't have a duration then the timerange end is inclusive. Format is described by the [TimeRange](#/schemas/timerange) type. Note that where temporal re-ordering is used, the timerange and samples refers to the presentation timeline. */
-            timerange: components["schemas"]["timerange"];
-            /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. If not given at first registration of an Object, defaults to `timerange - ts_offset` on the assumption that the Flow Segment uses the entire Media Object. Clients should not set this when Media Objects are re-used. Service implementations should reject requests where `object_timerange` is set to a value that conflicts with the existing Media Object metadata. */
-            object_timerange?: components["schemas"]["timerange"];
-            /** @description The difference between the exclusive end of the `timerange` and the last sample timestamp. Format as described by the [Timestamp](#/schemas/timestamp) type, but cannot be negative */
-            last_duration?: components["schemas"]["timestamp"];
-            /**
-             * @deprecated
-             * @description The start of the Segment represented as a count of samples from the start of the Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. Assumed to be 0 if not set. Must be set if the Flow Segment doesn't start at the beginning of the Media Object. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
-             */
-            sample_offset?: number;
-            /**
-             * @deprecated
-             * @description The count of samples in the Segment (which may be fewer than in the Object). The count could be less than expected given the Segment duration and rate if there are gaps. If not set, every sample from sample_offset onwards is used. Must be set if the Flow Segment doesn't use the entire Media Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
-             */
-            sample_count?: number;
-            /** @description A list of URLs to which a GET request can be made to directly retrieve the contents of the Media Object. This is required by the `http_object_store` Storage Backend type, which is the only one currently described. Clients may choose any URL in the list and treat them as identical, however service instances may sort the list such that the preferred URL is first. `get_urls` should only be used to add uncontrolled URLs. URLs for the provided object_id controlled by the service instance will be populated automatically by the service instance. */
-            get_urls?: {
-                /** @description A URL to which a GET request can be made to directly retrieve the contents of the Media Object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
-                url: string;
-                /** @description Label identifying this URL. Service implementations should reject any requests using labels that are already associated with Storage Backends. Service implementations should reject any requests containing multiple `get_urls` with the same `label`. */
-                label: string;
-            }[];
-            /** @description The number of key frames in the Media Object. This should be set greater than zero when the Media Object contains key frames that serve as a stream access point */
-            key_frame_count?: number;
-        };
-        /**
-         * Failed Segments
-         * @description List of Segments that have failed to register
-         */
-        "flow-segment-bulk-failure": {
-            /** @description The list of Segments which have failed to register with the service instance */
-            failed_segments: {
-                /** @description The Object ID of the Segment which has failed to register with the service instance */
-                object_id: string;
-                /** @description The timerange of Segment that has failed, as described by the [TimeRange](#/schemas/timerange) type */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Provides more information for the error status, as described by the [Error](#/schemas/error) type */
-                error?: components["schemas"]["error"];
-            }[];
-        };
-        /**
-         * Flow Storage Post
-         * @description Post data for the Flow storage endpoint
-         */
-        "flow-storage-post": {
-            /** @description Limit the number of Media Objects in each response page. Service implementations may specify their own default and maximum for the limit */
-            limit?: number;
-            /** @description Array of object_ids to use. The supplied object_ids must be new and not already in use in this TAMS service instance. A 400 response will be returned if any supplied object_id already exists. */
-            object_ids?: string[];
-            /** @description The Storage Backend to allocate storage in. A Storage Backend identifier as advertised at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint. If not set the default, as advertised at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint, will be used if available. An invalid Storage Backend identifier will result in a 400 error. */
-            storage_id?: components["schemas"]["uuid"];
-        };
-        /**
-         * HTTP Request
-         * @description Gives information on a particular http request a client should perform
-         */
-        "http-request": {
-            /** @description The URL to make the request to */
-            url: string;
-            /** @description The text of the body which needs to be included in the request */
-            body?: string;
-            /** @description The content type which must be used */
-            "content-type"?: string;
-            /** @description Additional headers that should be included */
-            headers?: {
-                [key: string]: string;
-            };
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * Media Bucket Object Store
-         * @description Gives information on storage for Media Objects. This schema is for the `http_object_store` Storage Backend type which provides URLs for storing Media Objects in object store buckets, and is the only Storage Backend type currently implemented.
-         */
-        "flow-storage": {
-            /** @description List of information for identifying and uploading Media Objects */
-            media_objects?: {
-                /** @description The object store identifier for the Media Object. */
-                object_id: string;
-                put_url: components["schemas"]["http-request"];
-            }[];
-        };
-        /** Object */
-        object: {
-            /** @description The Media Object identifier. */
-            id: string;
-            /** @description List of Flows that reference this Media Object via Flow Segments in this store instance. */
-            referenced_by_flows: components["schemas"]["uuid"][];
-            /** @description The first Flow that had a Flow Segment reference the Media Object in this store instance. This Flow is also present in 'referenced_by_flows' if it is still referenced by the Flow. This property is optional and may in some implementations become unset if the Flow no longer references the media object, e.g. because it was deleted. */
-            first_referenced_by_flow?: components["schemas"]["uuid"];
-            /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. */
-            timerange: components["schemas"]["timerange"];
-        } & components["schemas"]["object-core"];
-        /**
-         * Media object registration
-         * @description Register a Media Object instance in the store.
-         */
-        "objects-instances-post": {
-            /** @description Storage backend identifier */
-            storage_id: components["schemas"]["uuid"];
-        } | {
-            /** @description A URL to which a GET request can be made to directly retrieve the contents of the media object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
-            url: string;
-            /** @description Label identifying this Media Object instance. Service implementations should reject any requests using labels that are already associated with Storage Backends. */
-            label: string;
-        };
+        vfr?: boolean;
+      };
     };
-    responses: {
-        trait_resource_listing_head_200: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": string;
-            };
+    /**
+     * Audio Flow
+     * @description Describes an audio Flow
+     */
+    "flow-audio": components["schemas"]["flow-core"] & {
+      /**
+       * @description The primary content type URN for the Flow.
+       * @enum {string}
+       */
+      format: "urn:x-nmos:format:audio";
+      /**
+       * Audio Flow Essence Parameters
+       * @description Describes the parameters of the essence inside this audio Flow
+       */
+      essence_parameters: {
+        /** @description The fixed number of samples per second. */
+        sample_rate: number;
+        /** @description The channel count. */
+        channels: number;
+        /** @description The number of significant bits used to represent the audio sample. The minumum number of bytes then equals `round_up(bit_depth / 8)`. If codec is `audio/x-raw-int` bit_depth must be set. If codec is `audio/x-raw-float` bit_depth must be set to 32 or 64 */
+        bit_depth?: number;
+        /** Audio Codec Parameters */
+        codec_parameters?: {
+          /** @description The fixed number of samples per coded audio frame. */
+          coded_frame_size?: number;
+          /** @description The MPEG-4 Object Type Identification. For more information on the use of this property in codec strings, see https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#mpeg-4_audio */
+          mp4_oti?: number;
         };
-        trait_resource_info_head_200: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": string;
-            };
+        /** Uncompressed Audio Parameters */
+        unc_parameters?: {
+          /**
+           * @description The uncompressed audio multi-channel representation type. If codec is `audio/x-raw-int` or `audio/x-raw-float`, unc_type must be set.
+           * @enum {string}
+           */
+          unc_type: "interleaved" | "planar" | "pairs";
         };
-        /** @description Bad request. Query parameters are invalid. */
-        trait_resource_info_head_400: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
-        /** @description Resource was not found. */
-        trait_resource_info_head_404: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content?: never;
-        };
+      };
     };
-    parameters: {
-        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-        trait_paged_limit: number;
-        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-        trait_resource_paged_key: string;
+    /**
+     * Image Flow
+     * @description Describes a still image Flow, for use by thumbnail tracks etc
+     */
+    "flow-image": components["schemas"]["flow-core"] & {
+      /**
+       * @description The primary content type URN for the Flow.
+       * @enum {string}
+       */
+      format: "urn:x-tam:format:image";
+      /**
+       * Image Flow Essence Parameters
+       * @description Describes the parameters of the essence inside this image Flow
+       */
+      essence_parameters: {
+        /** @description The width of the picture in pixels. */
+        frame_width: number;
+        /** @description The height of the picture in pixels. */
+        frame_height: number;
+        /** @description The display aspect ratio. i.e. display_width / display_height */
+        aspect_ratio?: {
+          /** @description numerator */
+          numerator: number;
+          /** @description denominator */
+          denominator: number;
+        };
+      };
     };
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * Data Flow
+     * @description Describes a data Flow
+     */
+    "flow-data": components["schemas"]["flow-core"] & {
+      /**
+       * @description The primary content type URN for the Flow.
+       * @enum {string}
+       */
+      format: "urn:x-nmos:format:data";
+      /**
+       * Data Flow Essence Parameters
+       * @description Describes the parameters of the essence inside this data Flow
+       */
+      essence_parameters: {
+        /** @description The type of information encoded in the Flow, identified using a URN. e.g. The data_type may be urn:x-tams:data:bounding-box, and the codec `application/json`. */
+        data_type?: string;
+      };
+    };
+    /**
+     * Multi-essence Flow
+     * @description Describes a multi-essence Flow
+     */
+    "flow-multi": components["schemas"]["flow-core"] & {
+      /**
+       * @description The primary content type URN for the Flow.
+       * @enum {string}
+       */
+      format: "urn:x-nmos:format:multi";
+    };
+    /**
+     * Flow
+     * @description Describes a Flow
+     */
+    flow:
+      | components["schemas"]["flow-video"]
+      | components["schemas"]["flow-audio"]
+      | components["schemas"]["flow-image"]
+      | components["schemas"]["flow-data"]
+      | components["schemas"]["flow-multi"];
+    /**
+     * Deletion Request
+     * @description Describes an ongoing deletion request
+     */
+    "deletion-request": {
+      /** @description Deletion Request ID */
+      id: components["schemas"]["uuid"];
+      /** @description ID of the Flow to which the deletion request relates */
+      flow_id: components["schemas"]["uuid"];
+      /** @description The timerange of Flow Segments to be deleted in this request, as described by the [TimeRange](#/schemas/timerange) type */
+      timerange_to_delete: components["schemas"]["timerange"];
+      /** @description The timerange of Flow Segments not yet deleted by this request, as described by the [TimeRange](#/schemas/timerange) type */
+      timerange_remaining?: components["schemas"]["timerange"];
+      /** @description Whether the Flow should be deleted once the timerange has been */
+      delete_flow: boolean;
+      /**
+       * Format: date-time
+       * @description Date/Time when this deletion request was created
+       */
+      created?: string;
+      /** @description A string identifier for the entity that created the deletion request. Service implementations SHOULD set suitable default values for `created_by` based on the principal accessing the system. */
+      created_by?: string;
+      /**
+       * Format: date-time
+       * @description Date/Time when this deletion request was updated
+       */
+      updated?: string;
+      /**
+       * Format: date-time
+       * @description Date/Time when this deletion request will be deleted
+       */
+      expiry?: string;
+      /**
+       * @description Status of the delete request
+       * @enum {string}
+       */
+      status: "created" | "started" | "done" | "error";
+      /** @description Provides more information for the error status, as described by the [Error](#/schemas/error) type */
+      error?: components["schemas"]["error"];
+    };
+    /**
+     * Query String GET URL Label list
+     * @description A list of Media Object GET URL Labels, formatted for use in query string parameters
+     */
+    "url-label-list": string;
+    /**
+     * Query String UUID list
+     * @description A list of Universally Unique Identifiers (UUIDs) as defined in [RFC9562](https://www.rfc-editor.org/rfc/rfc9562), formatted for use in query string parameters
+     */
+    "uuid-list": string;
+    /**
+     * Timestamp
+     * @description A signed nanosecond resolution timestamp represented as "{sign?}{seconds}:{nanoseconds}". The intended
+     *     interpretation of the value is assumed to be defined elsewhere.
+     *
+     *     E.g.
+     *     * "1:40000000" is the timestamp of the 27th video frame for 25 Hz video with origin at "0:0".
+     *     * "1694429247:40000000" is the TAI timestamp for a video frame at 2023-09-11T10:46:50.04Z UTC.
+     *
+     *     Details of the format can be found in the [Timestamps in TAMS](https://github.com/bbc/tams/blob/main/docs/appnotes/0008-timestamps-in-TAMS.md) application note.
+     */
+    timestamp: string;
+    /**
+     * Object
+     * @description Provides the location and metadata of the media files corresponding to a Media Object.
+     */
+    "object-core": {
+      /** @description A list of URLs to which a GET request can be made to directly retrieve the contents of the Media Object. This is required by the `http_object_store` Storage Backend type, which is the only one currently described. Clients may choose any URL in the list and treat the content returned as identical, however servers may sort the list such that the preferred URL is first. Storage Backend metadata for controlled URLs should be populated by the TAMS instance based on the Storage Backend the Meda Object instance resides in. */
+      get_urls?: (components["schemas"]["storage-backend"] & {
+        /** @description Storage Backend identifier */
+        storage_id?: components["schemas"]["uuid"];
+        /** @description A URL to which a GET request can be made to directly retrieve the contents of the media object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
+        url: string;
+        /** @description If `true`, this URL is pre-signed. If this parameter is unset, the URL is NOT pre-signed. */
+        presigned?: boolean;
+        /** @description Label identifying this URL. If the URL is controlled by the service instance, this is the Storage Backend's label. If the URL is uncontrolled, this is the label provided when a client registered the URL. If the 'label' is not set then this URL can't be filtered for using the 'accept_get_urls' API query parameter. */
+        label?: string;
+        /** @description If `true`, this URL is on a Storage Backend controlled by this service instance. If `false`, this URL is uncontrolled and does not have it's lifecycle managed by this instance. If this parameter is unset, assume `true`. */
+        controlled?: boolean;
+      })[];
+      /** @description The number of key frames in the Media Object. This should be set greater than zero when the Media Object contains key frames that serve as a stream access point */
+      key_frame_count?: number;
+    };
+    /**
+     * Flow Segment
+     * @description Provides the location and metadata of the media files corresponding to timerange segments of a Flow.
+     */
+    "flow-segment": {
+      /** @description The object store identifier for the Media Object. */
+      object_id: string;
+      /** @description The timestamp offset between the sample timestamps stored in the media file and the corresponding timestamp in the Segment, ie. ts_offset = segment ts - media object ts. Assumed to be 0:0 if not set. Format as described by the [Timestamp](../schemas/timestamp#top) type */
+      ts_offset?: components["schemas"]["timestamp"];
+      /** @description The timerange for the samples contained in the Segment. The timerange start is always inclusive. If samples have a duration then the timerange end is exclusive and covers at least the duration of the last sample. The exclusive timerange end will typically be set to the timestamp of the next sample. If the samples don't have a duration then the timerange end is inclusive. Format is described by the [TimeRange](../schemas/timerange#top) type. Note that where temporal re-ordering is used, the timerange and samples refers to the presentation timeline. */
+      timerange: components["schemas"]["timerange"];
+      /** @description The difference between the exclusive end of the `timerange` and the last sample timestamp. Format as described by the [Timestamp](../schemas/timestamp#top) type, but cannot be negative */
+      last_duration?: components["schemas"]["timestamp"];
+      /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. */
+      object_timerange?: components["schemas"]["timerange"];
+      /**
+       * @deprecated
+       * @description The start of the Segment represented as a count of samples from the start of the Media Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. Assumed to be 0 if not set. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
+       */
+      sample_offset?: number;
+      /**
+       * @deprecated
+       * @description The count of samples in the Segment (which may be fewer than in the Media Object). The count could be less than expected given the Segment duration and rate if there are gaps. If not set, every sample from sample_offset onwards is used. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
+       */
+      sample_count?: number;
+    } & components["schemas"]["object-core"];
+    /**
+     * Flow Segment Post
+     * @description Provides the location and metadata of the media files corresponding to timerange Segments of a Flow.
+     */
+    "flow-segment-post": {
+      /** @description The Object identifier for the Media Object. */
+      object_id: string;
+      /** @description The timestamp offset between the sample timestamps stored in, or inferred from, the media file and the corresponding timestamp in the Segment, ie. ts_offset = segment ts - media object ts. Assumed to be 0:0 if not set. Format as described by the [Timestamp](#/schemas/timestamp) type */
+      ts_offset?: components["schemas"]["timestamp"];
+      /** @description The timerange for the samples contained in the Segment. The timerange start is always inclusive. If samples have a duration then the timerange end is exclusive and covers at least the duration of the last sample. The exclusive timerange end will typically be set to the timestamp of the next sample. If the samples don't have a duration then the timerange end is inclusive. Format is described by the [TimeRange](#/schemas/timerange) type. Note that where temporal re-ordering is used, the timerange and samples refers to the presentation timeline. */
+      timerange: components["schemas"]["timerange"];
+      /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. If not given at first registration of an Object, defaults to `timerange - ts_offset` on the assumption that the Flow Segment uses the entire Media Object. Clients should not set this when Media Objects are re-used. Service implementations should reject requests where `object_timerange` is set to a value that conflicts with the existing Media Object metadata. */
+      object_timerange?: components["schemas"]["timerange"];
+      /** @description The difference between the exclusive end of the `timerange` and the last sample timestamp. Format as described by the [Timestamp](#/schemas/timestamp) type, but cannot be negative */
+      last_duration?: components["schemas"]["timestamp"];
+      /**
+       * @deprecated
+       * @description The start of the Segment represented as a count of samples from the start of the Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. Assumed to be 0 if not set. Must be set if the Flow Segment doesn't start at the beginning of the Media Object. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
+       */
+      sample_offset?: number;
+      /**
+       * @deprecated
+       * @description The count of samples in the Segment (which may be fewer than in the Object). The count could be less than expected given the Segment duration and rate if there are gaps. If not set, every sample from sample_offset onwards is used. Must be set if the Flow Segment doesn't use the entire Media Object. Note that a sample is a video frame or audio sample. A (coded) audio frame has multiple audio samples. DEPRECATED: Use object_timerange instead - see AppNote 0036. Service implementations SHOULD continue to store and return it if set.
+       */
+      sample_count?: number;
+      /** @description A list of URLs to which a GET request can be made to directly retrieve the contents of the Media Object. This is required by the `http_object_store` Storage Backend type, which is the only one currently described. Clients may choose any URL in the list and treat them as identical, however service instances may sort the list such that the preferred URL is first. `get_urls` should only be used to add uncontrolled URLs. URLs for the provided object_id controlled by the service instance will be populated automatically by the service instance. */
+      get_urls?: {
+        /** @description A URL to which a GET request can be made to directly retrieve the contents of the Media Object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
+        url: string;
+        /** @description Label identifying this URL. Service implementations should reject any requests using labels that are already associated with Storage Backends. Service implementations should reject any requests containing multiple `get_urls` with the same `label`. */
+        label: string;
+      }[];
+      /** @description The number of key frames in the Media Object. This should be set greater than zero when the Media Object contains key frames that serve as a stream access point */
+      key_frame_count?: number;
+    };
+    /**
+     * Failed Segments
+     * @description List of Segments that have failed to register
+     */
+    "flow-segment-bulk-failure": {
+      /** @description The list of Segments which have failed to register with the service instance */
+      failed_segments: {
+        /** @description The Object ID of the Segment which has failed to register with the service instance */
+        object_id: string;
+        /** @description The timerange of Segment that has failed, as described by the [TimeRange](#/schemas/timerange) type */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Provides more information for the error status, as described by the [Error](#/schemas/error) type */
+        error?: components["schemas"]["error"];
+      }[];
+    };
+    /**
+     * Flow Storage Post
+     * @description Post data for the Flow storage endpoint
+     */
+    "flow-storage-post": {
+      /** @description Limit the number of Media Objects in each response page. Service implementations may specify their own default and maximum for the limit */
+      limit?: number;
+      /** @description Array of object_ids to use. The supplied object_ids must be new and not already in use in this TAMS service instance. A 400 response will be returned if any supplied object_id already exists. */
+      object_ids?: string[];
+      /** @description The Storage Backend to allocate storage in. A Storage Backend identifier as advertised at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint. If not set the default, as advertised at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint, will be used if available. An invalid Storage Backend identifier will result in a 400 error. */
+      storage_id?: components["schemas"]["uuid"];
+    };
+    /**
+     * HTTP Request
+     * @description Gives information on a particular http request a client should perform
+     */
+    "http-request": {
+      /** @description The URL to make the request to */
+      url: string;
+      /** @description The text of the body which needs to be included in the request */
+      body?: string;
+      /** @description The content type which must be used */
+      "content-type"?: string;
+      /** @description Additional headers that should be included */
+      headers?: {
+        [key: string]: string;
+      };
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * Media Bucket Object Store
+     * @description Gives information on storage for Media Objects. This schema is for the `http_object_store` Storage Backend type which provides URLs for storing Media Objects in object store buckets, and is the only Storage Backend type currently implemented.
+     */
+    "flow-storage": {
+      /** @description List of information for identifying and uploading Media Objects */
+      media_objects?: {
+        /** @description The object store identifier for the Media Object. */
+        object_id: string;
+        put_url: components["schemas"]["http-request"];
+      }[];
+    };
+    /** Object */
+    object: {
+      /** @description The Media Object identifier. */
+      id: string;
+      /** @description List of Flows that reference this Media Object via Flow Segments in this store instance. */
+      referenced_by_flows: components["schemas"]["uuid"][];
+      /** @description The first Flow that had a Flow Segment reference the Media Object in this store instance. This Flow is also present in 'referenced_by_flows' if it is still referenced by the Flow. This property is optional and may in some implementations become unset if the Flow no longer references the media object, e.g. because it was deleted. */
+      first_referenced_by_flow?: components["schemas"]["uuid"];
+      /** @description The timerange covering the sample timestamps embedded in or derived from the Media Object itself, on the Media Object's timeline. */
+      timerange: components["schemas"]["timerange"];
+    } & components["schemas"]["object-core"];
+    /**
+     * Media object registration
+     * @description Register a Media Object instance in the store.
+     */
+    "objects-instances-post":
+      | {
+          /** @description Storage backend identifier */
+          storage_id: components["schemas"]["uuid"];
+        }
+      | {
+          /** @description A URL to which a GET request can be made to directly retrieve the contents of the media object. Clients should include credentials if the provide URL is on the same origin as the API endpoint */
+          url: string;
+          /** @description Label identifying this Media Object instance. Service implementations should reject any requests using labels that are already associated with Storage Backends. */
+          label: string;
+        };
+  };
+  responses: {
+    trait_resource_listing_head_200: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": string;
+      };
+    };
+    trait_resource_info_head_200: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": string;
+      };
+    };
+    /** @description Bad request. Query parameters are invalid. */
+    trait_resource_info_head_400: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content?: never;
+    };
+    /** @description Resource was not found. */
+    trait_resource_info_head_404: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content?: never;
+    };
+  };
+  parameters: {
+    /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+    trait_paged_limit: number;
+    /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+    trait_resource_paged_key: string;
+  };
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    GET_root: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    HEAD_root: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-        };
-    };
-    GET_service: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "name": "Example TAMS",
-                     *       "description": "An example Time Addressable Media Store",
-                     *       "type": "urn:x-tams:service.example",
-                     *       "api_version": "1.0",
-                     *       "service_version": "tams.1.10.0-da88b8b",
-                     *       "event_stream_mechanisms": [
-                     *         {
-                     *           "name": "webhooks",
-                     *           "docs": "https://bbc.github.io/tams/7.0/index.html#/operations/POST_webhooks"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["service"];
-                };
-            };
-        };
-    };
-    POST_service: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "name": "Updated Name",
-                 *       "description": "Updated description"
-                 *     }
-                 */
-                "application/json": components["schemas"]["service-post"];
-            };
-        };
-        responses: {
-            /** @description Success. The service info has been updated. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid service JSON. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HEAD_service: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-        };
-    };
-    "GET_storage-backends": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "60af2ab4-e8a5-4c65-a09b-d35983680315",
-                     *         "label": "example-store-name",
-                     *         "store_type": "http_object_store",
-                     *         "provider": "example-cloud-provider",
-                     *         "region": "eu-west-1",
-                     *         "availability_zone": "a",
-                     *         "store_product": "example-storage-product",
-                     *         "default_storage": true
-                     *       },
-                     *       {
-                     *         "id": "323367fd-21bb-4f2e-ad38-faf048c4ccfc",
-                     *         "label": "example-alternative-store-name",
-                     *         "store_type": "http_object_store",
-                     *         "provider": "example-cloud-provider",
-                     *         "region": "eu-west-2",
-                     *         "availability_zone": "a",
-                     *         "store_product": "example-storage-product"
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["storage-backends-list"];
-                };
-            };
-        };
-    };
-    "HEAD_storage-backends": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-        };
-    };
-    GET_webhooks: {
-        parameters: {
-            query?: {
-                /**
-                 * @description Filter on webhooks that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on webhooks that have a tag named {name} regardless of value.
-                 *     The {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Return the list of known webhook URLs. */
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                     *         "url": "https://hook.example.com",
-                     *         "api_key_name": "Authorization",
-                     *         "events": [
-                     *           "flows/created",
-                     *           "flows/updated"
-                     *         ],
-                     *         "status": "started"
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["webhook-get"][];
-                };
-            };
-            /** @description Webhooks are not supported by this API implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    POST_webhooks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "url": "https://hook.example.com",
-                 *       "api_key_name": "Authorization",
-                 *       "api_key_value": "Bearer 21238dksdjqwpqscj9",
-                 *       "events": [
-                 *         "flows/created",
-                 *         "flows/updated"
-                 *       ]
-                 *     }
-                 */
-                "application/json": components["schemas"]["webhook-post"];
-            };
-        };
-        responses: {
-            /** @description Success. The webhook has been registered. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                     *       "url": "https://hook.example.com",
-                     *       "api_key_name": "Authorization",
-                     *       "events": [
-                     *         "flows/created",
-                     *         "flows/updated"
-                     *       ],
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["webhook-get"];
-                };
-            };
-            /** @description Bad request. Invalid parameters or unsupported event filtering or transformation. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HEAD_webhooks: {
-        parameters: {
-            query?: {
-                /**
-                 * @description Filter on webhooks that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on webhooks that have a tag named {name} regardless of value.
-                 *     The {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            /** @description Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_webhooks-webhookId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Webhook identifier. */
-                webhookId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Return the webhook details. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                     *       "url": "https://hook.example.com",
-                     *       "api_key_name": "Authorization",
-                     *       "events": [
-                     *         "flows/created",
-                     *         "flows/updated"
-                     *       ],
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["webhook-get"];
-                };
-            };
-            /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PUT_webhooks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Webhook identifier. */
-                webhookId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                 *       "url": "https://hook.example.com",
-                 *       "api_key_name": "Authorization",
-                 *       "api_key_value": "Bearer 21238dksdjqwpqscj9",
-                 *       "events": [
-                 *         "flows/created",
-                 *         "flows/updated"
-                 *       ],
-                 *       "status": "created"
-                 *     }
-                 */
-                "application/json": components["schemas"]["webhook-put"];
-            };
-        };
-        responses: {
-            /** @description Success. The webhook has been updated */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                     *       "url": "https://hook.example.com",
-                     *       "api_key_name": "Authorization",
-                     *       "events": [
-                     *         "flows/created",
-                     *         "flows/updated"
-                     *       ],
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["webhook-get"];
-                };
-            };
-            /** @description Bad request. Invalid parameters or unsupported event filtering or transformation. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_webhooks-webhookId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Webhook identifier. */
-                webhookId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The webhook has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this webhook. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_webhooks-webhookId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Webhook identifier. */
-                webhookId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-            /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GET_sources: {
-        parameters: {
-            query?: {
-                /** @description Filter on Sources that have the given label. */
-                label?: string;
-                /**
-                 * @description Filter on Sources that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on Sources that have a tag named {name} regardless of value.
-                 *     {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Filter on Source format. */
-                format?: components["schemas"]["content-format"];
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
-                     *         "format": "urn:x-nmos:format:video",
-                     *         "label": "bbb",
-                     *         "description": "Big Buck Bunny video",
-                     *         "created_by": "tams-dev",
-                     *         "updated_by": "tams-dev",
-                     *         "created": "2008-05-27T18:51:00Z",
-                     *         "updated": "2008-05-27T18:51:00Z",
-                     *         "collected_by": [
-                     *           "86761f3a-5998-4cfe-9a89-8459bcb8ea52"
-                     *         ]
-                     *       },
-                     *       {
-                     *         "id": "86761f3a-5998-4cfe-9a89-8459bcb8ea52",
-                     *         "format": "urn:x-nmos:format:multi",
-                     *         "label": "bbb",
-                     *         "description": "Big Buck Bunny",
-                     *         "created_by": "tams-dev",
-                     *         "updated_by": "tams-dev",
-                     *         "created": "2008-05-27T18:51:00Z",
-                     *         "updated": "2008-05-27T18:51:00Z",
-                     *         "source_collection": [
-                     *           {
-                     *             "id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
-                     *             "role": "video"
-                     *           },
-                     *           {
-                     *             "id": "7ba3fed1-3fd3-4f0e-8488-92c4ffe13838",
-                     *             "role": "audio"
-                     *           }
-                     *         ]
-                     *       },
-                     *       {
-                     *         "id": "7ba3fed1-3fd3-4f0e-8488-92c4ffe13838",
-                     *         "format": "urn:x-nmos:format:audio",
-                     *         "description": "Big Buck Bunny audio",
-                     *         "created": "2008-05-27T18:51:00Z",
-                     *         "updated": "2008-05-27T18:51:00Z",
-                     *         "collected_by": [
-                     *           "86761f3a-5998-4cfe-9a89-8459bcb8ea52"
-                     *         ]
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["source"][];
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HEAD_sources: {
-        parameters: {
-            query?: {
-                /** @description Filter on Sources that have the given label. */
-                label?: string;
-                /**
-                 * @description Filter on Sources that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on Sources that have a tag named {name} regardless of value.
-                 *     {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Filter on Source format. */
-                format?: components["schemas"]["content-format"];
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            400: components["responses"]["trait_resource_info_head_400"];
-        };
-    };
-    "GET_sources-sourceId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["source"];
-                };
-            };
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_sources-sourceId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_sources-sourceId-tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "ingested_by": "ingest_service_api"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["tags"];
-                };
-            };
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_sources-sourceId-tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_sources-sourceId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "ingest_service_api" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Source or tag does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_sources-sourceId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "new_value" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The tag has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Source tag value. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Source does not exist, or the tag name in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_sources-sourceId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Source tag has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Source ID or tag in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_sources-sourceId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            /** @description The requested Source or tag does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_sources-sourceId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "Big Buck Bunny" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_sources-sourceId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "Big Buck Bunny Movie" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The description has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Source description. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_sources-sourceId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Source description property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The Source ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_sources-sourceId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_sources-sourceId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "Big Buck Bunny" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Source does not exist, or does not have a label set. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_sources-sourceId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "Big Buck Bunny Movie" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The label has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Source label. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Source does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_sources-sourceId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Source label property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this resource. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Source ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_sources-sourceId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Source identifier. */
-                sourceId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            /** @description The requested Source does not exist, or does not have a label set. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GET_flows: {
-        parameters: {
-            query?: {
-                /** @description Filter on Source identifier. */
-                source_id?: components["schemas"]["uuid"];
-                /** @description Filter on Flows that overlap the given timerange. An empty timerange returns Flows with no content. */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Filter on Flow format. */
-                format?: components["schemas"]["content-format"];
-                /** @description Filter on Flow codec. */
-                codec?: components["schemas"]["mime-type"];
-                /** @description Filter on Flows that have the given label. */
-                label?: string;
-                /**
-                 * @description Filter on flows that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on Flows that have a tag named {name} regardless of value.
-                 *     {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Filter on video Flows that have the given frame width. */
-                frame_width?: number;
-                /** @description Filter on video Flows that have the given frame height. */
-                frame_height?: number;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
-                     *         "source_id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
-                     *         "generation": 0,
-                     *         "created": "2008-05-27T18:51:00Z",
-                     *         "metadata_updated": "2023-09-14T09:45:26Z",
-                     *         "segments_updated": "2023-09-14T09:45:26Z",
-                     *         "description": "Big Buck Bunny",
-                     *         "label": "bbb",
-                     *         "format": "urn:x-nmos:format:video",
-                     *         "created_by": "tams-dev",
-                     *         "updated_by": "tams-dev",
-                     *         "tags": {
-                     *           "input_quality": "contribution"
-                     *         },
-                     *         "codec": "video/h264",
-                     *         "container": "video/mp2t",
-                     *         "avg_bit_rate": 2479,
-                     *         "essence_parameters": {
-                     *           "frame_rate": {
-                     *             "numerator": 24,
-                     *             "denominator": 1
-                     *           },
-                     *           "frame_width": 1280,
-                     *           "frame_height": 720,
-                     *           "bit_depth": 8,
-                     *           "interlace_mode": "progressive",
-                     *           "colorspace": "BT709",
-                     *           "transfer_characteristic": "SDR",
-                     *           "aspect_ratio": {
-                     *             "numerator": 16,
-                     *             "denominator": 9
-                     *           },
-                     *           "pixel_aspect_ratio": {
-                     *             "numerator": 1,
-                     *             "denominator": 1
-                     *           },
-                     *           "component_type": "YCbCr",
-                     *           "vert_chroma_subs": 2,
-                     *           "horiz_chroma_subs": 2,
-                     *           "avc_parameters": {
-                     *             "profile": 100,
-                     *             "level": 31,
-                     *             "flags": 0
-                     *           }
-                     *         }
-                     *       },
-                     *       {
-                     *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
-                     *         "source_id": "41d7f7eb-c48d-4513-9b37-17b418d26d7f",
-                     *         "generation": 1,
-                     *         "created": "2018-03-06T09:10:22Z",
-                     *         "metadata_updated": "2018-03-06T09:12:22Z",
-                     *         "segments_updated": "2018-03-06T11:14:32Z",
-                     *         "description": "audio capture web",
-                     *         "label": "capture_1",
-                     *         "format": "urn:x-nmos:format:audio",
-                     *         "created_by": "tams-dev",
-                     *         "updated_by": "tams-dev",
-                     *         "tags": {
-                     *           "input_quality": "web"
-                     *         },
-                     *         "codec": "audio/aac",
-                     *         "container": "video/mp2t",
-                     *         "avg_bit_rate": 128,
-                     *         "essence_parameters": {
-                     *           "sample_rate": 48000,
-                     *           "channels": 2,
-                     *           "bit_depth": 24,
-                     *           "codec_parameters": {
-                     *             "coded_frame_size": 1024,
-                     *             "mp4_oti": 2
-                     *           }
-                     *         }
-                     *       },
-                     *       {
-                     *         "id": "0fde9c11-da9d-434a-a113-d3b20a2cf251",
-                     *         "source_id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
-                     *         "generation": 0,
-                     *         "created": "2018-03-06T09:10:22Z",
-                     *         "metadata_updated": "2018-03-06T09:12:22Z",
-                     *         "segments_updated": "2018-03-06T11:14:32Z",
-                     *         "description": "video capture",
-                     *         "label": "capture_1",
-                     *         "format": "urn:x-nmos:format:video",
-                     *         "created_by": "tams-dev",
-                     *         "updated_by": "tams-dev",
-                     *         "tags": {
-                     *           "input_quality": "intermediate"
-                     *         },
-                     *         "codec": "video/raw",
-                     *         "container": "video/quicktime",
-                     *         "avg_bit_rate": 1658880,
-                     *         "essence_parameters": {
-                     *           "frame_rate": {
-                     *             "numerator": 50,
-                     *             "denominator": 1
-                     *           },
-                     *           "frame_width": 1920,
-                     *           "frame_height": 1080,
-                     *           "bit_depth": 8,
-                     *           "interlace_mode": "progressive",
-                     *           "colorspace": "BT709",
-                     *           "transfer_characteristic": "SDR",
-                     *           "aspect_ratio": {
-                     *             "numerator": 16,
-                     *             "denominator": 9
-                     *           },
-                     *           "pixel_aspect_ratio": {
-                     *             "numerator": 1,
-                     *             "denominator": 1
-                     *           },
-                     *           "component_type": "YCbCr",
-                     *           "unc_parameters": {
-                     *             "unc_type": "UYVY"
-                     *           },
-                     *           "vert_chroma_subs": 1,
-                     *           "horiz_chroma_subs": 2
-                     *         }
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["flow"][];
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HEAD_flows: {
-        parameters: {
-            query?: {
-                /** @description Filter on Source identifier. */
-                source_id?: components["schemas"]["uuid"];
-                /** @description Filter on Flows that overlap the given timerange. */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Filter on Flow format. */
-                format?: components["schemas"]["content-format"];
-                /** @description Filter on Flow codec. */
-                codec?: components["schemas"]["mime-type"];
-                /** @description Filter on Flows that have the given label. */
-                label?: string;
-                /**
-                 * @description Filter on flows that have a tag named {name} with a value in the given comma-seperated list of values.
-                 *     The {name} and the value MUST be URL encoded where special characters are present.
-                 *     Where the tag's value is a string, at least one of the given values will match.
-                 *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
-                 *     Partial string matches of the values are not valid.
-                 */
-                "tag.{name}"?: components["schemas"]["url-tag-list"];
-                /**
-                 * @description Filter on Flows that have a tag named {name} regardless of value.
-                 *     {name} MUST be URL encoded where special characters are present.
-                 *     If set to true then the presence of the tag is filtered for.
-                 *     If set to false then its absence is.
-                 *     If left out then no filtering on tag presence is performed.
-                 */
-                "tag_exists.{name}"?: boolean;
-                /** @description Filter on video Flows that have the given frame width. */
-                frame_width?: number;
-                /** @description Filter on video Flows that have the given frame height. */
-                frame_height?: number;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_flows-flowId": {
-        parameters: {
-            query?: {
-                /** @description Include the available Segment timerange in the response. */
-                include_timerange?: boolean;
-                /** @description Limit the returned available Segment timerange to this timerange. */
-                timerange?: components["schemas"]["timerange"];
-            };
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["flow"];
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["flow"];
-            };
-        };
-        responses: {
-            /** @description The Flow has been created. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
-                     *       "source_id": "41d7f7eb-c48d-4513-9b37-17b418d26d7f",
-                     *       "generation": 1,
-                     *       "segments_updated": "2018-03-06T11:14:32Z",
-                     *       "description": "audio capture web",
-                     *       "label": "capture_1",
-                     *       "format": "urn:x-nmos:format:audio",
-                     *       "tags": {
-                     *         "input_quality": "web"
-                     *       },
-                     *       "codec": "audio/aac",
-                     *       "container": "video/mp2t",
-                     *       "avg_bit_rate": 128,
-                     *       "essence_parameters": {
-                     *         "sample_rate": 48000,
-                     *         "channels": 2,
-                     *         "bit_depth": 24,
-                     *         "codec_parameters": {
-                     *           "coded_frame_size": 1024,
-                     *           "mp4_oti": 2
-                     *         }
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["flow"];
-                };
-            };
-            /** @description No content. The Flow has been updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow JSON. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description This request has taken longer than the configured timeout, and will continue asynchronously */
-            202: {
-                headers: {
-                    Location?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
-                     *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
-                     *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
-                     *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
-                     *       "delete_flow": true,
-                     *       "created": "2018-12-10T15:40:08.339376+00:00",
-                     *       "updated": "2018-12-10T15:40:09.339393+00:00",
-                     *       "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *       "created_by": "tams-dev",
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["deletion-request"];
-                };
-            };
-            /** @description No content. The Flow has been deleted and the Flow Segments have been or will be deleted. Media Objects referenced in other Flows will not be deleted. Media Objects that are no longer referenced by any Segments will be deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId": {
-        parameters: {
-            query?: {
-                /** @description Include the available Segment timerange in the response. */
-                include_timerange?: boolean;
-                /** @description Limit the returned available Segment timerange to this timerange. */
-                timerange?: components["schemas"]["timerange"];
-            };
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "input_quality": "web"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["tags"];
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_flows-flowId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "full" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Flow or tag does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "proxy" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The tag has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow tag value. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow tag has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-tags-name": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
-                name: string;
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            /** @description The requested Flow or tag does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_flows-flowId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "video capture" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "Big Buck Bunny video-only capture" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The description has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow description. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow description property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example "Big Buck Bunny" */
-                    "application/json": string;
-                };
-            };
-            /** @description The requested Flow does not exist, or does not have a label set. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example "Big Buck Bunny Movie" */
-                "application/json": string;
-            };
-        };
-        responses: {
-            /** @description No content. The label has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow label. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow label property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-label": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            /** @description The requested Flow does not exist, or does not have a label set. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_flows-flowId-read-only": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example true */
-                    "application/json": boolean;
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-read-only": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example true */
-                "application/json": boolean;
-            };
-        };
-        responses: {
-            /** @description No content. The read_only property has been set to the given value. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow read_only value. Value must be boolean. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-read-only": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-flow-collection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
-                     *         "role": "video"
-                     *       },
-                     *       {
-                     *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
-                     *         "role": "audio"
-                     *       },
-                     *       {
-                     *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                     *         "role": "subtitles"
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["flow-collection"];
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-flow-collection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example [
-                 *       {
-                 *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
-                 *         "role": "video"
-                 *       },
-                 *       {
-                 *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
-                 *         "role": "audio"
-                 *       },
-                 *       {
-                 *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
-                 *         "role": "subtitles"
-                 *       }
-                 *     ]
-                 */
-                "application/json": components["schemas"]["flow-collection"];
-            };
-        };
-        responses: {
-            /** @description No content. The Flow collection has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow collection. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-flow-collection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow collection property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-flow-collection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-max-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example 5000 */
-                    "application/json": number;
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-max-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example 5000 */
-                "application/json": number;
-            };
-        };
-        responses: {
-            /** @description No content. The max bit rate has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow max bit rate. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-max-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow max bit rate property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-max-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-avg-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example 3246 */
-                    "application/json": number;
-                };
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "PUT_flows-flowId-avg-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /** @example 3246 */
-                "application/json": number;
-            };
-        };
-        responses: {
-            /** @description No content. The average bit rate has been created or updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow avg bit rate. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-avg-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Flow average bit rate property has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-avg-bit-rate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
-    "GET_flows-flowId-segments": {
-        parameters: {
-            query?: {
-                /** @description Filter on Object identifier. */
-                object_id?: string;
-                /** @description Return only the results in the timerange specified. */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Return Segments in reverse time order. */
-                reverse_order?: boolean;
-                /**
-                 * @description Include storage metadata in `get_urls` in the response.
-                 *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
-                 */
-                verbose_storage?: boolean;
-                /**
-                 * @description A comma separated list of labels of Flow Segment `get_urls` to include in the response.
-                 *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
-                 *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
-                 *     Flow Segment `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
-                 *     Without `get_urls`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs for example.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_get_urls?: components["schemas"]["url-label-list"];
-                /**
-                 * @description A comma separated list of `storage_id`s of Flow Segment `get_urls` to include in the response.
-                 *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
-                 *     Flow Segment `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
-                 *     A full list of available `storage_id`s may be found at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_storage_ids?: components["schemas"]["uuid-list"];
-                /**
-                 * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
-                 *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
-                 *     If omitted, both presigned and non-presigned URLs will be returned.
-                 *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                presigned?: boolean;
-                /**
-                 * @description If set to `true`, the underlying object's timerange should appear in the response (if it differs from the Flow Segment's `timerange`).
-                 *     Assume `false` if omitted.
-                 */
-                include_object_timerange?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Identifies the timerange for the returned data set. */
-                    "X-Paging-Timerange"?: components["schemas"]["timerange"];
-                    /** @description The number of items in the returned data set. */
-                    "X-Paging-Count"?: number;
-                    /** @description The items are returned in reverse order. */
-                    "X-Paging-Reverse-Order"?: boolean;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["flow-segment"][];
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "POST_flows-flowId-segments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "object_id": "99c27f3f-ab67-47ae-8dd3-e5c146912b50",
-                 *       "timerange": "[20:0_21:0)"
-                 *     }
-                 */
-                "application/json": components["schemas"]["flow-segment-post"] | components["schemas"]["flow-segment-post"][];
-            };
-        };
-        responses: {
-            /** @description Partial success creating Segments returning list of failed Segments. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "failed_segments": [
-                     *         {
-                     *           "object_id": "76f6821b-f85b-4297-af65-dde6a25448a0",
-                     *           "timerange": "[0:0_10:0)",
-                     *           "error": {
-                     *             "type": "TAMSError",
-                     *             "summary": "Flow segment created failed because ...",
-                     *             "traceback": [
-                     *               "Exception: The flow segment could not be created",
-                     *               "The above exception was the direct cause of the following exception:",
-                     *               "Traceback (most recent call last):",
-                     *               "  <traceback...>",
-                     *               "TAMSError: Unable to continue"
-                     *             ],
-                     *             "time": "2018-12-10T15:18:52.426792+00:00"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "d2a3f8d9-4b8c-4a0a-9d0d-3d3e3e3e3e3e",
-                     *           "timerange": "[28:0_30:0)"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["flow-segment-bulk-failure"];
-                };
-            };
-            /** @description created. The flow Segment or list of Segments has been created. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid Flow Segment JSON or the Flow 'container' is not set. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_flows-flowId-segments": {
-        parameters: {
-            query?: {
-                /** @description Only delete Flow Segments that are completely covered by the given timerange. */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Filter on Object identifier. */
-                object_id?: string;
-            };
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description This request has taken longer than the configured timeout, and will continue asynchronously */
-            202: {
-                headers: {
-                    Location?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
-                     *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
-                     *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
-                     *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
-                     *       "delete_flow": true,
-                     *       "created": "2018-12-10T15:40:08.339376+00:00",
-                     *       "updated": "2018-12-10T15:40:09.339393+00:00",
-                     *       "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *       "created_by": "tams-dev",
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["deletion-request"];
-                };
-            };
-            /** @description No content. The Flow Segments have been or will be deleted. Media Objects referenced in other Segments will not be deleted. Media Objects that are no longer referenced by any Segments will be deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flows-flowId-segments": {
-        parameters: {
-            query?: {
-                /** @description Filter on Object identifier. */
-                object_id?: string;
-                /** @description Return only the results in the timerange specified. */
-                timerange?: components["schemas"]["timerange"];
-                /** @description Return Segments in reverse time order. */
-                reverse_order?: boolean;
-                /**
-                 * @description Include storage metadata in `get_urls` in the response.
-                 *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
-                 */
-                verbose_storage?: boolean;
-                /**
-                 * @description A comma separated list of labels of Flow Segment `get_urls` to include in the response.
-                 *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
-                 *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
-                 *     Flow Segment `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
-                 *     Without `get_urls`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs for example.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_get_urls?: components["schemas"]["url-label-list"];
-                /**
-                 * @description A comma separated list of `storage_id`s of Flow Segment `get_urls` to include in the response.
-                 *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
-                 *     Flow Segment `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
-                 *     A full list of available `storage_id`s may be found at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_storage_ids?: components["schemas"]["uuid-list"];
-                /**
-                 * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls` in the response.
-                 *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
-                 *     If omitted, both presigned and non-presigned URLs will be returned.
-                 *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                presigned?: boolean;
-                /**
-                 * @description If set to `true`, the underlying object's timerange should appear in the response (if it differs from the segment timerange).
-                 *     Assume `false` if omitted.
-                 */
-                include_object_timerange?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Identifies the timerange for the returned data set. */
-                    "X-Paging-Timerange"?: components["schemas"]["timerange"];
-                    /** @description The number of items in the returned data set. */
-                    "X-Paging-Count"?: number;
-                    /** @description The items are returned in reverse order. */
-                    "X-Paging-Reverse-Order"?: boolean;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The Flow ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "POST_flows-flowId-storage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Flow identifier. */
-                flowId: components["schemas"]["uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["flow-storage-post"];
-            };
-        };
-        responses: {
-            /** @description Storage locations for writing Media Objects. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "media_objects": [
-                     *         {
-                     *           "object_id": "846023d3-612d-5014-bc47-88f6eb2d04bb",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/846023d3-612d-5014-bc47-88f6eb2d04bb?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "25be83fc-11d1-5743-9d47-6865cef5ea35",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/25be83fc-11d1-5743-9d47-6865cef5ea35?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "8b785422-6a82-5d60-b25a-f77e0a748321",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/8b785422-6a82-5d60-b25a-f77e0a748321?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "a94cee18-1a40-5676-b788-1ac74c8a26e9",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/a94cee18-1a40-5676-b788-1ac74c8a26e9?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "9d2b1d66-d785-5dcd-82d8-70d37d39259e",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/9d2b1d66-d785-5dcd-82d8-70d37d39259e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "e3a116a0-416c-5530-ae79-58f2ecea31cb",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/e3a116a0-416c-5530-ae79-58f2ecea31cb?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "8859eec0-cf59-54b2-8572-51ffb755b369",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/8859eec0-cf59-54b2-8572-51ffb755b369?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "5b143aae-fa75-50b4-9cba-b7c0676dba15",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/5b143aae-fa75-50b4-9cba-b7c0676dba15?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "028ce16f-96ab-5334-bf3c-db95fdc73b17",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/028ce16f-96ab-5334-bf3c-db95fdc73b17?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         },
-                     *         {
-                     *           "object_id": "8264b3d3-d903-58b1-ab28-0ea164a22d2b",
-                     *           "put_url": {
-                     *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/8264b3d3-d903-58b1-ab28-0ea164a22d2b?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
-                     *             "content-type": "video/mp2t"
-                     *           }
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["flow-storage"];
-                };
-            };
-            /** @description Bad request. Invalid Flow storage request JSON or the Flow 'container' is not set. If object_ids supplied, some or all already exist. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Flow does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GET_objects: {
-        parameters: {
-            query?: {
-                /**
-                 * @description Include storage metadata in `get_urls`.
-                 *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
-                 */
-                verbose_storage?: boolean;
-                /**
-                 * @description A comma separated list of labels of Media Object `get_urls` to include in the response.
-                 *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
-                 *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
-                 *     Media Object `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
-                 *     Without `get_urls`, the response from the service could be substantially faster if it is not required to
-                 *     generate a large number of pre-signed URLs for example.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_get_urls?: components["schemas"]["url-label-list"];
-                /**
-                 * @description A comma separated list of `storage_id`s of Media Object `get_urls` to include in the response.
-                 *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
-                 *     Media Object `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
-                 *     A full list of available `storage_id`s may be found at the `service/storage-backends` endpoint.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_storage_ids?: string;
-                /**
-                 * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
-                 *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
-                 *     If omitted, both presigned and non-presigned URLs will be returned.
-                 *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to
-                 *     generate a large number of pre-signed URLs.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                presigned?: boolean;
-                /** @description Filter `referenced_by_flows` on tag values. This option is the same as the `tag.{name}` query parameter on the `/flows/` API endpoint. */
-                "flow_tag.{name}"?: string;
-                /** @description Filter `referenced_by_flows` on tag names. This option is the same as the `tag_exists.{name}` query parameter on the `/flows/` API endpoint. */
-                "flow_tag_exists.{name}"?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path: {
-                /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
-                objectId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "846023d3-612d-5014-bc47-88f6eb2d04bb",
-                     *       "referenced_by_flows": [
-                     *         "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
-                     *         "0fde9c11-da9d-434a-a113-d3b20a2cf251"
-                     *       ],
-                     *       "first_referenced_by_flow": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
-                     *       "timerange": "[150:0_200:0)",
-                     *       "get_urls": [
-                     *         {
-                     *           "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/846023d3-612d-5014-bc47-88f6eb2d04bb"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["object"];
-                };
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Media Object does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    HEAD_objects: {
-        parameters: {
-            query?: {
-                /**
-                 * @description Include storage metadata in `get_urls`.
-                 *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
-                 */
-                verbose_storage?: boolean;
-                /**
-                 * @description A comma separated list of labels of Media Object `get_urls` to include in the response.
-                 *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
-                 *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
-                 *     Media Object `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
-                 *     Without `get_urls`, the response from the service could be substantially faster if it is not required to
-                 *     generate a large number of pre-signed URLs for example.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_get_urls?: components["schemas"]["url-label-list"];
-                /**
-                 * @description A comma separated list of `storage_id`s of Media Object `get_urls` to include in the response.
-                 *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
-                 *     Media Object `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
-                 *     A full list of available `storage_id`s may be found at the `service/storage-backends` endpoint.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                accept_storage_ids?: string;
-                /**
-                 * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
-                 *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
-                 *     If omitted, both presigned and non-presigned URLs will be returned.
-                 *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to
-                 *     generate a large number of pre-signed URLs.
-                 *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
-                 */
-                presigned?: boolean;
-                /** @description Filter `referenced_by_flows` on tag values. This option is the same as the `tag.{name}` query parameter on the `/flows/` API endpoint. */
-                "flow_tag.{name}"?: string;
-                /** @description Filter `referenced_by_flows` on tag names. This option is the same as the `tag_exists.{name}` query parameter on the `/flows/` API endpoint. */
-                "flow_tag_exists.{name}"?: boolean;
-                /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
-                page?: components["parameters"]["trait_resource_paged_key"];
-                /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
-                limit?: components["parameters"]["trait_paged_limit"];
-            };
-            header?: never;
-            path: {
-                /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
-                objectId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
-                    Link?: string;
-                    /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
-                    "X-Paging-Limit"?: number;
-                    /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
-                    "X-Paging-NextKey"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-            400: components["responses"]["trait_resource_info_head_400"];
-            /** @description The requested Media Object does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "POST_objects-instances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
-                objectId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["objects-instances-post"];
-            };
-        };
-        responses: {
-            /** @description Object instance successfully registered. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid request JSON. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Media Object. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The Media Object does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "DELETE_objects-instances": {
-        parameters: {
-            query?: {
-                /** @description The storage_id identifying the Media Object instance to be deleted. */
-                storage_id?: string;
-                /** @description The label identifying the Media Object instance to be deleted. */
-                label?: string;
-            };
-            header?: never;
-            path: {
-                /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
-                objectId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content. The Media Object instance has been deleted. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad request. Invalid query options. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden. You do not have permission to modify this Media Object. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The requested Object ID in the path is invalid. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "GET_flow-delete-requests": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "9f0187c1-419c-44d2-8269-e869ba409462",
-                     *         "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
-                     *         "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
-                     *         "timerange_remaining": "[1537349339:0_1537349347:21333333)",
-                     *         "delete_flow": true,
-                     *         "created": "2018-12-10T15:40:08.339376+00:00",
-                     *         "updated": "2018-12-10T15:40:09.339393+00:00",
-                     *         "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *         "created_by": "tams-dev",
-                     *         "status": "started"
-                     *       },
-                     *       {
-                     *         "id": "58b3793e-c9ad-4a7f-b680-e823685bb52d",
-                     *         "flow_id": "58b3793e-c9ad-4a7f-b680-e823685bb52d",
-                     *         "timerange_to_delete": "[0:0_1000:0)",
-                     *         "timerange_remaining": "[900:0_1000:0)",
-                     *         "delete_flow": false,
-                     *         "created": "2018-12-10T15:40:08.339376+00:00",
-                     *         "updated": "2018-12-10T15:40:09.339393+00:00",
-                     *         "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *         "created_by": "tams-dev",
-                     *         "status": "started"
-                     *       },
-                     *       {
-                     *         "id": "3f04ae16-8b78-4426-9ccf-85ddaf908937",
-                     *         "flow_id": "f43619e9-6333-438d-95b3-1e89f426d920",
-                     *         "timerange_to_delete": "[0:0_1000:0)",
-                     *         "timerange_remaining": "[900:0_1000:0)",
-                     *         "delete_flow": false,
-                     *         "created": "2018-12-10T15:40:08.339376+00:00",
-                     *         "updated": "2018-12-10T15:18:52.426792+00:00",
-                     *         "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *         "created_by": "tams-dev",
-                     *         "status": "error",
-                     *         "error": {
-                     *           "type": "TAMSError",
-                     *           "summary": "Flow delete failed because ...",
-                     *           "traceback": [
-                     *             "Exception: The flow segment could not be deleted",
-                     *             "The above exception was the direct cause of the following exception:",
-                     *             "",
-                     *             "",
-                     *             "Traceback (most recent call last):",
-                     *             "  <traceback...>",
-                     *             "TAMSError: Unable to continue"
-                     *           ],
-                     *           "time": "2018-12-10T15:18:52.426792+00:00"
-                     *         }
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["deletion-request"][];
-                };
-            };
-        };
-    };
-    "HEAD_flow-delete-requests": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_listing_head_200"];
-        };
-    };
-    "GET_flow-delete-requests-request-id": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                "request-id": string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
-                     *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
-                     *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
-                     *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
-                     *       "delete_flow": true,
-                     *       "created": "2018-12-10T15:40:08.339376+00:00",
-                     *       "updated": "2018-12-10T15:40:09.339393+00:00",
-                     *       "expiry": "2018-12-11T15:40:09.339393+00:00",
-                     *       "created_by": "tams-dev",
-                     *       "status": "started"
-                     *     }
-                     */
-                    "application/json": components["schemas"]["deletion-request"];
-                };
-            };
-            /** @description The requested Flow delete request does not exist. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "HEAD_flow-delete-requests-request-id": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                "request-id": string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["trait_resource_info_head_200"];
-            404: components["responses"]["trait_resource_info_head_404"];
-        };
-    };
+  GET_root: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  HEAD_root: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+    };
+  };
+  GET_service: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "name": "Example TAMS",
+           *       "description": "An example Time Addressable Media Store",
+           *       "type": "urn:x-tams:service.example",
+           *       "api_version": "1.0",
+           *       "service_version": "tams.1.10.0-da88b8b",
+           *       "event_stream_mechanisms": [
+           *         {
+           *           "name": "webhooks",
+           *           "docs": "https://bbc.github.io/tams/7.0/index.html#/operations/POST_webhooks"
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["service"];
+        };
+      };
+    };
+  };
+  POST_service: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "name": "Updated Name",
+         *       "description": "Updated description"
+         *     }
+         */
+        "application/json": components["schemas"]["service-post"];
+      };
+    };
+    responses: {
+      /** @description Success. The service info has been updated. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid service JSON. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HEAD_service: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+    };
+  };
+  "GET_storage-backends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "60af2ab4-e8a5-4c65-a09b-d35983680315",
+           *         "label": "example-store-name",
+           *         "store_type": "http_object_store",
+           *         "provider": "example-cloud-provider",
+           *         "region": "eu-west-1",
+           *         "availability_zone": "a",
+           *         "store_product": "example-storage-product",
+           *         "default_storage": true
+           *       },
+           *       {
+           *         "id": "323367fd-21bb-4f2e-ad38-faf048c4ccfc",
+           *         "label": "example-alternative-store-name",
+           *         "store_type": "http_object_store",
+           *         "provider": "example-cloud-provider",
+           *         "region": "eu-west-2",
+           *         "availability_zone": "a",
+           *         "store_product": "example-storage-product"
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["storage-backends-list"];
+        };
+      };
+    };
+  };
+  "HEAD_storage-backends": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+    };
+  };
+  GET_webhooks: {
+    parameters: {
+      query?: {
+        /**
+         * @description Filter on webhooks that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on webhooks that have a tag named {name} regardless of value.
+         *     The {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Return the list of known webhook URLs. */
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+           *         "url": "https://hook.example.com",
+           *         "api_key_name": "Authorization",
+           *         "events": [
+           *           "flows/created",
+           *           "flows/updated"
+           *         ],
+           *         "status": "started"
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["webhook-get"][];
+        };
+      };
+      /** @description Webhooks are not supported by this API implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  POST_webhooks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "url": "https://hook.example.com",
+         *       "api_key_name": "Authorization",
+         *       "api_key_value": "Bearer 21238dksdjqwpqscj9",
+         *       "events": [
+         *         "flows/created",
+         *         "flows/updated"
+         *       ]
+         *     }
+         */
+        "application/json": components["schemas"]["webhook-post"];
+      };
+    };
+    responses: {
+      /** @description Success. The webhook has been registered. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+           *       "url": "https://hook.example.com",
+           *       "api_key_name": "Authorization",
+           *       "events": [
+           *         "flows/created",
+           *         "flows/updated"
+           *       ],
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["webhook-get"];
+        };
+      };
+      /** @description Bad request. Invalid parameters or unsupported event filtering or transformation. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HEAD_webhooks: {
+    parameters: {
+      query?: {
+        /**
+         * @description Filter on webhooks that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on webhooks that have a tag named {name} regardless of value.
+         *     The {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_webhooks-webhookId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Webhook identifier. */
+        webhookId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Return the webhook details. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+           *       "url": "https://hook.example.com",
+           *       "api_key_name": "Authorization",
+           *       "events": [
+           *         "flows/created",
+           *         "flows/updated"
+           *       ],
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["webhook-get"];
+        };
+      };
+      /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PUT_webhooks: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Webhook identifier. */
+        webhookId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+         *       "url": "https://hook.example.com",
+         *       "api_key_name": "Authorization",
+         *       "api_key_value": "Bearer 21238dksdjqwpqscj9",
+         *       "events": [
+         *         "flows/created",
+         *         "flows/updated"
+         *       ],
+         *       "status": "created"
+         *     }
+         */
+        "application/json": components["schemas"]["webhook-put"];
+      };
+    };
+    responses: {
+      /** @description Success. The webhook has been updated */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+           *       "url": "https://hook.example.com",
+           *       "api_key_name": "Authorization",
+           *       "events": [
+           *         "flows/created",
+           *         "flows/updated"
+           *       ],
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["webhook-get"];
+        };
+      };
+      /** @description Bad request. Invalid parameters or unsupported event filtering or transformation. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_webhooks-webhookId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Webhook identifier. */
+        webhookId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The webhook has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this webhook. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_webhooks-webhookId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Webhook identifier. */
+        webhookId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+      /** @description The requested Webhook ID in the path is invalid, or Webhooks are not supported by this service implementation */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  GET_sources: {
+    parameters: {
+      query?: {
+        /** @description Filter on Sources that have the given label. */
+        label?: string;
+        /**
+         * @description Filter on Sources that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on Sources that have a tag named {name} regardless of value.
+         *     {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Filter on Source format. */
+        format?: components["schemas"]["content-format"];
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
+           *         "format": "urn:x-nmos:format:video",
+           *         "label": "bbb",
+           *         "description": "Big Buck Bunny video",
+           *         "created_by": "tams-dev",
+           *         "updated_by": "tams-dev",
+           *         "created": "2008-05-27T18:51:00Z",
+           *         "updated": "2008-05-27T18:51:00Z",
+           *         "collected_by": [
+           *           "86761f3a-5998-4cfe-9a89-8459bcb8ea52"
+           *         ]
+           *       },
+           *       {
+           *         "id": "86761f3a-5998-4cfe-9a89-8459bcb8ea52",
+           *         "format": "urn:x-nmos:format:multi",
+           *         "label": "bbb",
+           *         "description": "Big Buck Bunny",
+           *         "created_by": "tams-dev",
+           *         "updated_by": "tams-dev",
+           *         "created": "2008-05-27T18:51:00Z",
+           *         "updated": "2008-05-27T18:51:00Z",
+           *         "source_collection": [
+           *           {
+           *             "id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
+           *             "role": "video"
+           *           },
+           *           {
+           *             "id": "7ba3fed1-3fd3-4f0e-8488-92c4ffe13838",
+           *             "role": "audio"
+           *           }
+           *         ]
+           *       },
+           *       {
+           *         "id": "7ba3fed1-3fd3-4f0e-8488-92c4ffe13838",
+           *         "format": "urn:x-nmos:format:audio",
+           *         "description": "Big Buck Bunny audio",
+           *         "created": "2008-05-27T18:51:00Z",
+           *         "updated": "2008-05-27T18:51:00Z",
+           *         "collected_by": [
+           *           "86761f3a-5998-4cfe-9a89-8459bcb8ea52"
+           *         ]
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["source"][];
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HEAD_sources: {
+    parameters: {
+      query?: {
+        /** @description Filter on Sources that have the given label. */
+        label?: string;
+        /**
+         * @description Filter on Sources that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on Sources that have a tag named {name} regardless of value.
+         *     {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Filter on Source format. */
+        format?: components["schemas"]["content-format"];
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+      400: components["responses"]["trait_resource_info_head_400"];
+    };
+  };
+  "GET_sources-sourceId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["source"];
+        };
+      };
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_sources-sourceId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_sources-sourceId-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "ingested_by": "ingest_service_api"
+           *     }
+           */
+          "application/json": components["schemas"]["tags"];
+        };
+      };
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_sources-sourceId-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_sources-sourceId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "ingest_service_api" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Source or tag does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_sources-sourceId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "new_value" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The tag has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Source tag value. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Source does not exist, or the tag name in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_sources-sourceId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Source tag has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Source ID or tag in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_sources-sourceId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      /** @description The requested Source or tag does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_sources-sourceId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "Big Buck Bunny" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_sources-sourceId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "Big Buck Bunny Movie" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The description has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Source description. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_sources-sourceId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Source description property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The Source ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_sources-sourceId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_sources-sourceId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "Big Buck Bunny" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Source does not exist, or does not have a label set. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_sources-sourceId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "Big Buck Bunny Movie" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The label has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Source label. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Source does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_sources-sourceId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Source label property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this resource. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Source ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_sources-sourceId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Source identifier. */
+        sourceId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      /** @description The requested Source does not exist, or does not have a label set. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  GET_flows: {
+    parameters: {
+      query?: {
+        /** @description Filter on Source identifier. */
+        source_id?: components["schemas"]["uuid"];
+        /** @description Filter on Flows that overlap the given timerange. An empty timerange returns Flows with no content. */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Filter on Flow format. */
+        format?: components["schemas"]["content-format"];
+        /** @description Filter on Flow codec. */
+        codec?: components["schemas"]["mime-type"];
+        /** @description Filter on Flows that have the given label. */
+        label?: string;
+        /**
+         * @description Filter on flows that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on Flows that have a tag named {name} regardless of value.
+         *     {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Filter on video Flows that have the given frame width. */
+        frame_width?: number;
+        /** @description Filter on video Flows that have the given frame height. */
+        frame_height?: number;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
+           *         "source_id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
+           *         "generation": 0,
+           *         "created": "2008-05-27T18:51:00Z",
+           *         "metadata_updated": "2023-09-14T09:45:26Z",
+           *         "segments_updated": "2023-09-14T09:45:26Z",
+           *         "description": "Big Buck Bunny",
+           *         "label": "bbb",
+           *         "format": "urn:x-nmos:format:video",
+           *         "created_by": "tams-dev",
+           *         "updated_by": "tams-dev",
+           *         "tags": {
+           *           "input_quality": "contribution"
+           *         },
+           *         "codec": "video/h264",
+           *         "container": "video/mp2t",
+           *         "avg_bit_rate": 2479,
+           *         "essence_parameters": {
+           *           "frame_rate": {
+           *             "numerator": 24,
+           *             "denominator": 1
+           *           },
+           *           "frame_width": 1280,
+           *           "frame_height": 720,
+           *           "bit_depth": 8,
+           *           "interlace_mode": "progressive",
+           *           "colorspace": "BT709",
+           *           "transfer_characteristic": "SDR",
+           *           "aspect_ratio": {
+           *             "numerator": 16,
+           *             "denominator": 9
+           *           },
+           *           "pixel_aspect_ratio": {
+           *             "numerator": 1,
+           *             "denominator": 1
+           *           },
+           *           "component_type": "YCbCr",
+           *           "vert_chroma_subs": 2,
+           *           "horiz_chroma_subs": 2,
+           *           "avc_parameters": {
+           *             "profile": 100,
+           *             "level": 31,
+           *             "flags": 0
+           *           }
+           *         }
+           *       },
+           *       {
+           *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
+           *         "source_id": "41d7f7eb-c48d-4513-9b37-17b418d26d7f",
+           *         "generation": 1,
+           *         "created": "2018-03-06T09:10:22Z",
+           *         "metadata_updated": "2018-03-06T09:12:22Z",
+           *         "segments_updated": "2018-03-06T11:14:32Z",
+           *         "description": "audio capture web",
+           *         "label": "capture_1",
+           *         "format": "urn:x-nmos:format:audio",
+           *         "created_by": "tams-dev",
+           *         "updated_by": "tams-dev",
+           *         "tags": {
+           *           "input_quality": "web"
+           *         },
+           *         "codec": "audio/aac",
+           *         "container": "video/mp2t",
+           *         "avg_bit_rate": 128,
+           *         "essence_parameters": {
+           *           "sample_rate": 48000,
+           *           "channels": 2,
+           *           "bit_depth": 24,
+           *           "codec_parameters": {
+           *             "coded_frame_size": 1024,
+           *             "mp4_oti": 2
+           *           }
+           *         }
+           *       },
+           *       {
+           *         "id": "0fde9c11-da9d-434a-a113-d3b20a2cf251",
+           *         "source_id": "2aa143ac-0ab7-4d75-bc32-5c00c13d186f",
+           *         "generation": 0,
+           *         "created": "2018-03-06T09:10:22Z",
+           *         "metadata_updated": "2018-03-06T09:12:22Z",
+           *         "segments_updated": "2018-03-06T11:14:32Z",
+           *         "description": "video capture",
+           *         "label": "capture_1",
+           *         "format": "urn:x-nmos:format:video",
+           *         "created_by": "tams-dev",
+           *         "updated_by": "tams-dev",
+           *         "tags": {
+           *           "input_quality": "intermediate"
+           *         },
+           *         "codec": "video/raw",
+           *         "container": "video/quicktime",
+           *         "avg_bit_rate": 1658880,
+           *         "essence_parameters": {
+           *           "frame_rate": {
+           *             "numerator": 50,
+           *             "denominator": 1
+           *           },
+           *           "frame_width": 1920,
+           *           "frame_height": 1080,
+           *           "bit_depth": 8,
+           *           "interlace_mode": "progressive",
+           *           "colorspace": "BT709",
+           *           "transfer_characteristic": "SDR",
+           *           "aspect_ratio": {
+           *             "numerator": 16,
+           *             "denominator": 9
+           *           },
+           *           "pixel_aspect_ratio": {
+           *             "numerator": 1,
+           *             "denominator": 1
+           *           },
+           *           "component_type": "YCbCr",
+           *           "unc_parameters": {
+           *             "unc_type": "UYVY"
+           *           },
+           *           "vert_chroma_subs": 1,
+           *           "horiz_chroma_subs": 2
+           *         }
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["flow"][];
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HEAD_flows: {
+    parameters: {
+      query?: {
+        /** @description Filter on Source identifier. */
+        source_id?: components["schemas"]["uuid"];
+        /** @description Filter on Flows that overlap the given timerange. */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Filter on Flow format. */
+        format?: components["schemas"]["content-format"];
+        /** @description Filter on Flow codec. */
+        codec?: components["schemas"]["mime-type"];
+        /** @description Filter on Flows that have the given label. */
+        label?: string;
+        /**
+         * @description Filter on flows that have a tag named {name} with a value in the given comma-seperated list of values.
+         *     The {name} and the value MUST be URL encoded where special characters are present.
+         *     Where the tag's value is a string, at least one of the given values will match.
+         *     Where the tag's value is an array, at least one value in the array will match at least one of the given values.
+         *     Partial string matches of the values are not valid.
+         */
+        "tag.{name}"?: components["schemas"]["url-tag-list"];
+        /**
+         * @description Filter on Flows that have a tag named {name} regardless of value.
+         *     {name} MUST be URL encoded where special characters are present.
+         *     If set to true then the presence of the tag is filtered for.
+         *     If set to false then its absence is.
+         *     If left out then no filtering on tag presence is performed.
+         */
+        "tag_exists.{name}"?: boolean;
+        /** @description Filter on video Flows that have the given frame width. */
+        frame_width?: number;
+        /** @description Filter on video Flows that have the given frame height. */
+        frame_height?: number;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_flows-flowId": {
+    parameters: {
+      query?: {
+        /** @description Include the available Segment timerange in the response. */
+        include_timerange?: boolean;
+        /** @description Limit the returned available Segment timerange to this timerange. */
+        timerange?: components["schemas"]["timerange"];
+      };
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["flow"];
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["flow"];
+      };
+    };
+    responses: {
+      /** @description The Flow has been created. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
+           *       "source_id": "41d7f7eb-c48d-4513-9b37-17b418d26d7f",
+           *       "generation": 1,
+           *       "segments_updated": "2018-03-06T11:14:32Z",
+           *       "description": "audio capture web",
+           *       "label": "capture_1",
+           *       "format": "urn:x-nmos:format:audio",
+           *       "tags": {
+           *         "input_quality": "web"
+           *       },
+           *       "codec": "audio/aac",
+           *       "container": "video/mp2t",
+           *       "avg_bit_rate": 128,
+           *       "essence_parameters": {
+           *         "sample_rate": 48000,
+           *         "channels": 2,
+           *         "bit_depth": 24,
+           *         "codec_parameters": {
+           *           "coded_frame_size": 1024,
+           *           "mp4_oti": 2
+           *         }
+           *       }
+           *     }
+           */
+          "application/json": components["schemas"]["flow"];
+        };
+      };
+      /** @description No content. The Flow has been updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow JSON. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description This request has taken longer than the configured timeout, and will continue asynchronously */
+      202: {
+        headers: {
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
+           *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
+           *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
+           *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
+           *       "delete_flow": true,
+           *       "created": "2018-12-10T15:40:08.339376+00:00",
+           *       "updated": "2018-12-10T15:40:09.339393+00:00",
+           *       "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *       "created_by": "tams-dev",
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["deletion-request"];
+        };
+      };
+      /** @description No content. The Flow has been deleted and the Flow Segments have been or will be deleted. Media Objects referenced in other Flows will not be deleted. Media Objects that are no longer referenced by any Segments will be deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId": {
+    parameters: {
+      query?: {
+        /** @description Include the available Segment timerange in the response. */
+        include_timerange?: boolean;
+        /** @description Limit the returned available Segment timerange to this timerange. */
+        timerange?: components["schemas"]["timerange"];
+      };
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "input_quality": "web"
+           *     }
+           */
+          "application/json": components["schemas"]["tags"];
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_flows-flowId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "full" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Flow or tag does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "proxy" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The tag has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow tag value. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow tag has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-tags-name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The tag name. {name} MUST be URL encoded where special characters are present. */
+        name: string;
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      /** @description The requested Flow or tag does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_flows-flowId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "video capture" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "Big Buck Bunny video-only capture" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The description has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow description. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow description property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example "Big Buck Bunny" */
+          "application/json": string;
+        };
+      };
+      /** @description The requested Flow does not exist, or does not have a label set. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example "Big Buck Bunny Movie" */
+        "application/json": string;
+      };
+    };
+    responses: {
+      /** @description No content. The label has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow label. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow label property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-label": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      /** @description The requested Flow does not exist, or does not have a label set. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_flows-flowId-read-only": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example true */
+          "application/json": boolean;
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-read-only": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example true */
+        "application/json": boolean;
+      };
+    };
+    responses: {
+      /** @description No content. The read_only property has been set to the given value. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow read_only value. Value must be boolean. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-read-only": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-flow-collection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
+           *         "role": "video"
+           *       },
+           *       {
+           *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
+           *         "role": "audio"
+           *       },
+           *       {
+           *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+           *         "role": "subtitles"
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["flow-collection"];
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-flow-collection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example [
+         *       {
+         *         "id": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
+         *         "role": "video"
+         *       },
+         *       {
+         *         "id": "6101df05-06bb-41b8-8af4-cf7cd33df209",
+         *         "role": "audio"
+         *       },
+         *       {
+         *         "id": "e85efab4-993b-4ad6-9af3-4cd8d0d38860",
+         *         "role": "subtitles"
+         *       }
+         *     ]
+         */
+        "application/json": components["schemas"]["flow-collection"];
+      };
+    };
+    responses: {
+      /** @description No content. The Flow collection has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow collection. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-flow-collection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow collection property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-flow-collection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-max-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example 5000 */
+          "application/json": number;
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-max-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example 5000 */
+        "application/json": number;
+      };
+    };
+    responses: {
+      /** @description No content. The max bit rate has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow max bit rate. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-max-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow max bit rate property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-max-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-avg-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /** @example 3246 */
+          "application/json": number;
+        };
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "PUT_flows-flowId-avg-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /** @example 3246 */
+        "application/json": number;
+      };
+    };
+    responses: {
+      /** @description No content. The average bit rate has been created or updated. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow avg bit rate. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-avg-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Flow average bit rate property has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-avg-bit-rate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
+  "GET_flows-flowId-segments": {
+    parameters: {
+      query?: {
+        /** @description Filter on Object identifier. */
+        object_id?: string;
+        /** @description Return only the results in the timerange specified. */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Return Segments in reverse time order. */
+        reverse_order?: boolean;
+        /**
+         * @description Include storage metadata in `get_urls` in the response.
+         *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
+         */
+        verbose_storage?: boolean;
+        /**
+         * @description A comma separated list of labels of Flow Segment `get_urls` to include in the response.
+         *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
+         *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
+         *     Flow Segment `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
+         *     Without `get_urls`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs for example.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_get_urls?: components["schemas"]["url-label-list"];
+        /**
+         * @description A comma separated list of `storage_id`s of Flow Segment `get_urls` to include in the response.
+         *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
+         *     Flow Segment `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
+         *     A full list of available `storage_id`s may be found at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_storage_ids?: components["schemas"]["uuid-list"];
+        /**
+         * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
+         *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
+         *     If omitted, both presigned and non-presigned URLs will be returned.
+         *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        presigned?: boolean;
+        /**
+         * @description If set to `true`, the underlying object's timerange should appear in the response (if it differs from the Flow Segment's `timerange`).
+         *     Assume `false` if omitted.
+         */
+        include_object_timerange?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Identifies the timerange for the returned data set. */
+          "X-Paging-Timerange"?: components["schemas"]["timerange"];
+          /** @description The number of items in the returned data set. */
+          "X-Paging-Count"?: number;
+          /** @description The items are returned in reverse order. */
+          "X-Paging-Reverse-Order"?: boolean;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["flow-segment"][];
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "POST_flows-flowId-segments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        /**
+         * @example {
+         *       "object_id": "99c27f3f-ab67-47ae-8dd3-e5c146912b50",
+         *       "timerange": "[20:0_21:0)"
+         *     }
+         */
+        "application/json":
+          | components["schemas"]["flow-segment-post"]
+          | components["schemas"]["flow-segment-post"][];
+      };
+    };
+    responses: {
+      /** @description Partial success creating Segments returning list of failed Segments. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "failed_segments": [
+           *         {
+           *           "object_id": "76f6821b-f85b-4297-af65-dde6a25448a0",
+           *           "timerange": "[0:0_10:0)",
+           *           "error": {
+           *             "type": "TAMSError",
+           *             "summary": "Flow segment created failed because ...",
+           *             "traceback": [
+           *               "Exception: The flow segment could not be created",
+           *               "The above exception was the direct cause of the following exception:",
+           *               "Traceback (most recent call last):",
+           *               "  <traceback...>",
+           *               "TAMSError: Unable to continue"
+           *             ],
+           *             "time": "2018-12-10T15:18:52.426792+00:00"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "d2a3f8d9-4b8c-4a0a-9d0d-3d3e3e3e3e3e",
+           *           "timerange": "[28:0_30:0)"
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["flow-segment-bulk-failure"];
+        };
+      };
+      /** @description created. The flow Segment or list of Segments has been created. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid Flow Segment JSON or the Flow 'container' is not set. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_flows-flowId-segments": {
+    parameters: {
+      query?: {
+        /** @description Only delete Flow Segments that are completely covered by the given timerange. */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Filter on Object identifier. */
+        object_id?: string;
+      };
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description This request has taken longer than the configured timeout, and will continue asynchronously */
+      202: {
+        headers: {
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
+           *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
+           *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
+           *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
+           *       "delete_flow": true,
+           *       "created": "2018-12-10T15:40:08.339376+00:00",
+           *       "updated": "2018-12-10T15:40:09.339393+00:00",
+           *       "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *       "created_by": "tams-dev",
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["deletion-request"];
+        };
+      };
+      /** @description No content. The Flow Segments have been or will be deleted. Media Objects referenced in other Segments will not be deleted. Media Objects that are no longer referenced by any Segments will be deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flows-flowId-segments": {
+    parameters: {
+      query?: {
+        /** @description Filter on Object identifier. */
+        object_id?: string;
+        /** @description Return only the results in the timerange specified. */
+        timerange?: components["schemas"]["timerange"];
+        /** @description Return Segments in reverse time order. */
+        reverse_order?: boolean;
+        /**
+         * @description Include storage metadata in `get_urls` in the response.
+         *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
+         */
+        verbose_storage?: boolean;
+        /**
+         * @description A comma separated list of labels of Flow Segment `get_urls` to include in the response.
+         *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
+         *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
+         *     Flow Segment `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
+         *     Without `get_urls`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs for example.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_get_urls?: components["schemas"]["url-label-list"];
+        /**
+         * @description A comma separated list of `storage_id`s of Flow Segment `get_urls` to include in the response.
+         *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
+         *     Flow Segment `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
+         *     A full list of available `storage_id`s may be found at the [/service/storage-backends](#/operations/GET_storage-backends) endpoint.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_storage_ids?: components["schemas"]["uuid-list"];
+        /**
+         * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls` in the response.
+         *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
+         *     If omitted, both presigned and non-presigned URLs will be returned.
+         *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to generate a large number of pre-signed URLs.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        presigned?: boolean;
+        /**
+         * @description If set to `true`, the underlying object's timerange should appear in the response (if it differs from the segment timerange).
+         *     Assume `false` if omitted.
+         */
+        include_object_timerange?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Identifies the timerange for the returned data set. */
+          "X-Paging-Timerange"?: components["schemas"]["timerange"];
+          /** @description The number of items in the returned data set. */
+          "X-Paging-Count"?: number;
+          /** @description The items are returned in reverse order. */
+          "X-Paging-Reverse-Order"?: boolean;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The Flow ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "POST_flows-flowId-storage": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Flow identifier. */
+        flowId: components["schemas"]["uuid"];
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["flow-storage-post"];
+      };
+    };
+    responses: {
+      /** @description Storage locations for writing Media Objects. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "media_objects": [
+           *         {
+           *           "object_id": "846023d3-612d-5014-bc47-88f6eb2d04bb",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/846023d3-612d-5014-bc47-88f6eb2d04bb?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "25be83fc-11d1-5743-9d47-6865cef5ea35",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/25be83fc-11d1-5743-9d47-6865cef5ea35?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "8b785422-6a82-5d60-b25a-f77e0a748321",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/8b785422-6a82-5d60-b25a-f77e0a748321?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "a94cee18-1a40-5676-b788-1ac74c8a26e9",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/a94cee18-1a40-5676-b788-1ac74c8a26e9?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "9d2b1d66-d785-5dcd-82d8-70d37d39259e",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/9d2b1d66-d785-5dcd-82d8-70d37d39259e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "e3a116a0-416c-5530-ae79-58f2ecea31cb",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/e3a116a0-416c-5530-ae79-58f2ecea31cb?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "8859eec0-cf59-54b2-8572-51ffb755b369",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/8859eec0-cf59-54b2-8572-51ffb755b369?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "5b143aae-fa75-50b4-9cba-b7c0676dba15",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/5b143aae-fa75-50b4-9cba-b7c0676dba15?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "028ce16f-96ab-5334-bf3c-db95fdc73b17",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/028ce16f-96ab-5334-bf3c-db95fdc73b17?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         },
+           *         {
+           *           "object_id": "8264b3d3-d903-58b1-ab28-0ea164a22d2b",
+           *           "put_url": {
+           *             "url": "https://store.example.com/tams-c6b8e7cc-edd3-5f6d-9d79-4467d06eb8bf/8264b3d3-d903-58b1-ab28-0ea164a22d2b?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=0&X-Amz-Date=20230316T120329Z&X-Amz-Expires=300&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=0",
+           *             "content-type": "video/mp2t"
+           *           }
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["flow-storage"];
+        };
+      };
+      /** @description Bad request. Invalid Flow storage request JSON or the Flow 'container' is not set. If object_ids supplied, some or all already exist. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Flow. It may be marked read-only. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Flow does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  GET_objects: {
+    parameters: {
+      query?: {
+        /**
+         * @description Include storage metadata in `get_urls`.
+         *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
+         */
+        verbose_storage?: boolean;
+        /**
+         * @description A comma separated list of labels of Media Object `get_urls` to include in the response.
+         *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
+         *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
+         *     Media Object `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
+         *     Without `get_urls`, the response from the service could be substantially faster if it is not required to
+         *     generate a large number of pre-signed URLs for example.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_get_urls?: components["schemas"]["url-label-list"];
+        /**
+         * @description A comma separated list of `storage_id`s of Media Object `get_urls` to include in the response.
+         *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
+         *     Media Object `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
+         *     A full list of available `storage_id`s may be found at the `service/storage-backends` endpoint.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_storage_ids?: string;
+        /**
+         * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
+         *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
+         *     If omitted, both presigned and non-presigned URLs will be returned.
+         *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to
+         *     generate a large number of pre-signed URLs.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        presigned?: boolean;
+        /** @description Filter `referenced_by_flows` on tag values. This option is the same as the `tag.{name}` query parameter on the `/flows/` API endpoint. */
+        "flow_tag.{name}"?: string;
+        /** @description Filter `referenced_by_flows` on tag names. This option is the same as the `tag_exists.{name}` query parameter on the `/flows/` API endpoint. */
+        "flow_tag_exists.{name}"?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path: {
+        /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "846023d3-612d-5014-bc47-88f6eb2d04bb",
+           *       "referenced_by_flows": [
+           *         "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
+           *         "0fde9c11-da9d-434a-a113-d3b20a2cf251"
+           *       ],
+           *       "first_referenced_by_flow": "4f79cfd1-c057-47f4-8e4d-1b126ca7bf34",
+           *       "timerange": "[150:0_200:0)",
+           *       "get_urls": [
+           *         {
+           *           "url": "https://store.example.com/tams-e2b89b02-21e7-5f9d-aa2d-db38b01453c9/846023d3-612d-5014-bc47-88f6eb2d04bb"
+           *         }
+           *       ]
+           *     }
+           */
+          "application/json": components["schemas"]["object"];
+        };
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Media Object does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  HEAD_objects: {
+    parameters: {
+      query?: {
+        /**
+         * @description Include storage metadata in `get_urls`.
+         *     When `verbose_storage` is `false` only `url`, `presigned`, and `label` will be included in `get_urls`.
+         */
+        verbose_storage?: boolean;
+        /**
+         * @description A comma separated list of labels of Media Object `get_urls` to include in the response.
+         *     Omitting `accept_get_urls` will result in no filtering of `get_urls`.
+         *     An empty `accept_get_urls` results in an empty or no `get_urls` in the response.
+         *     Media Object `get_urls` with no label will only be returned if `accept_get_urls` is omitted.
+         *     Without `get_urls`, the response from the service could be substantially faster if it is not required to
+         *     generate a large number of pre-signed URLs for example.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_get_urls?: components["schemas"]["url-label-list"];
+        /**
+         * @description A comma separated list of `storage_id`s of Media Object `get_urls` to include in the response.
+         *     Omitting `accept_storage_ids`, or providing an empty `accept_storage_ids` will result in no filtering of `get_urls`.
+         *     Media Object `get_urls` with no storage ID will only be returned if `accept_storage_ids` is omitted or empty.
+         *     A full list of available `storage_id`s may be found at the `service/storage-backends` endpoint.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        accept_storage_ids?: string;
+        /**
+         * @description If set to `true`, only presigned URLs (i.e. those whos `presigned` property is `true`) will be returned in `get_urls`.
+         *     If set to `false`, only non-presigned URLs (i.e. those whos `presigned` property is `false`) will be returned in `get_urls`.
+         *     If omitted, both presigned and non-presigned URLs will be returned.
+         *     If `presigned` is set to `false`, the response from the service could be substantially faster if it is not required to
+         *     generate a large number of pre-signed URLs.
+         *     Where multiple filter query parameters are provided, the returned `get_urls` will match all filters.
+         */
+        presigned?: boolean;
+        /** @description Filter `referenced_by_flows` on tag values. This option is the same as the `tag.{name}` query parameter on the `/flows/` API endpoint. */
+        "flow_tag.{name}"?: string;
+        /** @description Filter `referenced_by_flows` on tag names. This option is the same as the `tag_exists.{name}` query parameter on the `/flows/` API endpoint. */
+        "flow_tag_exists.{name}"?: boolean;
+        /** @description Opaque string used by backend to access a specific page of results. Clients should read the next URL from the `Link` header returned with responses, or use value of the returned X-Paging-NextKey header. If not supplied, the first page is accessed. Service implementations should ensure a consistent sort order is applied to pages of results. */
+        page?: components["parameters"]["trait_resource_paged_key"];
+        /** @description Restrict the response to the specified number of results. Service implementations may specify their own default and maximum for the limit */
+        limit?: components["parameters"]["trait_paged_limit"];
+      };
+      header?: never;
+      path: {
+        /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          /** @description Provides references to cursors for paging. Only the 'rel' attribute with value 'next' and a link to the next page is currently supported. If 'next' is not present then it is the last page. */
+          Link?: string;
+          /** @description Identifies the current limit being used for paging. This may not match the requested value if the requested value was too high for the service implementation */
+          "X-Paging-Limit"?: number;
+          /** @description Opaque string that can be supplied to the `page` query parameter to get the next page of results. */
+          "X-Paging-NextKey"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+      400: components["responses"]["trait_resource_info_head_400"];
+      /** @description The requested Media Object does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "POST_objects-instances": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["objects-instances-post"];
+      };
+    };
+    responses: {
+      /** @description Object instance successfully registered. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid request JSON. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Media Object. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The Media Object does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "DELETE_objects-instances": {
+    parameters: {
+      query?: {
+        /** @description The storage_id identifying the Media Object instance to be deleted. */
+        storage_id?: string;
+        /** @description The label identifying the Media Object instance to be deleted. */
+        label?: string;
+      };
+      header?: never;
+      path: {
+        /** @description The Media Object identifier. The Object ID may include special characters such as `/` which should be URL encoded. */
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No content. The Media Object instance has been deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad request. Invalid query options. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden. You do not have permission to modify this Media Object. */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description The requested Object ID in the path is invalid. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "GET_flow-delete-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example [
+           *       {
+           *         "id": "9f0187c1-419c-44d2-8269-e869ba409462",
+           *         "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
+           *         "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
+           *         "timerange_remaining": "[1537349339:0_1537349347:21333333)",
+           *         "delete_flow": true,
+           *         "created": "2018-12-10T15:40:08.339376+00:00",
+           *         "updated": "2018-12-10T15:40:09.339393+00:00",
+           *         "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *         "created_by": "tams-dev",
+           *         "status": "started"
+           *       },
+           *       {
+           *         "id": "58b3793e-c9ad-4a7f-b680-e823685bb52d",
+           *         "flow_id": "58b3793e-c9ad-4a7f-b680-e823685bb52d",
+           *         "timerange_to_delete": "[0:0_1000:0)",
+           *         "timerange_remaining": "[900:0_1000:0)",
+           *         "delete_flow": false,
+           *         "created": "2018-12-10T15:40:08.339376+00:00",
+           *         "updated": "2018-12-10T15:40:09.339393+00:00",
+           *         "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *         "created_by": "tams-dev",
+           *         "status": "started"
+           *       },
+           *       {
+           *         "id": "3f04ae16-8b78-4426-9ccf-85ddaf908937",
+           *         "flow_id": "f43619e9-6333-438d-95b3-1e89f426d920",
+           *         "timerange_to_delete": "[0:0_1000:0)",
+           *         "timerange_remaining": "[900:0_1000:0)",
+           *         "delete_flow": false,
+           *         "created": "2018-12-10T15:40:08.339376+00:00",
+           *         "updated": "2018-12-10T15:18:52.426792+00:00",
+           *         "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *         "created_by": "tams-dev",
+           *         "status": "error",
+           *         "error": {
+           *           "type": "TAMSError",
+           *           "summary": "Flow delete failed because ...",
+           *           "traceback": [
+           *             "Exception: The flow segment could not be deleted",
+           *             "The above exception was the direct cause of the following exception:",
+           *             "",
+           *             "",
+           *             "Traceback (most recent call last):",
+           *             "  <traceback...>",
+           *             "TAMSError: Unable to continue"
+           *           ],
+           *           "time": "2018-12-10T15:18:52.426792+00:00"
+           *         }
+           *       }
+           *     ]
+           */
+          "application/json": components["schemas"]["deletion-request"][];
+        };
+      };
+    };
+  };
+  "HEAD_flow-delete-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_listing_head_200"];
+    };
+  };
+  "GET_flow-delete-requests-request-id": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        "request-id": string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "id": "9f0187c1-419c-44d2-8269-e869ba409462",
+           *       "flow_id": "d14c70ad-6c59-4092-b51f-b75f6edf04e3",
+           *       "timerange_to_delete": "[1537349337:0_1537349347:21333333)",
+           *       "timerange_remaining": "[1537349339:0_1537349347:21333333)",
+           *       "delete_flow": true,
+           *       "created": "2018-12-10T15:40:08.339376+00:00",
+           *       "updated": "2018-12-10T15:40:09.339393+00:00",
+           *       "expiry": "2018-12-11T15:40:09.339393+00:00",
+           *       "created_by": "tams-dev",
+           *       "status": "started"
+           *     }
+           */
+          "application/json": components["schemas"]["deletion-request"];
+        };
+      };
+      /** @description The requested Flow delete request does not exist. */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  "HEAD_flow-delete-requests-request-id": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        "request-id": string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: components["responses"]["trait_resource_info_head_200"];
+      404: components["responses"]["trait_resource_info_head_404"];
+    };
+  };
 }

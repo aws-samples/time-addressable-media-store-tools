@@ -1,20 +1,19 @@
-import {
-  Modal,
-  TextContent,
-} from "@cloudscape-design/components";
+import { Modal, TextContent } from "@cloudscape-design/components";
 import CancelModalFooter from "@/components/CancelModalFooter";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useChannelStart, useChannelStop } from "@/hooks/useChannels";
-import type { ChannelIngestion } from "@/types/ingestHls"
+import type { ChannelIngestion } from "@/types/ingestHls";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  channelId: string | undefined,
-  setSelectedItem: React.Dispatch<React.SetStateAction<ChannelIngestion | undefined>>,
-  actionId: string,
-  setActionId: React.Dispatch<React.SetStateAction<string>>,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  channelId: string | undefined;
+  setSelectedItem: React.Dispatch<
+    React.SetStateAction<ChannelIngestion | undefined>
+  >;
+  actionId: string;
+  setActionId: React.Dispatch<React.SetStateAction<string>>;
+};
 
 const ConfirmationModal = ({
   modalVisible,

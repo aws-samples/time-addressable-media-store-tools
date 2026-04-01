@@ -58,7 +58,7 @@ export class FrameRateUtil {
     this.frameRateModels = initFrameRates.map((fractionFrameRate) => {
       return {
         value: this.resolveFrameRateValueFromFraction(
-          fractionFrameRate.fraction
+          fractionFrameRate.fraction,
         ),
         fraction: fractionFrameRate.fraction,
         dropFrameEnabled: fractionFrameRate.dropFramesOnMinute != undefined,
@@ -87,7 +87,7 @@ export class FrameRateUtil {
       denominator < 0
     ) {
       throw new Error(
-        `Numerator and denominator must be integers larger than 0`
+        `Numerator and denominator must be integers larger than 0`,
       );
     }
 
@@ -96,7 +96,7 @@ export class FrameRateUtil {
 
   static resolveDropFramesOnMinute(frameRateDecimal: Decimal): number {
     let frameRateModel = this.frameRateModelByValue.get(
-      frameRateDecimal.toNumber()
+      frameRateDecimal.toNumber(),
     );
     if (!frameRateModel || !frameRateModel.dropFrameEnabled) {
       throw new Error("Drop frame for frame rate not supported");

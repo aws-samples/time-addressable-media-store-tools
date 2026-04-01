@@ -13,7 +13,7 @@ import { parseTimerangeDateTime } from "@/utils/timerange";
 import { useLastN } from "@/hooks/useSegments";
 import type { Uuid, Segment } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
-import type { TimerangeDateTimeResult } from "@/types/utils"
+import type { TimerangeDateTimeResult } from "@/types/utils";
 
 type SegmentWithDateTime = Segment & {
   datetimeTimerange: TimerangeDateTimeResult;
@@ -21,73 +21,80 @@ type SegmentWithDateTime = Segment & {
 
 const SegmentsTab = ({ flowId }: { flowId: Uuid }) => {
   const preferences = usePreferencesStore((state) => state.segmentsPreferences);
-  const setPreferences = usePreferencesStore((state) => state.setSegmentsPreferences);
-  const { segments, isLoading: loadingSegments } = useLastN(flowId, SEGMENT_COUNT);
+  const setPreferences = usePreferencesStore(
+    (state) => state.setSegmentsPreferences,
+  );
+  const { segments, isLoading: loadingSegments } = useLastN(
+    flowId,
+    SEGMENT_COUNT,
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [objectId, setObjectId] = useState("");
 
-  const columnDefinitions: TableProps.ColumnDefinition<SegmentWithDateTime>[] = [
-    {
-      id: "id",
-      header: "Object Id",
-      cell: (item) => (
-        <>
-          {item.object_id}
-          <Button
-            variant="icon"
-            iconName="status-info"
-            onClick={() => handleOnClick({ item })}
-          />
-        </>
-      ),
-      isRowHeader: true,
-    },
-    {
-      id: "timerange",
-      header: "Timerange",
-      cell: (item) => item.timerange,
-    },
-    {
-      id: "ts_offset",
-      header: "TS Offset",
-      cell: (item) => item.ts_offset,
-    },
-    {
-      id: "last_duration",
-      header: "Last Duration",
-      cell: (item) => item.last_duration,
-    },
-    {
-      id: "object_timerange",
-      header: "Object Timerange",
-      cell: (item) => item.object_timerange,
-    },
-    {
-      id: "sample_offset",
-      header: "Sample Offset",
-      cell: (item) => item.sample_offset,
-    },
-    {
-      id: "sample_count",
-      header: "Sample Count",
-      cell: (item) => item.sample_count,
-    },
-    {
-      id: "key_frame_count",
-      header: "Key Frame Count",
-      cell: (item) => item.key_frame_count,
-    },
-    {
-      id: "timerange_start",
-      header: "Timerange Start",
-      cell: (item) => item.datetimeTimerange.start?.toLocaleString(DATE_FORMAT),
-    },
-    {
-      id: "timerange_end",
-      header: "Timerange End",
-      cell: (item) => item.datetimeTimerange.end?.toLocaleString(DATE_FORMAT),
-    },
-  ];
+  const columnDefinitions: TableProps.ColumnDefinition<SegmentWithDateTime>[] =
+    [
+      {
+        id: "id",
+        header: "Object Id",
+        cell: (item) => (
+          <>
+            {item.object_id}
+            <Button
+              variant="icon"
+              iconName="status-info"
+              onClick={() => handleOnClick({ item })}
+            />
+          </>
+        ),
+        isRowHeader: true,
+      },
+      {
+        id: "timerange",
+        header: "Timerange",
+        cell: (item) => item.timerange,
+      },
+      {
+        id: "ts_offset",
+        header: "TS Offset",
+        cell: (item) => item.ts_offset,
+      },
+      {
+        id: "last_duration",
+        header: "Last Duration",
+        cell: (item) => item.last_duration,
+      },
+      {
+        id: "object_timerange",
+        header: "Object Timerange",
+        cell: (item) => item.object_timerange,
+      },
+      {
+        id: "sample_offset",
+        header: "Sample Offset",
+        cell: (item) => item.sample_offset,
+      },
+      {
+        id: "sample_count",
+        header: "Sample Count",
+        cell: (item) => item.sample_count,
+      },
+      {
+        id: "key_frame_count",
+        header: "Key Frame Count",
+        cell: (item) => item.key_frame_count,
+      },
+      {
+        id: "timerange_start",
+        header: "Timerange Start",
+        cell: (item) =>
+          item.datetimeTimerange.start?.toLocaleString(DATE_FORMAT),
+      },
+      {
+        id: "timerange_end",
+        header: "Timerange End",
+        cell: (item) => item.datetimeTimerange.end?.toLocaleString(DATE_FORMAT),
+      },
+    ];
   const collectionPreferencesProps = {
     contentDisplayPreference: {
       title: "Column preferences",
@@ -119,11 +126,12 @@ const SegmentsTab = ({ flowId }: { flowId: Uuid }) => {
           columnDisplay={preferences.contentDisplay}
           contentDensity="compact"
           items={
-            segments ?
-              segments.map((segment) => ({
-                ...segment,
-                datetimeTimerange: parseTimerangeDateTime(segment.timerange),
-              })) : []
+            segments
+              ? segments.map((segment) => ({
+                  ...segment,
+                  datetimeTimerange: parseTimerangeDateTime(segment.timerange),
+                }))
+              : []
           }
           sortingDisabled
           loading={loadingSegments}

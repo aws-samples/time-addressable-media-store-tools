@@ -48,14 +48,14 @@ function resolveMaxBitRateVideoFlow(flows: Flow[]) {
 
       return maxBitRateVideoFlow;
     },
-    undefined
+    undefined,
   );
 }
 
 export const createEditTimeranges = (
   source: MarkerAwareApi,
   markerOffset: number,
-  omakasePlayer: OmakasePlayer
+  omakasePlayer: OmakasePlayer,
 ) => {
   const timeRanges = source
     .getMarkers()
@@ -73,23 +73,23 @@ export const createEditTimeranges = (
 
       // ensures marker start time lines up with start of the frame in milliseconds
       const startTime = omakasePlayer.video.calculateFrameToTime(
-        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.start)
+        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.start),
       );
       const endTime = omakasePlayer.video.calculateFrameToTime(
-        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.end)
+        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.end),
       );
 
       const startMoment = TimeRangeUtil.secondsToTimeMoment(
-        startTime + markerOffset
+        startTime + markerOffset,
       );
       const endMoment = TimeRangeUtil.secondsToTimeMoment(
-        endTime + markerOffset
+        endTime + markerOffset,
       );
       const timeRange = TimeRangeUtil.toTimeRange(
         startMoment,
         endMoment,
         true,
-        false
+        false,
       );
 
       return TimeRangeUtil.formatTimeRangeExpr(timeRange);

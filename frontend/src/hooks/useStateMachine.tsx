@@ -1,4 +1,8 @@
-import { SFNClient, StartExecutionCommand, StartExecutionCommandInput } from "@aws-sdk/client-sfn";
+import {
+  SFNClient,
+  StartExecutionCommand,
+  StartExecutionCommandInput,
+} from "@aws-sdk/client-sfn";
 
 import { AWS_REGION } from "@/constants";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
@@ -14,7 +18,7 @@ export const useWorkflows = () => {
     (path) => api.get(path),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -36,7 +40,7 @@ export const useStateMachine = () => {
         credentials,
       });
       return client.send(new StartExecutionCommand(arg));
-    }
+    },
   );
 
   return {

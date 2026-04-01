@@ -2,11 +2,11 @@ import SourceCreateExportModal from "@/components/SourceCreateExportModal";
 import type { Source } from "@/types/tams";
 
 type Props = {
-  selectedItems: readonly Source[],
-  actionId: string,
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-}
+  selectedItems: readonly Source[];
+  actionId: string;
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+};
 const SourceActionsModal = ({
   selectedItems,
   actionId,

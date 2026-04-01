@@ -22,7 +22,7 @@ export class TimecodeUtil {
     time: number,
     frameRate: number,
     dropFrame: boolean,
-    audioOnly = false
+    audioOnly = false,
   ): string {
     let frameRateDecimal = new Decimal(frameRate);
     let frameNumberDecimal: Decimal;
@@ -38,7 +38,7 @@ export class TimecodeUtil {
     if (dropFrame) {
       // algorithm for drop frame
       let dropFramesDecimal = new Decimal(
-        FrameRateUtil.resolveDropFramesOnMinute(frameRateDecimal)
+        FrameRateUtil.resolveDropFramesOnMinute(frameRateDecimal),
       );
       let framesPerHourDecimal = frameRateDecimal.mul(3600).round(); // 60 * 60
       let framesPer24HoursDecimal = framesPerHourDecimal.mul(24);
@@ -58,12 +58,14 @@ export class TimecodeUtil {
           .plus(dropFramesDecimal.mul(9).mul(dDecimal))
           .plus(
             dropFramesDecimal.mul(
-              mDecimal.minus(dropFramesDecimal).divToInt(framesPerMinuteDecimal)
-            )
+              mDecimal
+                .minus(dropFramesDecimal)
+                .divToInt(framesPerMinuteDecimal),
+            ),
           );
       } else {
         frameNumberDecimal = frameNumberDecimal.plus(
-          dropFramesDecimal.mul(9).mul(dDecimal)
+          dropFramesDecimal.mul(9).mul(dDecimal),
         );
       }
 
@@ -84,24 +86,24 @@ export class TimecodeUtil {
       let framesPer24HoursDecimal = frameRateRoundedDecimal.mul(86400); // 60 * 60 * 24
 
       let remainingFramesDecimal = frameNumberDecimal.mod(
-        framesPer24HoursDecimal
+        framesPer24HoursDecimal,
       );
       let hourFramesDecimal = frameRateRoundedDecimal.mul(3600); // 60 * 60
       let minuteFramesDecimal = frameRateRoundedDecimal.mul(60);
 
       hoursDecimal = remainingFramesDecimal.divToInt(hourFramesDecimal);
       remainingFramesDecimal = remainingFramesDecimal.minus(
-        hoursDecimal.mul(hourFramesDecimal)
+        hoursDecimal.mul(hourFramesDecimal),
       );
 
       minutesDecimal = remainingFramesDecimal.divToInt(minuteFramesDecimal);
       remainingFramesDecimal = remainingFramesDecimal.minus(
-        minutesDecimal.mul(minuteFramesDecimal)
+        minutesDecimal.mul(minuteFramesDecimal),
       );
 
       secondsDecimal = remainingFramesDecimal.divToInt(frameRateRoundedDecimal);
       framesDecimal = remainingFramesDecimal.minus(
-        secondsDecimal.mul(frameRateRoundedDecimal)
+        secondsDecimal.mul(frameRateRoundedDecimal),
       );
     }
 
@@ -111,7 +113,7 @@ export class TimecodeUtil {
       secondsDecimal.toNumber(),
       framesDecimal.toNumber(),
       dropFrame,
-      audioOnly
+      audioOnly,
     );
   }
 
@@ -121,14 +123,14 @@ export class TimecodeUtil {
     seconds: number,
     frames: number,
     dropFrame: boolean,
-    audioOnly = false
+    audioOnly = false,
   ): string {
     let frameSeparator = audioOnly ? "." : ":";
     frameSeparator = dropFrame ? ";" : frameSeparator;
     return `${TimecodeUtil.padZero(hours)}:${TimecodeUtil.padZero(
-      minutes
+      minutes,
     )}:${TimecodeUtil.padZero(seconds)}${frameSeparator}${TimecodeUtil.padZero(
-      frames
+      frames,
     )}`;
   }
 

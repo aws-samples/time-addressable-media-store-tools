@@ -13,21 +13,21 @@ type HierarchicalItem = {
   key: string;
   value?: string | number | boolean;
   children?: HierarchicalItem[];
-}
+};
 
 const EssenceParameters = ({ essenceParameters }: Props) => {
   const hierarchicalEssenceParameters = essenceParameters
     ? Object.entries(essenceParameters).map(([key, value]) => ({
-      key,
-      value: typeof value === "object" && value !== null ? undefined : value,
-      children:
-        typeof value === "object" && value !== null
-          ? Object.entries(value).map(([childKey, childValue]) => ({
-              key: childKey,
-              value: String(childValue),
-            }))
-          : undefined,
-    }))
+        key,
+        value: typeof value === "object" && value !== null ? undefined : value,
+        children:
+          typeof value === "object" && value !== null
+            ? Object.entries(value).map(([childKey, childValue]) => ({
+                key: childKey,
+                value: String(childValue),
+              }))
+            : undefined,
+      }))
     : [];
 
   const columnDefinitions: TableProps.ColumnDefinition<HierarchicalItem>[] = [
@@ -43,7 +43,6 @@ const EssenceParameters = ({ essenceParameters }: Props) => {
       cell: (item) => item.value,
     },
   ];
-
 
   return essenceParameters ? (
     <Table<HierarchicalItem>

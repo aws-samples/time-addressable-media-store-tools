@@ -13,14 +13,16 @@ import { AWS_HLS_INGEST_ARN } from "@/constants";
 import { useStateMachine } from "@/hooks/useStateMachine";
 import useAlertsStore from "@/stores/useAlertsStore";
 import stringify from "json-stable-stringify";
-import type { ChannelIngestion } from "@/types/ingestHls"
+import type { ChannelIngestion } from "@/types/ingestHls";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedItem: ChannelIngestion | undefined,
-  setSelectedItem: React.Dispatch<React.SetStateAction<ChannelIngestion | undefined>>,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedItem: ChannelIngestion | undefined;
+  setSelectedItem: React.Dispatch<
+    React.SetStateAction<ChannelIngestion | undefined>
+  >;
+};
 
 const StartIngestModal = ({
   modalVisible,

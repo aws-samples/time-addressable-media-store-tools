@@ -12,9 +12,9 @@ import { parseTimerangeDateTime } from "@/utils/timerange";
 import { Flow, Source } from "@/types/tams";
 
 type Props = {
-  entityType: string,
-  entity: Source | Flow,
-}
+  entityType: string;
+  entity: Source | Flow;
+};
 
 const excludedFields = [
   "source_collection",
@@ -31,12 +31,12 @@ const EntityDetails = ({ entityType, entity }: Props) => {
 
   const processEntityData = (entity: Source | Flow) => {
     const filteredEntity = Object.entries(entity).filter(
-      ([key]) => !excludedFields.includes(key)
+      ([key]) => !excludedFields.includes(key),
     );
 
     // Separate primitive and object values
     const keyValues = filteredEntity.filter(
-      ([key, value]) => typeof value !== "object" && key !== "timerange"
+      ([key, value]) => typeof value !== "object" && key !== "timerange",
     );
 
     // Add stringified object values
@@ -45,13 +45,13 @@ const EntityDetails = ({ entityType, entity }: Props) => {
       .forEach(([key, value]) => keyValues.push([key, JSON.stringify(value)]));
 
     // Add timerange fields
-    if ('timerange' in entity && entity.timerange) {
+    if ("timerange" in entity && entity.timerange) {
       keyValues.push(["timerange", entity.timerange]);
       if (entity.timerange !== "()") {
         const { start, end } = parseTimerangeDateTime(entity.timerange);
         keyValues.push(
           ["timerange_start", start?.toLocaleString(DATE_FORMAT)],
-          ["timerange_end", end?.toLocaleString(DATE_FORMAT)]
+          ["timerange_end", end?.toLocaleString(DATE_FORMAT)],
         );
       }
     }
@@ -59,7 +59,10 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     return keyValues;
   };
 
-  const renderFieldValue = (label: string, value: string | number | boolean | undefined) => {
+  const renderFieldValue = (
+    label: string,
+    value: string | number | boolean | undefined,
+  ) => {
     if (editableFields.includes(label)) {
       return (
         <EditableField

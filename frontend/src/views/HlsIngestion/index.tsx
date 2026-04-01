@@ -16,7 +16,6 @@ import { useWorkflows } from "@/hooks/useStateMachine";
 import type { Workflow } from "@/types/ingestHls";
 import type { TableProps } from "@cloudscape-design/components";
 
-
 const HlsIngestion = () => {
   const { workflows, isLoading } = useWorkflows();
   const [modalVisible, setModalVisible] = useState(false);
@@ -93,7 +92,7 @@ const HlsIngestion = () => {
       sorting: {
         defaultState: {
           sortingColumn: columnDefinitions.find(
-            (col) => col.id === "startDate"
+            (col) => col.id === "startDate",
           )!,
           isDescending: true,
         },

@@ -5,7 +5,7 @@ import { TimeRangeUtil } from "./time-range-util";
 export class TAMSThumbnailUtil {
   public static resolveLowestQualityImageFlow(flows: Flow[]) {
     const imageFlows = flows.filter(
-      (flow) => flow.format === "urn:x-tam:format:image"
+      (flow) => flow.format === "urn:x-tam:format:image",
     ) as ImageFlow[];
 
     if (imageFlows.length === 0) {
@@ -31,7 +31,7 @@ export class TAMSThumbnailUtil {
 
         return lowestQualityFlow;
       },
-      undefined
+      undefined,
     );
 
     return lowestQualityImageFlow;
@@ -40,7 +40,7 @@ export class TAMSThumbnailUtil {
   public static generateThumbnailVtt(
     segments: FlowSegment[],
     videoEnd: number,
-    timeOffset: number
+    timeOffset: number,
   ): string {
     let vttLines: string[] = ["WEBVTT", ""];
 
@@ -50,7 +50,7 @@ export class TAMSThumbnailUtil {
       if (getUrls.length === 0) return;
 
       const start = TimeRangeUtil.timeMomentToSeconds(
-        TimeRangeUtil.parseTimeRange(segment.timerange).start!
+        TimeRangeUtil.parseTimeRange(segment.timerange).start!,
       );
       let end;
 
@@ -60,7 +60,7 @@ export class TAMSThumbnailUtil {
         end =
           TimeRangeUtil.timeMomentToSeconds(
             TimeRangeUtil.parseTimeRange(segments.at(index + 1)!.timerange)
-              .start!
+              .start!,
           ) - 0.001;
       }
 
@@ -78,7 +78,7 @@ export class TAMSThumbnailUtil {
   public static generateThumbnailVttBlob(
     segments: FlowSegment[],
     videoEnd: number,
-    timeOffset: number
+    timeOffset: number,
   ) {
     const vttFile = this.generateThumbnailVtt(segments, videoEnd, timeOffset);
 
@@ -96,7 +96,7 @@ export class TAMSThumbnailUtil {
 
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
       2,
-      "0"
+      "0",
     )}:${String(secs).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
   }
 }

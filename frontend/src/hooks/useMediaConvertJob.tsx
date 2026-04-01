@@ -7,14 +7,19 @@ type CreateJobParams = {
   sourceId: Uuid;
   fileName: string;
   timeranges: Timerange | Timerange[];
-}
+};
 
 export const useMediaConvertJob = (onSuccess?: () => void) => {
   const { start, isStarting } = useStartJob();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
-  const createJob = async ({ jobSpec, sourceId, fileName, timeranges }: CreateJobParams) => {
+  const createJob = async ({
+    jobSpec,
+    sourceId,
+    fileName,
+    timeranges,
+  }: CreateJobParams) => {
     const id = crypto.randomUUID();
     const timerangeValue = Array.isArray(timeranges)
       ? timeranges.join(",")
@@ -50,7 +55,7 @@ export const useMediaConvertJob = (onSuccess?: () => void) => {
           });
           onSuccess?.();
         },
-      }
+      },
     );
   };
 

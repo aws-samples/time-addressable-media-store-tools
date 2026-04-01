@@ -1,8 +1,5 @@
 import { useState } from "react";
-import {
-  Modal,
-  TextContent,
-} from "@cloudscape-design/components";
+import { Modal, TextContent } from "@cloudscape-design/components";
 import CancelModalFooter from "@/components/CancelModalFooter";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useDelete } from "@/hooks/useFlows";
@@ -36,7 +33,7 @@ const FlowDeleteModal = ({
         content: `Flow ${flow.id} is being deleted. This will happen asynchronously`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
-      }))
+      })),
     );
     await Promise.all(promises);
     setIsDeleting(false);

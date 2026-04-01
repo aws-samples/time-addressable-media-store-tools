@@ -31,9 +31,14 @@ const MediaConvertTamsJobs = () => {
   const credentials = useAwsCredentials();
 
   const handleDownload = async (outputGroup: OutputGroup) => {
-    const destination = outputGroup.OutputGroupSettings?.FileGroupSettings?.Destination;
+    const destination =
+      outputGroup.OutputGroupSettings?.FileGroupSettings?.Destination;
     if (!destination) return;
-    const fileExtension = CONTAINER_FILE_EXTENSION[outputGroup.Outputs?.[0]?.ContainerSettings?.Container as keyof typeof CONTAINER_FILE_EXTENSION];
+    const fileExtension =
+      CONTAINER_FILE_EXTENSION[
+        outputGroup.Outputs?.[0]?.ContainerSettings
+          ?.Container as keyof typeof CONTAINER_FILE_EXTENSION
+      ];
     const s3Uri_parts = destination.split("/");
     const bucket = s3Uri_parts[2];
     const key = `${s3Uri_parts.slice(3).join("/")}.${fileExtension}`;
@@ -83,7 +88,10 @@ const MediaConvertTamsJobs = () => {
     {
       id: "filename",
       header: "Output Filename",
-      cell: (item) => item.Settings?.OutputGroups?.[0]?.OutputGroupSettings?.FileGroupSettings?.Destination?.split("/").slice(-1) ?? "",
+      cell: (item) =>
+        item.Settings?.OutputGroups?.[0]?.OutputGroupSettings?.FileGroupSettings?.Destination?.split(
+          "/",
+        ).slice(-1) ?? "",
       sortingField: "filename",
       isRowHeader: true,
     },
@@ -98,7 +106,8 @@ const MediaConvertTamsJobs = () => {
       id: "submitTime",
       header: "Submit Time",
       cell: (item) =>
-        item.Timing && item.Timing.SubmitTime &&
+        item.Timing &&
+        item.Timing.SubmitTime &&
         DateTime.fromJSDate(item.Timing.SubmitTime).toLocaleString(DATE_FORMAT),
       sortingField: "submitTime",
     },
@@ -106,7 +115,8 @@ const MediaConvertTamsJobs = () => {
       id: "startTime",
       header: "Start Time",
       cell: (item) =>
-        item.Timing && item.Timing.StartTime &&
+        item.Timing &&
+        item.Timing.StartTime &&
         DateTime.fromJSDate(item.Timing.StartTime).toLocaleString(DATE_FORMAT),
       sortingField: "startTime",
     },
@@ -114,7 +124,8 @@ const MediaConvertTamsJobs = () => {
       id: "finishTime",
       header: "Finish Time",
       cell: (item) =>
-        item.Timing && item.Timing.FinishTime &&
+        item.Timing &&
+        item.Timing.FinishTime &&
         DateTime.fromJSDate(item.Timing.FinishTime).toLocaleString(DATE_FORMAT),
       sortingField: "finishTime",
     },
@@ -122,7 +133,8 @@ const MediaConvertTamsJobs = () => {
       id: "output",
       header: "Output",
       cell: (item) =>
-        item.Status == "COMPLETE" && item.Settings?.OutputGroups?.[0] && (
+        item.Status == "COMPLETE" &&
+        item.Settings?.OutputGroups?.[0] && (
           <Button
             onClick={() => handleDownload(item.Settings!.OutputGroups![0])}
             iconName="download"

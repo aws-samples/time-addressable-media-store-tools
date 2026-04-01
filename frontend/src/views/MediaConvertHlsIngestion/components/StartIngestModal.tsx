@@ -16,11 +16,13 @@ import stringify from "json-stable-stringify";
 import type { JobIngestion } from "@/types/ingestHls";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedItem: JobIngestion | undefined,
-  setSelectedItem: React.Dispatch<React.SetStateAction<JobIngestion | undefined>>,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedItem: JobIngestion | undefined;
+  setSelectedItem: React.Dispatch<
+    React.SetStateAction<JobIngestion | undefined>
+  >;
+};
 
 const StartIngestModal = ({
   modalVisible,

@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  FormField,
-  Input,
-  Modal,
-} from "@cloudscape-design/components";
+import { FormField, Input, Modal } from "@cloudscape-design/components";
 import CancelModalFooter from "@/components/CancelModalFooter";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useDeleteTimerange } from "@/hooks/useFlows";
@@ -27,7 +23,7 @@ const FlowDeleteTimeRangeModal = ({
 
   const deleteTimerange = async () => {
     const promises = selectedItems.map((item) =>
-      delTimerange({ flowId: item.id, timerange })
+      delTimerange({ flowId: item.id, timerange }),
     );
     const id = crypto.randomUUID();
     addAlertItems(
@@ -38,7 +34,7 @@ const FlowDeleteTimeRangeModal = ({
         content: `Flow segments on flow ${flow.id} within the timerange ${timerange} are being deleted. This will happen asynchronously.`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
-      }))
+      })),
     );
     await Promise.all(promises);
     setModalVisible(false);

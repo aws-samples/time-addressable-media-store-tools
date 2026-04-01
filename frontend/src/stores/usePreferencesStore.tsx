@@ -142,8 +142,8 @@ const usePreferencesStore = create<PreferencesStore>()(
     }),
     {
       name: "tams-ui-preferences",
-    }
-  )
+    },
+  ),
 );
 
 export default usePreferencesStore;

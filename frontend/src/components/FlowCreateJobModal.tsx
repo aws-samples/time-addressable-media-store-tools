@@ -17,10 +17,10 @@ import useAwsCredentials from "@/hooks/useAwsCredentials";
 import type { Uuid } from "@/types/tams";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedFlowId: Uuid,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedFlowId: Uuid;
+};
 
 const FlowCreateJobModal = ({
   modalVisible,
@@ -34,7 +34,8 @@ const FlowCreateJobModal = ({
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
   const credentials = useAwsCredentials();
-  const { commands, ffmpeg, selectedCommand, setSelectedCommand } = useFfmpegCommandSelector(true);
+  const { commands, ffmpeg, selectedCommand, setSelectedCommand } =
+    useFfmpegCommandSelector(true);
 
   const handleDismiss = () => {
     setModalVisible(false);
@@ -47,7 +48,8 @@ const FlowCreateJobModal = ({
   const createJob = async () => {
     setIsSubmitting(true);
     const destination =
-      outputFlow || (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
+      outputFlow ||
+      (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
     const id = crypto.randomUUID();
     addAlertItem({
       type: "success",

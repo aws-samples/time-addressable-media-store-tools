@@ -17,21 +17,22 @@ type CreateJobSpecParams = {
   sourceId: Uuid;
   fileName: string;
   timeranges: string;
-}
-
+};
 
 const isTamsJob = (job: Job) => {
   return job.Settings?.Inputs?.some((input) => input.TamsSettings);
 };
 
-const mediaConvertFetcher = async (credentials: CognitoIdentityCredentialProvider) => {
+const mediaConvertFetcher = async (
+  credentials: CognitoIdentityCredentialProvider,
+) => {
   const client = new MediaConvertClient({
     region: AWS_REGION,
     credentials,
   });
   const allJobs: Job[] = [];
   for await (const page of paginateListJobs({ client }, {})) {
-    allJobs.push(...page.Jobs ?? []);
+    allJobs.push(...(page.Jobs ?? []));
   }
   return allJobs.filter(isTamsJob);
 };
@@ -43,7 +44,7 @@ export const useTamsJobs = () => {
     () => mediaConvertFetcher(credentials),
     {
       refreshInterval: 3000,
-    }
+    },
   );
 
   return {
@@ -54,8 +55,12 @@ export const useTamsJobs = () => {
   };
 };
 
-
-const createFinalJobSpec = ({ spec, sourceId, fileName, timeranges }: CreateJobSpecParams) => {
+const createFinalJobSpec = ({
+  spec,
+  sourceId,
+  fileName,
+  timeranges,
+}: CreateJobSpecParams) => {
   const parsedJobSpec = JSON.parse(spec);
   parsedJobSpec.Settings.OutputGroups[0] = {
     ...parsedJobSpec.Settings.OutputGroups[0],
@@ -101,7 +106,7 @@ export const useStartJob = () => {
         throw new Error("MediaConvert job ID not returned");
       }
       return response.Job.Id;
-    }
+    },
   );
 
   return {

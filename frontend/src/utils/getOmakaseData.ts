@@ -85,10 +85,7 @@ const getFlowAndRelated = async (
   return { flow, relatedFlows: sortedRelatedFlows };
 };
 
-const getFlowHierarchy = async (
-  api: ApiClient,
-  relatedFlowQueue: Uuid[],
-) => {
+const getFlowHierarchy = async (api: ApiClient, relatedFlowQueue: Uuid[]) => {
   const relatedFlows: Flow[] = [];
   const checkedFlowIds: Set<Uuid> = new Set();
 
@@ -145,7 +142,10 @@ const parseAndFilterFlows = (flows: Flow[]) => {
         parsedTimerange.start !== undefined &&
         parsedTimerange.end !== undefined
       ) {
-        result.push({ ...flow, timerange: parsedTimerange } as FlowWithParsedTimerange);
+        result.push({
+          ...flow,
+          timerange: parsedTimerange,
+        } as FlowWithParsedTimerange);
       }
     } catch {
       // Skip flows with parsing errors

@@ -3,7 +3,11 @@ import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import type { Uuid, Timerange } from "@/types/tams";
 
-export const useOmakaseData = (type: string, id: Uuid, timerange: Timerange) => {
+export const useOmakaseData = (
+  type: string,
+  id: Uuid,
+  timerange: Timerange,
+) => {
   const api = useApi();
   const {
     data: response,
@@ -28,7 +32,7 @@ export const useOmakaseData = (type: string, id: Uuid, timerange: Timerange) => 
         maxTimerange,
         timerange: segmentsTimerange,
       };
-    }
+    },
   );
   return {
     sourceId: type === "sources" ? id : response?.flow?.source_id,

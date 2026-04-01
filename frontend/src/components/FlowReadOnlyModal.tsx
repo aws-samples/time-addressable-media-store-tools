@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  FormField,
-  RadioGroup,
-  Modal,
-} from "@cloudscape-design/components";
+import { FormField, RadioGroup, Modal } from "@cloudscape-design/components";
 import CancelModalFooter from "@/components/CancelModalFooter";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { usePutReadOnly } from "@/hooks/useFlows";
@@ -27,7 +23,7 @@ const FlowReadOnlyModal = ({
 
   const setReadOnly = async () => {
     const promises = selectedItems.map((item) =>
-      putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" })
+      putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" }),
     );
     const id = crypto.randomUUID();
     addAlertItems(
@@ -38,7 +34,7 @@ const FlowReadOnlyModal = ({
         content: `Flow ${flow.id} read_only is being updated. This will happen asynchronously`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
-      }))
+      })),
     );
     setModalVisible(false);
     setReadOnlyStr("");

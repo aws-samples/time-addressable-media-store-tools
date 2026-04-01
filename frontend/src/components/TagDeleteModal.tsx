@@ -11,12 +11,12 @@ import { useTagPropagation } from "@/hooks/useTagPropagation";
 import type { Flow, Source, TagName } from "@/types/tams";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  entityType: string,
-  entity: Flow | Source,
-  tagName: TagName
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  entityType: string;
+  entity: Flow | Source;
+  tagName: TagName;
+};
 
 const TagDeleteModal = ({
   modalVisible,

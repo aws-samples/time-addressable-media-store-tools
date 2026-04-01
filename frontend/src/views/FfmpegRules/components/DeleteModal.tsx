@@ -4,13 +4,18 @@ import useAlertsStore from "@/stores/useAlertsStore";
 import { useDeleteRule } from "@/hooks/useFfmpeg";
 
 type Props = {
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-  selectedKey: string,
-  setSelectedKey: React.Dispatch<React.SetStateAction<string>>,
-}
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedKey: string;
+  setSelectedKey: React.Dispatch<React.SetStateAction<string>>;
+};
 
-const DeleteModal = ({ modalVisible, setModalVisible, selectedKey, setSelectedKey }: Props) => {
+const DeleteModal = ({
+  modalVisible,
+  setModalVisible,
+  selectedKey,
+  setSelectedKey,
+}: Props) => {
   const { del, isDeleting } = useDeleteRule();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);

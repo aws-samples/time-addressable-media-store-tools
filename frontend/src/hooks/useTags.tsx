@@ -28,8 +28,8 @@ export const useUpdate = (entityType: string, id: Uuid) => {
     [`/${entityType}`, id],
     ([path, id], { arg }: { arg: UpdateArg }) =>
       put(`${path}/${id}/tags/${arg.name}`, arg.value).then(
-        (response) => response.data
-      )
+        (response) => response.data,
+      ),
   );
 
   return {
@@ -38,12 +38,12 @@ export const useUpdate = (entityType: string, id: Uuid) => {
   };
 };
 
-export const useDelete = (entityType:string, id: Uuid) => {
+export const useDelete = (entityType: string, id: Uuid) => {
   const { del } = useApi();
   const { trigger, isMutating } = useSWRMutation(
     [`/${entityType}`, id],
     ([path, id], { arg }: { arg: DeleteArg }) =>
-      del(`${path}/${id}/tags/${arg.name}`).then((response) => response.data)
+      del(`${path}/${id}/tags/${arg.name}`).then((response) => response.data),
   );
 
   return {
@@ -60,12 +60,12 @@ export const useBulkUpdate = (entityType: string) => {
       const promises = arg.entityIds.map((entityId) =>
         put(
           `/${entityType}/${entityId}/tags/${arg.tagName}`,
-          arg.tagValue
-        ).then((response) => response.data)
+          arg.tagValue,
+        ).then((response) => response.data),
       );
 
       return Promise.all(promises);
-    }
+    },
   );
 
   return {
@@ -81,12 +81,12 @@ export const useBulkDelete = (entityType: string) => {
     ([, entityType], { arg }: { arg: BulkDeleteArg }) => {
       const promises = arg.entityIds.map((entityId) =>
         del(`/${entityType}/${entityId}/tags/${arg.tagName}`).then(
-          (response) => response.data
-        )
+          (response) => response.data,
+        ),
       );
 
       return Promise.all(promises);
-    }
+    },
   );
 
   return {

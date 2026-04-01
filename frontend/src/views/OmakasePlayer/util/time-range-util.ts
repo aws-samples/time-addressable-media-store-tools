@@ -79,35 +79,35 @@ export class TimeRangeUtil {
   static formatTimeMomentToTimecodeText(
     timeMoment: TimeMoment,
     frameRateFraction: string,
-    audioOnly: boolean = false
+    audioOnly: boolean = false,
   ): string {
     let frameRate =
       FrameRateUtil.resolveFrameRateValueFromFraction(frameRateFraction);
     return TimecodeUtil.formatToTimecode(
       TimeRangeUtil.timeMomentToSeconds(timeMoment),
       frameRate,
-      audioOnly
+      audioOnly,
     );
   }
 
   static formatTimerangeToTimecodeText(
     timerange: string,
     frameRateFraction: string,
-    audioOnly: boolean = false
+    audioOnly: boolean = false,
   ): string {
     let timeRange = TimeRangeUtil.parseTimeRange(timerange);
     let from = timeRange.start
       ? TimeRangeUtil.formatTimeMomentToTimecodeText(
           timeRange.start,
           frameRateFraction,
-          audioOnly
+          audioOnly,
         )
       : "?";
     let to = timeRange.end
       ? TimeRangeUtil.formatTimeMomentToTimecodeText(
           timeRange.end,
           frameRateFraction,
-          audioOnly
+          audioOnly,
         )
       : "?";
     return `${from} - ${to}`;
@@ -159,7 +159,7 @@ export class TimeRangeUtil {
     start?: TimeMoment,
     end?: TimeMoment,
     isStartInclusive = true,
-    isEndInclusive = true
+    isEndInclusive = true,
   ): TimeRange {
     return {
       start: start,

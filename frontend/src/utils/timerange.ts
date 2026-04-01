@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import type { TimerangeDateTimeResult } from "@/types/utils"
+import type { TimerangeDateTimeResult } from "@/types/utils";
 
 type TimerangeBigIntResult = {
   includesStart: boolean;

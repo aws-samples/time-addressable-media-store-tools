@@ -13,10 +13,10 @@ export const useParameter = (parameterName: string) => {
         credentials,
       });
       const response = await client.send(
-        new GetParameterCommand({ Name: parameterName })
+        new GetParameterCommand({ Name: parameterName }),
       );
       return JSON.parse(response.Parameter?.Value || "{}");
-    }
+    },
   );
 
   return {

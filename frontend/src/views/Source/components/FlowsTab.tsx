@@ -22,14 +22,11 @@ const FlowsTab = ({ sourceId }: { sourceId: Uuid }) => {
       cell: (item) => item.description,
       sortingField: "description",
     },
-  ]
+  ];
 
-  const { items, collectionProps } = useCollection(
-    flows ?? [],
-    {
-      sorting: {},
-    }
-  );
+  const { items, collectionProps } = useCollection(flows ?? [], {
+    sorting: {},
+  });
 
   return flows ? (
     <Table

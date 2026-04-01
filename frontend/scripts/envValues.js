@@ -20,7 +20,7 @@ async function parseToml(tomlPath, env) {
     tomlParameters.parameter_overrides.split(/\s+/).map((pair) => {
       const [key, value] = pair.split("=");
       return [key, value.replace(/"/g, "")];
-    })
+    }),
   );
   const result = {
     profile: tomlParameters.profile || null,
@@ -28,11 +28,13 @@ async function parseToml(tomlPath, env) {
     apiStackName: parameterOverrides.ApiStackName,
     toolsStackName: tomlParameters.stack_name,
   };
-  if ([result.region, result.apiStackName, result.toolsStackName].some((v) => !v)) {
+  if (
+    [result.region, result.apiStackName, result.toolsStackName].some((v) => !v)
+  ) {
     console.log(
       chalk.yellow(
-        "Unable to find Region and/or Stack Name(s) in specified toml."
-      )
+        "Unable to find Region and/or Stack Name(s) in specified toml.",
+      ),
     );
     console.log(
       "Expecting to find properties with names:",
@@ -43,14 +45,14 @@ async function parseToml(tomlPath, env) {
       chalk.yellow("parameter_overrides"),
       "in the",
       chalk.yellow("[<env>.deploy.parameters]"),
-      "section of the toml file."
+      "section of the toml file.",
     );
     console.log(
       "The",
       chalk.yellow("parameter_overrides"),
       "value needs to contain the the",
       chalk.yellow("ApiStackName"),
-      "parameter value."
+      "parameter value.",
     );
     process.exit(1);
   }
@@ -94,19 +96,19 @@ async function run(samConfigEnv, options) {
   const apiOutputsRaw = await getCloudFormationOutputs(
     tomlData.profile,
     tomlData.region,
-    tomlData.apiStackName
+    tomlData.apiStackName,
   );
   const toolsOutputsRaw = await getCloudFormationOutputs(
     tomlData.profile,
     tomlData.region,
-    tomlData.toolsStackName
+    tomlData.toolsStackName,
   );
   const outputs = {
     ...Object.fromEntries(
       [...apiOutputsRaw, ...toolsOutputsRaw].map((output) => [
         output.OutputKey,
         output.OutputValue,
-      ])
+      ]),
     ),
     Region: tomlData.region,
   };
@@ -123,7 +125,7 @@ async function run(samConfigEnv, options) {
           processedLine = processedLine.replace(match[0], outputs[match[1]]);
         } else {
           console.log(
-            chalk.yellow(`No output found for placeholder: ${match[1]}`)
+            chalk.yellow(`No output found for placeholder: ${match[1]}`),
           );
         }
       }
@@ -137,22 +139,22 @@ program
   .name("envValues")
   .version("0.1.0")
   .description(
-    "Creates the .env.local file with the CloudFormation stack outputs"
+    "Creates the .env.local file with the CloudFormation stack outputs",
   )
   .argument(
     "[samConfigEnv]",
     "The SAM environment to use to generate the config file",
-    "default"
+    "default",
   )
   .option(
     "-t, --env-template <value>",
     "The path to the .env.template file.",
-    "./.env.template"
+    "./.env.template",
   )
   .option(
     "-s, --sam-toml-config <value>",
     "The path to the samconfig toml file.",
-    "../backend/samconfig.toml"
+    "../backend/samconfig.toml",
   )
   .option("-o, --output-path <value>", "The output file path.", "./.env.local")
   .action((samConfigEnv, options) => {

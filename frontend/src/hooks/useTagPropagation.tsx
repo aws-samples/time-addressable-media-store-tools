@@ -37,27 +37,27 @@ export const useTagPropagation = () => {
       entityType === "flows"
         ? await collectFlowPropagationEntities(entity as Flow, fetchFlow)
         : await collectSourcePropagationEntities(
-          entity.id,
-          fetchFlow,
-          fetchFlowsBySource
-        );
+            entity.id,
+            fetchFlow,
+            fetchFlowsBySource,
+          );
 
     let promises;
 
     const entityIds = [
-      { ids: entities.flowIds, type: 'flows' as const },
-      { ids: entities.sourceIds, type: 'sources' as const },
+      { ids: entities.flowIds, type: "flows" as const },
+      { ids: entities.sourceIds, type: "sources" as const },
     ];
 
     switch (action) {
       case "update": {
         const updateFns = {
           flows: bulkUpdateFlows,
-          sources: bulkUpdateSources
+          sources: bulkUpdateSources,
         };
-        const entityGroups = entityIds.map(group => ({
+        const entityGroups = entityIds.map((group) => ({
           ids: group.ids,
-          bulkFn: updateFns[group.type]
+          bulkFn: updateFns[group.type],
         }));
         promises = entityGroups
           .filter((group) => group.ids.size > 0)
@@ -77,11 +77,11 @@ export const useTagPropagation = () => {
       case "delete": {
         const deleteFns = {
           flows: bulkDeleteFlows,
-          sources: bulkDeleteSources
+          sources: bulkDeleteSources,
         };
-        const entityGroups = entityIds.map(group => ({
+        const entityGroups = entityIds.map((group) => ({
           ids: group.ids,
-          bulkFn: deleteFns[group.type]
+          bulkFn: deleteFns[group.type],
         }));
         promises = entityGroups
           .filter((group) => group.ids.size > 0)

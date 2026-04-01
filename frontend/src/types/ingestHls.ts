@@ -14,7 +14,7 @@ export type JobIngestion = {
   manifestExists: boolean;
   status: JobStatus;
   jobPercentComplete: number | null;
-}
+};
 
 export type ChannelIngestion = {
   id: string;
@@ -22,7 +22,7 @@ export type ChannelIngestion = {
   manifestUri: string | null;
   manifestExists: boolean;
   state: ChannelState;
-}
+};
 
 export type Workflow = {
   executionArn: string;
@@ -31,4 +31,4 @@ export type Workflow = {
   status: ExecutionStatus;
   startDate: string;
   stopDate: string | null;
-}
+};

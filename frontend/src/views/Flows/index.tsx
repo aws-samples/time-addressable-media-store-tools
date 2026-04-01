@@ -152,24 +152,26 @@ const collectionPreferencesProps = {
 const Flows = () => {
   const preferences = usePreferencesStore((state) => state.flowsPreferences);
   const setPreferences = usePreferencesStore(
-    (state) => state.setFlowsPreferences
+    (state) => state.setFlowsPreferences,
   );
   const showHierarchy = usePreferencesStore(
-    (state) => state.flowsShowHierarchy
+    (state) => state.flowsShowHierarchy,
   );
   const setShowHierarchy = usePreferencesStore(
-    (state) => state.setFlowsShowHierarchy
+    (state) => state.setFlowsShowHierarchy,
   );
   const { flows, isLoading } = useFlows();
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(flows ?? [], {
-      expandableRows: showHierarchy ? {
-        getId: (item) => item.id,
-        getParentId: (item) =>
-          item.collected_by ? item.collected_by[0] : null,
-      } : undefined,
+      expandableRows: showHierarchy
+        ? {
+            getId: (item) => item.id,
+            getParentId: (item) =>
+              item.collected_by ? item.collected_by[0] : null,
+          }
+        : undefined,
       filtering: {
         empty: (
           <Box margin={{ vertical: "xs" }} textAlign="center" color="inherit">
@@ -194,21 +196,27 @@ const Flows = () => {
   const { selectedItems } = collectionProps;
 
   // Cascade selection to immediate children
-  const handleSelectionChange = (event: NonCancelableCustomEvent<TableProps.SelectionChangeDetail<Flow>>) => {
+  const handleSelectionChange = (
+    event: NonCancelableCustomEvent<TableProps.SelectionChangeDetail<Flow>>,
+  ) => {
     if (!showHierarchy) {
       collectionProps.onSelectionChange?.(event);
       return;
     }
     const newSelection = event.detail.selectedItems;
-    const previousIds = new Set(selectedItems?.map((item: Flow) => item.id) ?? []);
+    const previousIds = new Set(
+      selectedItems?.map((item: Flow) => item.id) ?? [],
+    );
     const newIds = new Set(newSelection.map((item: Flow) => item.id));
-    const added = newSelection.filter((item: Flow) => !previousIds.has(item.id));
+    const added = newSelection.filter(
+      (item: Flow) => !previousIds.has(item.id),
+    );
     const removedIds = [...previousIds].filter((id: Uuid) => !newIds.has(id));
     let result = [...newSelection];
     // Add children of newly selected parents
     added.forEach((parent: Flow) => {
       const children = (flows ?? []).filter(
-        (f) => f.collected_by && f.collected_by[0] === parent.id
+        (f) => f.collected_by && f.collected_by[0] === parent.id,
       );
       children.forEach((child) => {
         if (!result.some((item) => item.id === child.id)) {
@@ -220,7 +228,7 @@ const Flows = () => {
     // Remove children of deselected parents
     removedIds.forEach((parentId) => {
       result = result.filter(
-        (item) => !(item.collected_by && item.collected_by[0] === parentId)
+        (item) => !(item.collected_by && item.collected_by[0] === parentId),
       );
     });
 

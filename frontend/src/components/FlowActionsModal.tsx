@@ -7,11 +7,11 @@ import FlowCreateJobModal from "@/components/FlowCreateJobModal";
 import type { Flow } from "@/types/tams";
 
 type Props = {
-  selectedItems: readonly Flow[],
-  actionId: string,
-  modalVisible: boolean,
-  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>,
-}
+  selectedItems: readonly Flow[];
+  actionId: string;
+  modalVisible: boolean;
+  setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
+};
 
 const FlowActionsModal = ({
   selectedItems,

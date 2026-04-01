@@ -21,11 +21,11 @@ import type { Uuid, Flow, Timerange } from "@/types/tams";
 import type { MultiselectProps } from "@cloudscape-design/components";
 
 type Props = {
-  sourceId: Uuid,
-  editTimeranges?: Timerange[],
-  flows: Flow[],
-  onModalToggle: React.Dispatch<React.SetStateAction<boolean>>,
-  isModalOpen: boolean,
+  sourceId: Uuid;
+  editTimeranges?: Timerange[];
+  flows: Flow[];
+  onModalToggle: React.Dispatch<React.SetStateAction<boolean>>;
+  isModalOpen: boolean;
 };
 
 const OmakaseExportModal = ({
@@ -75,7 +75,7 @@ const OmakaseExportModal = ({
         value: flow.id,
         tags: [flow.format],
       })) ?? [],
-    [flows]
+    [flows],
   );
   const [selectedFlows, setSelectedFlows] = useState(flowOptions);
 
@@ -90,7 +90,7 @@ const OmakaseExportModal = ({
       editTimeranges ?? [],
       selectedFlows.map((flow) => flow.value!),
       sourceId,
-      credentials
+      credentials,
     );
     const id = crypto.randomUUID();
     addAlertItem({
@@ -111,7 +111,12 @@ const OmakaseExportModal = ({
   }, [selectedFlows.length, isFormValid]);
 
   const handleCreateJob = () => {
-    createJob({ jobSpec, sourceId, fileName, timeranges: editTimeranges ?? [] });
+    createJob({
+      jobSpec,
+      sourceId,
+      fileName,
+      timeranges: editTimeranges ?? [],
+    });
   };
 
   return (

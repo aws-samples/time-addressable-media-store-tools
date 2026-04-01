@@ -8,7 +8,7 @@ import {
   Checkbox,
   Textarea,
 } from "@cloudscape-design/components";
-import { JsonSchema, FormData } from "@/types/hooks"
+import { JsonSchema, FormData } from "@/types/hooks";
 
 type FieldSchema = {
   title?: string;
@@ -47,7 +47,7 @@ const DynamicForm = ({ schema, formData, onChange }: Props) => {
         ([value, label]) => ({
           value,
           label,
-        })
+        }),
       );
       const selectedOption = options.find((opt) => opt.value === value);
 
@@ -144,7 +144,7 @@ const DynamicForm = ({ schema, formData, onChange }: Props) => {
     <Container header={<Header variant="h3">Configuration</Header>}>
       <SpaceBetween direction="vertical" size="xs">
         {Object.entries(schema.properties).map(([fieldName, fieldSchema]) =>
-          renderField(fieldName, fieldSchema)
+          renderField(fieldName, fieldSchema),
         )}
       </SpaceBetween>
     </Container>

@@ -16,14 +16,16 @@ import StartIngestModal from "./components/StartIngestModal";
 import ConfirmationModal from "./components/ConfirmationModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useChannels } from "@/hooks/useChannels";
-import type { ChannelIngestion } from "@/types/ingestHls"
+import type { ChannelIngestion } from "@/types/ingestHls";
 import type { ButtonGroupProps } from "@cloudscape-design/components";
 import type { TableProps } from "@cloudscape-design/components";
 
 const MediaLiveHlsIngestion = () => {
   const { channels, isLoading } = useChannels();
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<ChannelIngestion | undefined>(undefined);
+  const [selectedItem, setSelectedItem] = useState<
+    ChannelIngestion | undefined
+  >(undefined);
   const [actionId, setActionId] = useState("");
 
   const preferences = {
@@ -141,8 +143,13 @@ const MediaLiveHlsIngestion = () => {
       selection: {},
     });
 
-
-  const handleClick = ({ detail, item }: { detail: ButtonGroupProps.ItemClickDetails, item: ChannelIngestion }) => {
+  const handleClick = ({
+    detail,
+    item,
+  }: {
+    detail: ButtonGroupProps.ItemClickDetails;
+    item: ChannelIngestion;
+  }) => {
     setSelectedItem(item);
     setActionId(detail.id);
     setModalVisible(true);

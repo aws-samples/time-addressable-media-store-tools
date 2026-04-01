@@ -13,7 +13,12 @@ import { buildStylesheet } from "./constants.js";
 import { getElements } from "./utils";
 import { useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
-import type { Core, EventObject, NodeSingular, ElementDefinition } from 'cytoscape';
+import type {
+  Core,
+  EventObject,
+  NodeSingular,
+  ElementDefinition,
+} from "cytoscape";
 
 const Diagram = () => {
   const { type, id } = useParams();
@@ -34,7 +39,9 @@ const Diagram = () => {
     };
     loadData();
 
-    return () => { cyRef.current?.removeAllListeners(); };
+    return () => {
+      cyRef.current?.removeAllListeners();
+    };
   }, [type, id, api]);
 
   const handleZoom = (action: "in" | "out") => {

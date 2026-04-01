@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { Table } from "@cloudscape-design/components";
 import { useCollection } from "@cloudscape-design/collection-hooks";
-import type { FlowCollection, CollectionItem } from "@/types/tams"
+import type { FlowCollection, CollectionItem } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
 type Props = {
-  entityType: string,
-  collection: FlowCollection,
-}
+  entityType: string;
+  collection: FlowCollection;
+};
 
 const Collection = ({ entityType, collection }: Props) => {
   const columnDefinitions: TableProps.ColumnDefinition<CollectionItem>[] = [
@@ -24,14 +24,11 @@ const Collection = ({ entityType, collection }: Props) => {
       cell: (item) => item.role,
       sortingField: "role",
     },
-  ]
+  ];
 
-  const { items, collectionProps } = useCollection(
-    collection ?? [],
-    {
-      sorting: {},
-    }
-  );
+  const { items, collectionProps } = useCollection(collection ?? [], {
+    sorting: {},
+  });
 
   return collection ? (
     <Table

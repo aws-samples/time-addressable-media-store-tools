@@ -55,7 +55,7 @@ const OmakaseSegmentationHeader = ({
           (marker) =>
             marker instanceof PeriodMarker &&
             marker.timeObservation.start != null &&
-            marker.timeObservation.end != null
+            marker.timeObservation.end != null,
         ).length === 0
     ) {
       return true;
@@ -92,14 +92,14 @@ const OmakaseSegmentationHeader = ({
 
     return () =>
       [subscriptionUpdate, subscriptionDelete, subscriptionCreate].forEach(
-        (sub) => sub.unsubscribe()
+        (sub) => sub.unsubscribe(),
       );
   }, [source]);
 
   const handleExportModal = () => {
     setEditTimeranges(
       // @ts-ignore
-      createEditTimeranges(sourceMarkerList, markerOffset, omakasePlayer)
+      createEditTimeranges(sourceMarkerList, markerOffset, omakasePlayer),
     );
     setOmakaseModalVisible(true);
   };

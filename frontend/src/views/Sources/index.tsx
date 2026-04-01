@@ -103,24 +103,26 @@ const collectionPreferencesProps = {
 const Sources = () => {
   const preferences = usePreferencesStore((state) => state.sourcesPreferences);
   const setPreferences = usePreferencesStore(
-    (state) => state.setSourcesPreferences
+    (state) => state.setSourcesPreferences,
   );
   const showHierarchy = usePreferencesStore(
-    (state) => state.sourcesShowHierarchy
+    (state) => state.sourcesShowHierarchy,
   );
   const setShowHierarchy = usePreferencesStore(
-    (state) => state.setSourcesShowHierarchy
+    (state) => state.setSourcesShowHierarchy,
   );
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
   const { sources, isLoading } = useSources();
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(sources ?? [], {
-      expandableRows: showHierarchy ? {
-        getId: (item) => item.id,
-        getParentId: (item) =>
-          item.collected_by ? item.collected_by[0] : null,
-      } : undefined,
+      expandableRows: showHierarchy
+        ? {
+            getId: (item) => item.id,
+            getParentId: (item) =>
+              item.collected_by ? item.collected_by[0] : null,
+          }
+        : undefined,
       filtering: {
         empty: (
           <Box margin={{ vertical: "xs" }} textAlign="center" color="inherit">

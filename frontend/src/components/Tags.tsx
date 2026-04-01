@@ -17,9 +17,9 @@ import type { TableProps } from "@cloudscape-design/components";
 type TagItem = { key: TagName; value: string };
 
 type Props = {
-  entityType: string,
-  entity: Flow | Source,
-}
+  entityType: string;
+  entity: Flow | Source;
+};
 
 const isUrl = (text: string) => {
   try {
@@ -70,7 +70,16 @@ const Tags = ({ entityType, entity }: Props) => {
       },
       sortingField: "value",
       editConfig: {
-        editingCell: (item, { currentValue, setValue }: { currentValue: string | undefined, setValue: (value: string) => void }) => {
+        editingCell: (
+          item,
+          {
+            currentValue,
+            setValue,
+          }: {
+            currentValue: string | undefined;
+            setValue: (value: string) => void;
+          },
+        ) => {
           return (
             <Input
               autoFocus
@@ -98,9 +107,9 @@ const Tags = ({ entityType, entity }: Props) => {
   const { items, collectionProps } = useCollection(
     entity.tags
       ? Object.entries(entity.tags).map(([key, value]) => ({
-        key,
-        value: [value].flat().join(","),
-      }))
+          key,
+          value: [value].flat().join(","),
+        }))
       : [],
     { sorting: {} },
   );
@@ -116,7 +125,11 @@ const Tags = ({ entityType, entity }: Props) => {
             columnDefinitions={columnDefinitions}
             contentDensity="compact"
             items={items}
-            submitEdit={async (item: TagItem, _: TableProps.ColumnDefinition<TagItem>, newValue: unknown) => {
+            submitEdit={async (
+              item: TagItem,
+              _: TableProps.ColumnDefinition<TagItem>,
+              newValue: unknown,
+            ) => {
               const value = newValue as string;
               await update({
                 name: item.key,

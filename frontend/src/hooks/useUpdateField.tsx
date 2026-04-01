@@ -13,8 +13,8 @@ export const useUpdateField = (entityType: string, id: Uuid) => {
     [`/${entityType}`, id],
     ([path, id], { arg }: { arg: UpdateArg }) =>
       put(`${path}/${id}/${arg.field}`, arg.value).then(
-        (response) => response.data
-      )
+        (response) => response.data,
+      ),
   );
 
   return {
