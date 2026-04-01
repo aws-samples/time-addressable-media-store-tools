@@ -79,3 +79,20 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
+
+  # JavaScript/TypeScript
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json]
+
+  # GitDefender (preserving existing security tool)
+  - repo: local
+    hooks:
+      - id: git-defender
+        name: GitDefender Security Scan
+        entry: "C:\\Program Files\\GitDefender\\lib\\git-defender\\hooks\\pre-commit"
+        language: system
+        pass_filenames: false
+        always_run: true
