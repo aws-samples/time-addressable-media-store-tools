@@ -111,8 +111,6 @@ Then take the contents of the `dist` subfolder and place this on the web server 
 
 In the initial state the Web App will have a simple interface. This allows you to browse and view the basic data held in your TAMS store. It also includes MediaConvert job management and enhanced export capabilities.
 
-Four optional components can be deployed to the infrastructure to add additional functionality. The deployment of these components is expected to be done from the AWS CloudFormation Console. Changes should be made by updating the stack parameters for the CloudFormation Stack created for the infrastructure.
-
 **NOTE: The Web UI is authenticated using the same OIDC provider as the TAMS API. When using Cognito, you will need to create a user in the Cognito User Pool to login.**
 
 ### Core Features
