@@ -68,7 +68,7 @@ Parameters:
 
   OAuthClientSecret:
     Type: String
-    Default: ""
+    Default: "-"
     NoEcho: True
 
   OAuthAuthorizationEndpoint:
@@ -116,7 +116,7 @@ Mappings:
       Version: "4.1"
 
 Conditions:
-  UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, ""], !Equals [!Ref OAuthAuthorizationEndpoint, ""] ]
+  UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, "-"], !Equals [!Ref OAuthAuthorizationEndpoint, ""] ]
 
   DeployHlsApi: !Equals [!Ref DeployHlsApi, "Yes"]
 
