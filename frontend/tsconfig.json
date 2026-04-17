@@ -5,6 +5,7 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
 
     // React & JSX
     "jsx": "react-jsx",
@@ -12,6 +13,7 @@
     "declaration": true,
     "declarationDir": "types",
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
