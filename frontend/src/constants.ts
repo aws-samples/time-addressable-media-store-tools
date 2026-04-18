@@ -106,7 +106,7 @@ export const TAMS_PAGE_LIMIT = 300;
 export const SEGMENT_COUNT = 30;
 export const STATUS_MAPPINGS: Record<
   string,
-  "warning" | "success" | "error" | "loading" | "stopped" | "info"
+  "warning" | "success" | "error" | "loading" | "stopped" | "info" | "pending" | "in-progress"
 > = {
   ABORTED: "warning",
   CANCELED: "warning",
@@ -129,6 +129,10 @@ export const STATUS_MAPPINGS: Record<
   TIMED_OUT: "error",
   UPDATE_FAILED: "error",
   UPDATING: "loading",
+  created: "pending",
+  started: "in-progress",
+  disabled: "stopped",
+  error: "error"
 } as const;
 export const DATE_FORMAT: Intl.DateTimeFormatOptions = {
   year: "numeric",

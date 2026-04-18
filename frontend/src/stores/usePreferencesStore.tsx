@@ -25,6 +25,9 @@ type PreferencesStore = {
   segmentsPreferences: Preferences;
   setSegmentsPreferences: (preferences: Preferences) => void;
 
+  webhooksPreferences: Preferences;
+  setWebhooksPreferences: (preferences: Preferences) => void;
+
   ffmpegExportsPreferences: Preferences;
   setFfmpegExportsPreferences: (preferences: Preferences) => void;
 
@@ -108,6 +111,28 @@ const usePreferencesStore = create<PreferencesStore>()(
       },
       setSegmentsPreferences: (preferences) =>
         set({ segmentsPreferences: preferences }),
+
+      webhooksPreferences: {
+        pageSize: PAGE_SIZE,
+        contentDisplay: [
+          { id: "id", visible: true },
+          { id: "url", visible: true },
+          { id: "api_key_name", visible: true },
+          { id: "status", visible: true },
+          { id: "events", visible: true },
+          { id: "flow_ids", visible: false },
+          { id: "source_ids", visible: false },
+          { id: "flow_collected_by_ids", visible: false },
+          { id: "source_collected_by_ids", visible: false },
+          { id: "accept_get_urls", visible: false },
+          { id: "accept_storage_ids", visible: false },
+          { id: "presigned", visible: false },
+          { id: "verbose_storage", visible: false },
+        ],
+      },
+      setWebhooksPreferences: (preferences) =>
+        set({ webhooksPreferences: preferences }),
+
 
       ffmpegExportsPreferences: {
         pageSize: PAGE_SIZE,

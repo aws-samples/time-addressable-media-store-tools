@@ -10,6 +10,10 @@ export type Object = Schemas["object"];
 export type Timerange = Schemas["timerange"];
 export type FlowCollection = Schemas["flow-collection"];
 export type CollectionItem = Schemas["collection-item"];
+export type WebhookGet = Schemas["webhook-get"];
+export type Error = Schemas["error"];
+export type WebhookPost = Schemas["webhook-post"];
+export type WebhookPut = Schemas["webhook-put"];
 
 // Manually defined types
 export type TagName = string;

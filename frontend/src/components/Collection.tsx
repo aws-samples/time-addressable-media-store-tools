@@ -30,7 +30,7 @@ const Collection = ({ entityType, collection }: Props) => {
     sorting: {},
   });
 
-  return collection ? (
+  return collection.length > 0 ? (
     <Table
       {...collectionProps}
       trackBy="id"

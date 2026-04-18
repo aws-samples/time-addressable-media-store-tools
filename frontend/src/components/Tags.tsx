@@ -11,14 +11,14 @@ import { useUpdate } from "@/hooks/useTags";
 import TagAddModal from "./TagAddModal";
 import TagDeleteModal from "./TagDeleteModal";
 import { useState } from "react";
-import type { Flow, Source, TagName } from "@/types/tams";
+import type { Flow, Source, TagName, WebhookGet } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
 type TagItem = { key: TagName; value: string };
 
 type Props = {
   entityType: string;
-  entity: Flow | Source;
+  entity: Flow | Source | WebhookGet;
 };
 
 const isUrl = (text: string) => {
@@ -69,7 +69,7 @@ const Tags = ({ entityType, entity }: Props) => {
         return item.value;
       },
       sortingField: "value",
-      editConfig: {
+      editConfig: entityType !== "webhooks" ? {
         editingCell: (
           item,
           {
@@ -88,12 +88,12 @@ const Tags = ({ entityType, entity }: Props) => {
             />
           );
         },
-      },
+      } : undefined,
     },
-    {
+    ...(entityType !== "webhooks" ? [{
       id: "delete",
       header: "",
-      cell: (item) => (
+      cell: (item: TagItem) => (
         <Button
           iconName="remove"
           variant="icon"
@@ -101,15 +101,15 @@ const Tags = ({ entityType, entity }: Props) => {
         />
       ),
       width: 32,
-    },
+    }] : []),
   ];
 
   const { items, collectionProps } = useCollection(
     entity.tags
       ? Object.entries(entity.tags).map(([key, value]) => ({
-          key,
-          value: [value].flat().join(","),
-        }))
+        key,
+        value: [value].flat().join(","),
+      }))
       : [],
     { sorting: {} },
   );
@@ -142,9 +142,11 @@ const Tags = ({ entityType, entity }: Props) => {
         ) : (
           <TextContent>No tags</TextContent>
         )}
-        <Button iconName="add-plus" variant="normal" onClick={handleAdd}>
-          Add Tag
-        </Button>
+        {entityType !== "webhooks" && (
+          <Button iconName="add-plus" variant="normal" onClick={handleAdd}>
+            Add Tag
+          </Button>
+        )}
       </SpaceBetween>
       {
         {
@@ -153,7 +155,7 @@ const Tags = ({ entityType, entity }: Props) => {
               modalVisible={modalVisible}
               setModalVisible={setModalVisible}
               entityType={entityType}
-              entity={entity}
+              entity={entity as Source | Flow}
             />
           ),
           delete: (
@@ -161,7 +163,7 @@ const Tags = ({ entityType, entity }: Props) => {
               modalVisible={modalVisible}
               setModalVisible={setModalVisible}
               entityType={entityType}
-              entity={entity}
+              entity={entity as Source | Flow}
               tagName={tagName}
             />
           ),

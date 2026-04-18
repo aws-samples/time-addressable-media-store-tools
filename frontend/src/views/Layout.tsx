@@ -64,6 +64,7 @@ const Layout = () => {
         items: [
           { type: "link", text: "Sources", href: "/sources" },
           { type: "link", text: "Flows", href: "/flows" },
+          { type: "link", text: "Webhooks", href: "/webhooks" },
         ],
       },
     ];

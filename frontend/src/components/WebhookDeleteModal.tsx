@@ -3,16 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Modal, TextContent } from "@cloudscape-design/components";
 import CancelModalFooter from "@/components/CancelModalFooter";
 import useAlertsStore from "@/stores/useAlertsStore";
-import { useDelete } from "@/hooks/useFlows";
-import type { Flow } from "@/types/tams";
+import { useDelete } from "@/hooks/useWebhooks";
+import type { WebhookGet } from "@/types/tams";
 
 type Props = {
   modalVisible: boolean;
   setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedItems: readonly Flow[];
+  selectedItems: readonly WebhookGet[];
 };
 
-const FlowDeleteModal = ({
+const WebhookDeleteModal = ({
   modalVisible,
   setModalVisible,
   selectedItems,
@@ -25,14 +25,14 @@ const FlowDeleteModal = ({
 
   const deleteFlow = async () => {
     setIsDeleting(true);
-    const promises = selectedItems.map((item) => del({ flowId: item.id }));
+    const promises = selectedItems.map((item) => del({ webhookId: item.id }));
     const id = crypto.randomUUID();
     addAlertItems(
-      selectedItems.map((flow, n) => ({
+      selectedItems.map((webhook, n) => ({
         type: "success",
         dismissible: true,
         dismissLabel: "Dismiss message",
-        content: `Flow ${flow.id} is being deleted. This will happen asynchronously`,
+        content: `Webhook ${webhook.id} is being deleted. This will happen asynchronously`,
         id: `${id}-${n}`,
         onDismiss: () => delAlertItem(`${id}-${n}`),
       })),
@@ -40,7 +40,7 @@ const FlowDeleteModal = ({
     await Promise.all(promises);
     setIsDeleting(false);
     setModalVisible(false);
-    navigate("/flows");
+    navigate("/webhooks");
   };
 
   const handleDismiss = () => {
@@ -63,10 +63,10 @@ const FlowDeleteModal = ({
       header="Confirmation"
     >
       <TextContent>
-        Are you sure you wish to DELETE the selected Flow(s)?
+        Are you sure you wish to DELETE the selected Webhooks(s)?
       </TextContent>
     </Modal>
   );
 };
 
-export default FlowDeleteModal;
+export default WebhookDeleteModal;

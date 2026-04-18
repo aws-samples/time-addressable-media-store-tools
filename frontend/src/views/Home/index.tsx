@@ -36,6 +36,8 @@ const Home = () => {
         : ""
   }.
 
+  - **Webhooks** shows the registered webhooks in the TAMS store. You can view webhook details, register new webhooks, update existing configurations, and monitor webhook status.
+
   On each of these pages you can access:
   ${
     IS_HLS_DEPLOYED

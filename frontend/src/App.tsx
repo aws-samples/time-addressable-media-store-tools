@@ -25,6 +25,8 @@ import MediaConvertTamsJobs from "@/views/MediaConvertTamsJobs";
 import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
+import Webhook from "@/views/Webhook";
+import Webhooks from "@/views/Webhooks";
 import { AuthProvider } from "react-oidc-context";
 import AuthGuard from "@/components/AuthGuard";
 
@@ -58,6 +60,10 @@ const App = () => {
               <Route path="flows">
                 <Route index element={<Flows />} />
                 <Route path=":flowId" element={<Flow />} />
+              </Route>
+              <Route path="webhooks">
+                <Route index element={<Webhooks />} />
+                <Route path=":webhookId" element={<Webhook />} />
               </Route>
               <Route path="diagram/:type/:id" element={<Diagram />} />
               <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
