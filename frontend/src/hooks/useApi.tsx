@@ -33,6 +33,23 @@ export const useApi = () => {
 
       const links = parseLinkHeader(response.headers.get("link") || undefined);
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        let errorMessage = '';
+        if (Array.isArray(errorData.message)) {
+          // Pydantic validation errors
+          errorMessage = errorData.message
+            .map((err: { loc?: (string | number)[]; msg: string }) => {
+              const field = err.loc?.slice(1).join('.') || 'unknown field';
+              return `${field}: ${err.msg}`;
+            })
+            .join('; ');
+        } else {
+          errorMessage = errorData.message || errorData.detail || errorData.error || JSON.stringify(errorData);
+        }
+        throw new Error(`HTTP ${response.status}: ${errorMessage}`);
+      }
+
       return {
         data: await response.json().catch(() => ({})),
         headers: Object.fromEntries(response.headers.entries()),
@@ -47,6 +64,8 @@ export const useApi = () => {
         makeRequest("PUT", path, { ...options, body: jsonBody }),
       del: (path: string, options: RequestOptions = {}) =>
         makeRequest("DELETE", path, options),
+      post: (path: string, jsonBody: unknown, options: RequestOptions = {}) =>
+        makeRequest("POST", path, { ...options, body: jsonBody }),
     };
   }, [auth.user?.access_token]);
 };

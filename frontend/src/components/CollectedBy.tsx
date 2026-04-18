@@ -8,7 +8,7 @@ type Props = {
 };
 
 const CollectedBy = ({ entityType, collectedBy }: Props) => {
-  return collectedBy ? (
+  return collectedBy.length > 0 ? (
     <TextContent>
       <ul>
         {collectedBy.map((item) => (
@@ -19,7 +19,7 @@ const CollectedBy = ({ entityType, collectedBy }: Props) => {
       </ul>
     </TextContent>
   ) : (
-    "Not collected by any flow"
+    `No ${entityType} ids.`
   );
 };
 

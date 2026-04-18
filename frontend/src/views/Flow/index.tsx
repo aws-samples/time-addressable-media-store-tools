@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 
 import CollectedBy from "@/components/CollectedBy";
 import Collection from "@/components/Collection";
-import EntityHeader from "@/components/EntityHeader";
+import EntityHeaderActions from "@/components/EntityHeaderActions";
 import EntityDetails from "@/components/EntityDetails";
 import EssenceParameters from "./components/EssenceParameters";
 import SegmentsTab from "./components/SegmentsTab";
@@ -26,8 +26,10 @@ const Flow = () => {
   return !loadingFlow ? (
     flow ? (
       <SpaceBetween size="l">
-        <Header variant="h2">
-          <EntityHeader type="Flow" entity={flow} />
+        <Header variant="h2"
+          actions={<EntityHeaderActions entityType="flows" entity={flow} />}
+        >
+          Flow details
         </Header>
         <EntityDetails entityType="flows" entity={flow} />
         <Tabs

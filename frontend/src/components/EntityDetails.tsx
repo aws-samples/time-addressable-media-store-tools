@@ -1,19 +1,21 @@
 import {
+  Badge,
   ColumnLayout,
   SpaceBetween,
+  StatusIndicator,
   CopyToClipboard,
 } from "@cloudscape-design/components";
 import { Link } from "react-router-dom";
 import ValueWithLabel from "@/components/ValueWithLabel";
 import EditableField from "@/components/EditableField";
-import { DATE_FORMAT } from "@/constants";
+import { DATE_FORMAT, STATUS_MAPPINGS } from "@/constants";
 import chunkArray from "@/utils/chunkArray";
 import { parseTimerangeDateTime } from "@/utils/timerange";
-import { Flow, Source } from "@/types/tams";
+import { Flow, Source, WebhookGet } from "@/types/tams";
 
 type Props = {
   entityType: string;
-  entity: Source | Flow;
+  entity: Source | Flow | WebhookGet;
 };
 
 const excludedFields = [
@@ -22,6 +24,11 @@ const excludedFields = [
   "collected_by",
   "essence_parameters",
   "tags",
+  "flow_ids",
+  "source_ids",
+  "flow_collected_by_ids",
+  "source_collected_by_ids",
+  "error",
 ];
 
 const editableFields = ["label", "description"];
@@ -29,7 +36,7 @@ const editableFields = ["label", "description"];
 const EntityDetails = ({ entityType, entity }: Props) => {
   if (!entity) return null;
 
-  const processEntityData = (entity: Source | Flow) => {
+  const processEntityData = (entity: Source | Flow | WebhookGet) => {
     const filteredEntity = Object.entries(entity).filter(
       ([key]) => !excludedFields.includes(key),
     );
@@ -39,10 +46,15 @@ const EntityDetails = ({ entityType, entity }: Props) => {
       ([key, value]) => typeof value !== "object" && key !== "timerange",
     );
 
-    // Add stringified object values
+    // Add stringified object values (but not arrays)
     filteredEntity
-      .filter(([, value]) => typeof value === "object")
+      .filter(([, value]) => typeof value === "object" && !Array.isArray(value))
       .forEach(([key, value]) => keyValues.push([key, JSON.stringify(value)]));
+
+    // Add arrays as-is (don't stringify)
+    filteredEntity
+      .filter(([, value]) => Array.isArray(value))
+      .forEach(([key, value]) => keyValues.push([key, value]));
 
     // Add timerange fields
     if ("timerange" in entity && entity.timerange) {
@@ -56,12 +68,19 @@ const EntityDetails = ({ entityType, entity }: Props) => {
       }
     }
 
+    // Move id to the front if it exists
+    const idEntry = keyValues.find(([key]) => key === 'id');
+    if (idEntry) {
+      const otherEntries = keyValues.filter(([key]) => key !== 'id');
+      return [idEntry, ...otherEntries];
+    }
+
     return keyValues;
   };
 
   const renderFieldValue = (
     label: string,
-    value: string | number | boolean | undefined,
+    value: string | number | boolean | undefined | string[],
   ) => {
     if (editableFields.includes(label)) {
       return (
@@ -81,6 +100,28 @@ const EntityDetails = ({ entityType, entity }: Props) => {
       return <Link to={`/sources/${value}`}>{value}</Link>;
     }
 
+    if (label === "accept_get_urls" && Array.isArray(value) && value.length === 0) {
+      return <Badge color="severity-neutral">Empty list</Badge>;
+    }
+
+    if (label === "status" && typeof value === "string") {
+      return <StatusIndicator type={STATUS_MAPPINGS[value]}>{value}</StatusIndicator>
+    }
+
+    if (label === "events" && Array.isArray(value) && value.length === 0) {
+      return <Badge color="severity-neutral">No Events</Badge>;
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <ul style={{ margin: 0 }}>
+          {value.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+
     if (typeof value === "boolean") {
       return value.toString();
     }
@@ -88,7 +129,7 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     return (
       <>
         {value}
-        {label === "id" && (
+        {label === "id" && entityType !== "webhooks" && (
           <CopyToClipboard
             copyButtonAriaLabel="Copy Id"
             copyErrorText="Id failed to copy"

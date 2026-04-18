@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 
 import CollectedBy from "@/components/CollectedBy";
 import Collection from "@/components/Collection";
-import EntityHeader from "@/components/EntityHeader";
+import EntityHeaderActions from "@/components/EntityHeaderActions";
 import EntityDetails from "@/components/EntityDetails";
 import FlowsTab from "./components/FlowsTab";
 import Tags from "@/components/Tags";
@@ -25,8 +25,10 @@ const Source = () => {
   return !loadingSource ? (
     source ? (
       <SpaceBetween size="l">
-        <Header variant="h2">
-          <EntityHeader type="Source" entity={source} />
+        <Header variant="h2"
+          actions={<EntityHeaderActions entityType="sources" entity={source} />}
+        >
+          Sources details
         </Header>
         <EntityDetails entityType="sources" entity={source} />
         <Tabs

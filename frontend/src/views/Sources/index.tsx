@@ -18,7 +18,7 @@ import usePreferencesStore from "@/stores/usePreferencesStore";
 import ReplicationModal from "@/components/ReplicationModal";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import { PAGE_SIZE_PREFERENCE, IS_REPLICATION_DEPLOYED } from "@/constants";
-import type { Uuid, Source } from "@/types/tams";
+import type { Source } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
 const columnDefinitions: TableProps.ColumnDefinition<Source>[] = [
@@ -146,7 +146,7 @@ const Sources = () => {
     });
   const { selectedItems } = collectionProps;
 
-  const handleOnClick = ({ detail }: { detail: { id: Uuid } }) => {
+  const handleOnClick = ({ detail }: { detail: { id: string } }) => {
     setActionId(detail.id);
     setModalVisible(true);
   };

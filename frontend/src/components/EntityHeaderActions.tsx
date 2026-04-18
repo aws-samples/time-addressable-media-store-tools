@@ -13,12 +13,11 @@ import getLambdaPresignedUrl from "@/utils/getLambdaPresignedUrl";
 import type { Flow, Source } from "@/types/tams";
 
 type Props = {
-  type: string;
+  entityType: string;
   entity: Source | Flow;
 };
 
-const EntityHeader = ({ type, entity }: Props) => {
-  const entityType = `${type.toLowerCase()}s`;
+const EntityHeaderActions = ({ entityType, entity }: Props) => {
   const followLink = useFollowLink();
   const credentials = useAwsCredentials();
 
@@ -32,10 +31,9 @@ const EntityHeader = ({ type, entity }: Props) => {
   };
 
   return (
-    <SpaceBetween size="xl" direction="horizontal">
-      <span>{type} details</span>
+    <SpaceBetween size="xl" direction="horizontal" alignItems="center">
       {IS_HLS_DEPLOYED && (
-        <span>
+        <>
           <Button
             href={`/hlsplayer/${entityType}/${entity.id}`}
             variant="inline-link"
@@ -58,8 +56,7 @@ const EntityHeader = ({ type, entity }: Props) => {
               onClick={handleCopyClick}
               ariaLabel="Copy Manifest link"
             />
-          </Popover>
-        </span>
+          </Popover></>
       )}
       <Button
         href={`/player/${entityType}/${entity.id}`}
@@ -85,4 +82,4 @@ const EntityHeader = ({ type, entity }: Props) => {
   );
 };
 
-export default EntityHeader;
+export default EntityHeaderActions;

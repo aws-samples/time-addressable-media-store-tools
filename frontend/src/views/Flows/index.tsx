@@ -238,7 +238,7 @@ const Flows = () => {
     });
   };
 
-  const handleOnClick = ({ detail }: { detail: { id: Uuid } }) => {
+  const handleOnClick = ({ detail }: { detail: { id: string } }) => {
     setActionId(detail.id);
     setModalVisible(true);
   };
