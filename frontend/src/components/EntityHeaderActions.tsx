@@ -67,6 +67,13 @@ const EntityHeaderActions = ({ entityType, entity }: Props) => {
         View Player
       </Button>
       <Button
+        href={`/player-tams/${entityType}/${entity.id}`}
+        variant="inline-link"
+        onFollow={followLink}
+      >
+        View TAMS Player
+      </Button>
+      <Button
         href={`/diagram/${entityType}/${entity.id}`}
         variant="inline-link"
         onFollow={followLink}
