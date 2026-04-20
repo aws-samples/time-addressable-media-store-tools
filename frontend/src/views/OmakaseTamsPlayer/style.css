@@ -1,0 +1,42 @@
+#omakase-video-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Force Omakase player to respect container width */
+#omakase-video-container .omakase-player,
+#omakase-video-container .omakase-player-wrapper,
+#omakase-video-container video {
+  width: 100%;
+  max-width: 100%;
+}
+
+#omakase-timeline {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.time-range-picker-wrapper {
+  width: 100%;
+}
+
+/* Override hardcoded widths in Omakase time range selector */
+.omakase-time-range-selector-container {
+  max-width: 100% !important;
+}
+
+.omakase-time-range-selector-segments {
+  width: 100% !important;
+}
+
+.omakase-player {
+  max-width: 100%;
+}
+
+#omakase-video-container *:focus,
+#omakase-timeline *:focus {
+  outline: none;
+  box-shadow: none;
+}
