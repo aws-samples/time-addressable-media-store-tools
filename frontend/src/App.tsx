@@ -14,6 +14,7 @@ import Flow from "@/views/Flow";
 import Flows from "@/views/Flows";
 import HlsPlayer from "@/views/HlsPlayer";
 import { OmakaseHlsPlayer } from "@/views/OmakasePlayer";
+import OmakaseTamsPlayer from "@/views/OmakaseTamsPlayer";
 import Home from "@/views/Home";
 import Layout from "@/views/Layout";
 import HlsIngestion from "@/views/HlsIngestion";
@@ -67,6 +68,10 @@ const App = () => {
               </Route>
               <Route path="diagram/:type/:id" element={<Diagram />} />
               <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
+              <Route
+                path="player-tams/:type/:id"
+                element={<OmakaseTamsPlayer />}
+              />
               {AWS_IDENTITY_POOL_ID && (
                 <>
                   {IS_HLS_DEPLOYED && (
