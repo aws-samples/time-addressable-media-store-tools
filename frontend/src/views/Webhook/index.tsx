@@ -24,10 +24,9 @@ const Webhook = () => {
   return !loadingFlow ? (
     webhook ? (
       <SpaceBetween size="l">
-        <Header variant="h2"
-          actions={
-            <WebhookActionsButton selectedItems={[webhook]} />
-          }
+        <Header
+          variant="h2"
+          actions={<WebhookActionsButton selectedItems={[webhook]} />}
         >
           Webhook details
         </Header>
@@ -79,15 +78,15 @@ const Webhook = () => {
                 />
               ),
             },
-            ...(webhook.error ? [{
-              label: "Error",
-              id: "error",
-              content: (
-                <ErrorTab
-                  error={webhook.error}
-                />
-              ),
-            }] : []),
+            ...(webhook.error
+              ? [
+                  {
+                    label: "Error",
+                    id: "error",
+                    content: <ErrorTab error={webhook.error} />,
+                  },
+                ]
+              : []),
           ]}
         />
       </SpaceBetween>

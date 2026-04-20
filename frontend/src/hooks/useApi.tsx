@@ -35,17 +35,21 @@ export const useApi = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        let errorMessage = '';
+        let errorMessage = "";
         if (Array.isArray(errorData.message)) {
           // Pydantic validation errors
           errorMessage = errorData.message
             .map((err: { loc?: (string | number)[]; msg: string }) => {
-              const field = err.loc?.slice(1).join('.') || 'unknown field';
+              const field = err.loc?.slice(1).join(".") || "unknown field";
               return `${field}: ${err.msg}`;
             })
-            .join('; ');
+            .join("; ");
         } else {
-          errorMessage = errorData.message || errorData.detail || errorData.error || JSON.stringify(errorData);
+          errorMessage =
+            errorData.message ||
+            errorData.detail ||
+            errorData.error ||
+            JSON.stringify(errorData);
         }
         throw new Error(`HTTP ${response.status}: ${errorMessage}`);
       }

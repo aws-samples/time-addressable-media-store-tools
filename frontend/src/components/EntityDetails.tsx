@@ -69,9 +69,9 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     }
 
     // Move id to the front if it exists
-    const idEntry = keyValues.find(([key]) => key === 'id');
+    const idEntry = keyValues.find(([key]) => key === "id");
     if (idEntry) {
-      const otherEntries = keyValues.filter(([key]) => key !== 'id');
+      const otherEntries = keyValues.filter(([key]) => key !== "id");
       return [idEntry, ...otherEntries];
     }
 
@@ -100,12 +100,18 @@ const EntityDetails = ({ entityType, entity }: Props) => {
       return <Link to={`/sources/${value}`}>{value}</Link>;
     }
 
-    if (label === "accept_get_urls" && Array.isArray(value) && value.length === 0) {
+    if (
+      label === "accept_get_urls" &&
+      Array.isArray(value) &&
+      value.length === 0
+    ) {
       return <Badge color="severity-neutral">Empty list</Badge>;
     }
 
     if (label === "status" && typeof value === "string") {
-      return <StatusIndicator type={STATUS_MAPPINGS[value]}>{value}</StatusIndicator>
+      return (
+        <StatusIndicator type={STATUS_MAPPINGS[value]}>{value}</StatusIndicator>
+      );
     }
 
     if (label === "events" && Array.isArray(value) && value.length === 0) {

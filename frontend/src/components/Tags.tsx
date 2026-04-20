@@ -69,47 +69,54 @@ const Tags = ({ entityType, entity }: Props) => {
         return item.value;
       },
       sortingField: "value",
-      editConfig: entityType !== "webhooks" ? {
-        editingCell: (
-          item,
-          {
-            currentValue,
-            setValue,
-          }: {
-            currentValue: string | undefined;
-            setValue: (value: string) => void;
-          },
-        ) => {
-          return (
-            <Input
-              autoFocus
-              value={currentValue ?? item.value}
-              onChange={({ detail }) => setValue(detail.value)}
-            />
-          );
-        },
-      } : undefined,
+      editConfig:
+        entityType !== "webhooks"
+          ? {
+              editingCell: (
+                item,
+                {
+                  currentValue,
+                  setValue,
+                }: {
+                  currentValue: string | undefined;
+                  setValue: (value: string) => void;
+                },
+              ) => {
+                return (
+                  <Input
+                    autoFocus
+                    value={currentValue ?? item.value}
+                    onChange={({ detail }) => setValue(detail.value)}
+                  />
+                );
+              },
+            }
+          : undefined,
     },
-    ...(entityType !== "webhooks" ? [{
-      id: "delete",
-      header: "",
-      cell: (item: TagItem) => (
-        <Button
-          iconName="remove"
-          variant="icon"
-          onClick={() => handleDelete(item.key)}
-        />
-      ),
-      width: 32,
-    }] : []),
+    ...(entityType !== "webhooks"
+      ? [
+          {
+            id: "delete",
+            header: "",
+            cell: (item: TagItem) => (
+              <Button
+                iconName="remove"
+                variant="icon"
+                onClick={() => handleDelete(item.key)}
+              />
+            ),
+            width: 32,
+          },
+        ]
+      : []),
   ];
 
   const { items, collectionProps } = useCollection(
     entity.tags
       ? Object.entries(entity.tags).map(([key, value]) => ({
-        key,
-        value: [value].flat().join(","),
-      }))
+          key,
+          value: [value].flat().join(","),
+        }))
       : [],
     { sorting: {} },
   );

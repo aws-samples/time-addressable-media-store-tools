@@ -46,22 +46,24 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
   {
     id: "status",
     header: "Status",
-    cell: (item) =>
+    cell: (item) => (
       <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
         {item.status}
       </StatusIndicator>
-    ,
+    ),
     sortingField: "status",
   },
   {
     id: "events",
     header: "Events",
     cell: (item) =>
-      item.events ? (<SpaceBetween direction="vertical" size="xs">
-        {item.events.map((val, index) => (
-          <div key={index}>{val}</div>
-        ))}
-      </SpaceBetween>) : null,
+      item.events ? (
+        <SpaceBetween direction="vertical" size="xs">
+          {item.events.map((val, index) => (
+            <div key={index}>{val}</div>
+          ))}
+        </SpaceBetween>
+      ) : null,
     sortingField: "events",
   },
   {
@@ -70,7 +72,9 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     cell: (item) => (
       <SpaceBetween direction="vertical" size="xs">
         {item.flow_ids?.map((flow_id) => (
-          <Link key={flow_id} to={`/flows/${flow_id}`}>{flow_id}</Link>
+          <Link key={flow_id} to={`/flows/${flow_id}`}>
+            {flow_id}
+          </Link>
         ))}
       </SpaceBetween>
     ),
@@ -83,7 +87,9 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     cell: (item) => (
       <SpaceBetween direction="vertical" size="xs">
         {item.source_ids?.map((source_id) => (
-          <Link key={source_id} to={`/sources/${source_id}`}>{source_id}</Link>
+          <Link key={source_id} to={`/sources/${source_id}`}>
+            {source_id}
+          </Link>
         ))}
       </SpaceBetween>
     ),
@@ -96,7 +102,9 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     cell: (item) => (
       <SpaceBetween direction="vertical" size="xs">
         {item.flow_collected_by_ids?.map((flow_id) => (
-          <Link key={flow_id} to={`/flows/${flow_id}`}>{flow_id}</Link>
+          <Link key={flow_id} to={`/flows/${flow_id}`}>
+            {flow_id}
+          </Link>
         ))}
       </SpaceBetween>
     ),
@@ -109,7 +117,9 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     cell: (item) => (
       <SpaceBetween direction="vertical" size="xs">
         {item.source_collected_by_ids?.map((source_id) => (
-          <Link key={source_id} to={`/sources/${source_id}`}>{source_id}</Link>
+          <Link key={source_id} to={`/sources/${source_id}`}>
+            {source_id}
+          </Link>
         ))}
       </SpaceBetween>
     ),
@@ -120,14 +130,17 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     id: "accept_get_urls",
     header: "Accept get urls",
     cell: (item) =>
-      item.accept_get_urls?.length === 0 ? (<Badge color="severity-neutral">Empty list</Badge>) :
+      item.accept_get_urls?.length === 0 ? (
+        <Badge color="severity-neutral">Empty list</Badge>
+      ) : (
         item.accept_get_urls?.length && (
           <SpaceBetween direction="vertical" size="xs">
             {item.accept_get_urls.map((val, index) => (
               <div key={index}>{val}</div>
             ))}
           </SpaceBetween>
-        ),
+        )
+      ),
     sortingField: "accept_get_urls",
   },
   {
@@ -147,13 +160,19 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
   {
     id: "presigned",
     header: "Presigned",
-    cell: (item) => item.presigned !== undefined && <StatusIndicator type={item.presigned ? "success" : "error"} />,
+    cell: (item) =>
+      item.presigned !== undefined && (
+        <StatusIndicator type={item.presigned ? "success" : "error"} />
+      ),
     sortingField: "presigned",
   },
   {
     id: "verbose_storage",
     header: "Verbose storage",
-    cell: (item) => item.verbose_storage !== undefined && <StatusIndicator type={item.verbose_storage ? "success" : "error"} />,
+    cell: (item) =>
+      item.verbose_storage !== undefined && (
+        <StatusIndicator type={item.verbose_storage ? "success" : "error"} />
+      ),
     sortingField: "verbose_storage",
   },
 ];
@@ -223,9 +242,7 @@ const Webhooks = () => {
                 alignItems="center"
               >
                 <Button
-                  onClick={() =>
-                    handleOnClick({ detail: { id: "register" } })
-                  }
+                  onClick={() => handleOnClick({ detail: { id: "register" } })}
                   disabled={selectedItems?.length !== 0}
                 >
                   Register
@@ -267,7 +284,6 @@ const Webhooks = () => {
           ),
         }[actionId]
       }
-
     </>
   );
 };

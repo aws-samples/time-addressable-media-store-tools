@@ -25,7 +25,8 @@ const Source = () => {
   return !loadingSource ? (
     source ? (
       <SpaceBetween size="l">
-        <Header variant="h2"
+        <Header
+          variant="h2"
           actions={<EntityHeaderActions entityType="sources" entity={source} />}
         >
           Sources details

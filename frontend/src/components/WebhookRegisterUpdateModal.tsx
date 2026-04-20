@@ -43,19 +43,26 @@ const eventOptions = [
   "sources/created",
   "sources/updated",
   "sources/deleted",
-].map(value => ({
+].map((value) => ({
   label: value,
-  value
-}))
+  value,
+}));
 
 const statusOptions = [
   { label: "Created", value: "created" },
   { label: "Disabled", value: "disabled" },
-  { label: "Started", value: "started", disabled: true, labelTag: "System Status" },
+  {
+    label: "Started",
+    value: "started",
+    disabled: true,
+    labelTag: "System Status",
+  },
   { label: "Error", value: "error", disabled: true, labelTag: "System Status" },
 ];
 
-const enabledStatuses = statusOptions.filter(opt => !opt.disabled).map(opt => opt.value);
+const enabledStatuses = statusOptions
+  .filter((opt) => !opt.disabled)
+  .map((opt) => opt.value);
 
 type Props = {
   modalVisible: boolean;
@@ -63,10 +70,16 @@ type Props = {
   webhook?: WebhookGet;
 };
 
-const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: Props) => {
+const WebhookRegisterUpdateModal = ({
+  modalVisible,
+  setModalVisible,
+  webhook,
+}: Props) => {
   const [urlError, setUrlError] = useState("");
   const [apiKeyValueError, setApiKeyValueError] = useState(
-    webhook?.api_key_name ? "API Key Value is required when API Key Name is provided" : ""
+    webhook?.api_key_name
+      ? "API Key Value is required when API Key Name is provided"
+      : "",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useRegister();
@@ -77,13 +90,19 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
     if (!webhook) return initialWebhookData;
     return webhook as WebhookPut;
   };
-  const [formData, setFormData] = useState<WebhookPost | WebhookPut>(getInitialData());
+  const [formData, setFormData] = useState<WebhookPost | WebhookPut>(
+    getInitialData(),
+  );
 
   const handleDismiss = () => {
     setModalVisible(false);
     setFormData(getInitialData());
     setUrlError("");
-    setApiKeyValueError(webhook?.api_key_name ? "API Key Value is required when API Key Name is provided" : "");
+    setApiKeyValueError(
+      webhook?.api_key_name
+        ? "API Key Value is required when API Key Name is provided"
+        : "",
+    );
     setIsSubmitting(false);
   };
 
@@ -100,7 +119,7 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
         type: "success",
         dismissible: true,
         dismissLabel: "Dismiss message",
-        content: `Webhook ${webhook ? 'updated' : 'registered'} successfully.`,
+        content: `Webhook ${webhook ? "updated" : "registered"} successfully.`,
         id: id,
         onDismiss: () => delAlertItem(id),
       });
@@ -109,7 +128,7 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
         type: "error",
         dismissible: true,
         dismissLabel: "Dismiss message",
-        content: `Failed to ${webhook ? 'update' : 'register'} webhook: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Failed to ${webhook ? "update" : "register"} webhook: ${error instanceof Error ? error.message : "Unknown error"}`,
         id: id,
         onDismiss: () => delAlertItem(id),
       });
@@ -136,7 +155,7 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
           cancelDisabled={isSubmitting}
         />
       }
-      header={`${webhook ? 'Update' : 'Register'} Webhook`}
+      header={`${webhook ? "Update" : "Register"} Webhook`}
     >
       <form onSubmit={(e) => e.preventDefault()}>
         <SpaceBetween size="xs">
@@ -147,7 +166,9 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
           >
             <Input
               value={formData.url}
-              onChange={({ detail }) => setFormData({ ...formData, url: detail.value })}
+              onChange={({ detail }) =>
+                setFormData({ ...formData, url: detail.value })
+              }
               onBlur={() => {
                 if (formData.url) {
                   setUrlError("");
@@ -163,9 +184,18 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
           >
             <Multiselect
               selectedOptions={eventOptions.filter((opt) =>
-                formData.events.includes(opt.value as WebhookPost["events"][number]),
+                formData.events.includes(
+                  opt.value as WebhookPost["events"][number],
+                ),
               )}
-              onChange={({ detail }) => setFormData({ ...formData, events: detail.selectedOptions.map(opt => opt.value!) as WebhookPost["events"] })}
+              onChange={({ detail }) =>
+                setFormData({
+                  ...formData,
+                  events: detail.selectedOptions.map(
+                    (opt) => opt.value!,
+                  ) as WebhookPost["events"],
+                })
+              }
               options={eventOptions}
               inlineTokens
             />
@@ -173,20 +203,32 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
           <FormField
             description="Status of the Webhook"
             label="Status"
-            errorText={webhook && formData.status && !enabledStatuses.includes(formData.status)
-              ? "This status is system-managed"
-              : undefined
+            errorText={
+              webhook &&
+              formData.status &&
+              !enabledStatuses.includes(formData.status)
+                ? "This status is system-managed"
+                : undefined
             }
           >
             <Select
-              selectedOption={statusOptions.find(opt => opt.value === formData.status) ?? null}
+              selectedOption={
+                statusOptions.find((opt) => opt.value === formData.status) ??
+                null
+              }
               onChange={({ detail }) =>
-                setFormData({ ...formData, status: detail.selectedOption.value as WebhookPost["status"] })
+                setFormData({
+                  ...formData,
+                  status: detail.selectedOption.value as WebhookPost["status"],
+                })
               }
               options={statusOptions}
             />
           </FormField>
-          <ExpandableSection headerText="API Key Auth" defaultExpanded={!!webhook?.api_key_name}>
+          <ExpandableSection
+            headerText="API Key Auth"
+            defaultExpanded={!!webhook?.api_key_name}
+          >
             <SpaceBetween size="m">
               <FormField
                 description="The HTTP header name that is added to the event POST"
@@ -195,9 +237,16 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
                 <Input
                   value={formData.api_key_name ?? ""}
                   onChange={({ detail }) => {
-                    setFormData({ ...formData, api_key_name: detail.value || undefined });
+                    setFormData({
+                      ...formData,
+                      api_key_name: detail.value || undefined,
+                    });
                     if (!detail.value) {
-                      setFormData(prev => ({ ...prev, api_key_name: undefined, api_key_value: undefined }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        api_key_name: undefined,
+                        api_key_value: undefined,
+                      }));
                       setApiKeyValueError("");
                     }
                   }}
@@ -212,12 +261,17 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
                   value={formData.api_key_value ?? ""}
                   disabled={!formData.api_key_name}
                   onChange={({ detail }) => {
-                    setFormData({ ...formData, api_key_value: detail.value || undefined });
+                    setFormData({
+                      ...formData,
+                      api_key_value: detail.value || undefined,
+                    });
                     if (apiKeyValueError) setApiKeyValueError("");
                   }}
                   onBlur={() => {
                     if (formData.api_key_name && !formData.api_key_value) {
-                      setApiKeyValueError("API Key Value is required when API Key Name is provided");
+                      setApiKeyValueError(
+                        "API Key Value is required when API Key Name is provided",
+                      );
                     } else {
                       setApiKeyValueError("");
                     }
@@ -235,73 +289,107 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
                 description="Limit Flow and Flow Segment events to Flows in the given list of Flow IDs"
                 label="Flow Ids"
                 uuids={formData.flow_ids}
-                setUuids={(ids) => setFormData(prev => ({
-                  ...prev,
-                  flow_ids: typeof ids === 'function' ? ids(prev.flow_ids) : ids
-                }))}
+                setUuids={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    flow_ids:
+                      typeof ids === "function" ? ids(prev.flow_ids) : ids,
+                  }))
+                }
               />
               <UuidListInput
                 description="Limit Flow, Flow Segment and Source events to Sources in the given list of Source IDs"
                 label="Source Ids"
                 uuids={formData.source_ids}
-                setUuids={(ids) => setFormData(prev => ({
-                  ...prev,
-                  source_ids: typeof ids === 'function' ? ids(prev.source_ids) : ids
-                }))}
+                setUuids={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    source_ids:
+                      typeof ids === "function" ? ids(prev.source_ids) : ids,
+                  }))
+                }
               />
               <UuidListInput
                 description="Limit Flow and Flow Segment events to those with Flow that is collected by a Flow Collection in the given list of Flow Collection IDs"
                 label="Flow Collected By Ids"
                 uuids={formData.flow_collected_by_ids}
-                setUuids={(ids) => setFormData(prev => ({
-                  ...prev,
-                  flow_collected_by_ids: typeof ids === 'function' ? ids(prev.flow_collected_by_ids) : ids
-                }))}
+                setUuids={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    flow_collected_by_ids:
+                      typeof ids === "function"
+                        ? ids(prev.flow_collected_by_ids)
+                        : ids,
+                  }))
+                }
               />
               <UuidListInput
                 description="Limit Flow, Flow Segment and Source events to those with Source that is collected by a Source Collection in the given list of Source Collection IDs"
                 label="Source Collected By Ids"
                 uuids={formData.source_collected_by_ids}
-                setUuids={(ids) => setFormData(prev => ({
-                  ...prev,
-                  source_collected_by_ids: typeof ids === 'function' ? ids(prev.source_collected_by_ids) : ids
-                }))}
+                setUuids={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    source_collected_by_ids:
+                      typeof ids === "function"
+                        ? ids(prev.source_collected_by_ids)
+                        : ids,
+                  }))
+                }
               />
               <WebhookAcceptGetUrlsInput
                 description="List of labels of URLs to include in the get_urls property in flows/segments_added events"
                 label="Accept Get Urls"
                 values={formData.accept_get_urls}
-                setValues={(ids) => setFormData(prev => ({
-                  ...prev,
-                  accept_get_urls: typeof ids === 'function' ? ids(prev.accept_get_urls) : ids
-                }))}
+                setValues={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    accept_get_urls:
+                      typeof ids === "function"
+                        ? ids(prev.accept_get_urls)
+                        : ids,
+                  }))
+                }
               />
               <UuidListInput
                 description="List of storage_ids to include in the get_urls property in flows/segments_added events"
                 label="Accept Storage Ids"
                 uuids={formData.accept_storage_ids}
-                setUuids={(ids) => setFormData(prev => ({
-                  ...prev,
-                  accept_storage_ids: typeof ids === 'function' ? ids(prev.accept_storage_ids) : ids
-                }))}
+                setUuids={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    accept_storage_ids:
+                      typeof ids === "function"
+                        ? ids(prev.accept_storage_ids)
+                        : ids,
+                  }))
+                }
               />
               <UndefinedBoolInput
                 description="Whether to include presigned/non-presigned URLs in the get_urls property in flows/segments_added events"
                 label="Presigned"
                 undefinedBool={formData.presigned}
-                setUndefinedBool={(ids) => setFormData(prev => ({
-                  ...prev,
-                  presigned: typeof ids === 'function' ? ids(prev.presigned) : ids
-                }))}
+                setUndefinedBool={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    presigned:
+                      typeof ids === "function" ? ids(prev.presigned) : ids,
+                  }))
+                }
               />
               <UndefinedBoolInput
                 description="Whether to include storage metadata in the get_urls property in flows/segments_added events"
                 label="Verbose Storage"
                 undefinedBool={formData.verbose_storage}
-                setUndefinedBool={(ids) => setFormData(prev => ({
-                  ...prev,
-                  verbose_storage: typeof ids === 'function' ? ids(prev.verbose_storage) : ids
-                }))}
+                setUndefinedBool={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    verbose_storage:
+                      typeof ids === "function"
+                        ? ids(prev.verbose_storage)
+                        : ids,
+                  }))
+                }
               />
             </SpaceBetween>
           </ExpandableSection>
@@ -309,10 +397,12 @@ const WebhookRegisterUpdateModal = ({ modalVisible, setModalVisible, webhook }: 
             <WebhookTagsInput
               description="Key is a freeform string. Value is a freeform string, or an array of freeform strings"
               tags={formData.tags}
-              setTags={(tags) => setFormData(prev => ({
-                ...prev,
-                tags: typeof tags === 'function' ? tags(prev.tags) : tags
-              }))}
+              setTags={(tags) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  tags: typeof tags === "function" ? tags(prev.tags) : tags,
+                }))
+              }
             />
           </ExpandableSection>
         </SpaceBetween>

@@ -22,7 +22,7 @@ const WebhookAcceptGetUrlsInput = ({
 }: Props) => {
   const [inputValue, setInputValue] = useState("");
   const [mode, setMode] = useState<"notset" | "set">(
-    values === undefined ? "notset" : "set"
+    values === undefined ? "notset" : "set",
   );
 
   return (

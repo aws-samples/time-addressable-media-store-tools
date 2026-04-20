@@ -56,7 +56,8 @@ const EntityHeaderActions = ({ entityType, entity }: Props) => {
               onClick={handleCopyClick}
               ariaLabel="Copy Manifest link"
             />
-          </Popover></>
+          </Popover>
+        </>
       )}
       <Button
         href={`/player/${entityType}/${entity.id}`}

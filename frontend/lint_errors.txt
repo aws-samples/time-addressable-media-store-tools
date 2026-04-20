@@ -1,4 +1,0 @@
-
-> tams-tools@0.0.0 lint
-> eslint . --report-unused-disable-directives --max-warnings 0
-

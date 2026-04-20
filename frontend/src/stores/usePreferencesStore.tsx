@@ -133,7 +133,6 @@ const usePreferencesStore = create<PreferencesStore>()(
       setWebhooksPreferences: (preferences) =>
         set({ webhooksPreferences: preferences }),
 
-
       ffmpegExportsPreferences: {
         pageSize: PAGE_SIZE,
         contentDisplay: [

@@ -26,7 +26,8 @@ const Flow = () => {
   return !loadingFlow ? (
     flow ? (
       <SpaceBetween size="l">
-        <Header variant="h2"
+        <Header
+          variant="h2"
           actions={<EntityHeaderActions entityType="flows" entity={flow} />}
         >
           Flow details
