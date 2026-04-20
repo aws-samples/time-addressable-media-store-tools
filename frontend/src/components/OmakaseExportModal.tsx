@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Modal, SpaceBetween, Box } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useExportOperations } from "@/hooks/useExportOperations";
@@ -78,10 +78,6 @@ const OmakaseExportModal = ({
     [flows],
   );
   const [selectedFlows, setSelectedFlows] = useState(flowOptions);
-
-  useEffect(() => {
-    setSelectedFlows(flowOptions);
-  }, [flowOptions]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
