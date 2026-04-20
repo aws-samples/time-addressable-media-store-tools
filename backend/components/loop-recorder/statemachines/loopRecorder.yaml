@@ -8,8 +8,7 @@ States:
       Method: GET
       InvocationConfig:
         ConnectionArn: ${ConnectionArn}
-      ApiEndpoint: >-
-        {% '${TamsEndpoint}/flows/' %}
+      ApiEndpoint: ${TamsEndpoint}/flows
       QueryParameters:
         tag_exists.loop_recorder_duration: True
     Retry:

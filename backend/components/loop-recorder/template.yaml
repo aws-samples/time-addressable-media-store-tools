@@ -47,6 +47,7 @@ Resources:
                     - GET
                 StringLike:
                   states:HTTPEndpoint:
+                    - !Sub ${ApiEndpoint}/flows
                     - !Sub ${ApiEndpoint}/flows/*
             - Effect: Allow
               Action:
