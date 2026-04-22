@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -48,6 +49,19 @@ def manifest_exists(uri):
     except ClientError as ex:
         logger.error(ex)
         return False
+
+
+@tracer.capture_method(capture_response=False)
+def get_workflow_details(workflow):
+    if workflow.status == "RUNNING":
+        return workflow
+    describe_execution = sfn.describe_execution(executionArn=workflow.executionArn)
+    workflow_output = json.loads(describe_execution.get("output", "{}")) or {}
+    workflow.flowId = workflow_output.get("multiFlowId")
+    workflow.sourceId = workflow_output.get("multiSourceId")
+    workflow.error = describe_execution.get("cause")
+    workflow.warnings = workflow_output.get("warnings")
+    return workflow
 
 
 @app.get("/job-ingestion")
@@ -134,17 +148,21 @@ def get_workflows():
                     execution["name"].rsplit("-", 1)[0].split("-", 1)
                 )
                 workflows.append(
-                    Workflow(
-                        executionArn=execution["executionArn"],
-                        elementalService=elemental_service,
-                        elementalId=elemental_id,
-                        status=execution["status"],
-                        startDate=execution["startDate"].strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        stopDate=(
-                            execution["stopDate"].strftime("%Y-%m-%dT%H:%M:%SZ")
-                            if execution.get("stopDate")
-                            else None
-                        ),
+                    get_workflow_details(
+                        Workflow(
+                            executionArn=execution["executionArn"],
+                            elementalService=elemental_service,
+                            elementalId=elemental_id,
+                            status=execution["status"],
+                            startDate=execution["startDate"].strftime(
+                                "%Y-%m-%dT%H:%M:%SZ"
+                            ),
+                            stopDate=(
+                                execution["stopDate"].strftime("%Y-%m-%dT%H:%M:%SZ")
+                                if execution.get("stopDate")
+                                else None
+                            ),
+                        )
                     )
                 )
             # pylint: disable=broad-exception-caught

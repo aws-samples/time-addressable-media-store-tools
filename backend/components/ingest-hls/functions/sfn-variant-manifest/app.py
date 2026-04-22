@@ -10,8 +10,7 @@ from urllib.parse import urlparse
 import boto3
 import m3u8
 import requests
-from aws_lambda_powertools import Logger, Tracer, single_metric
-from aws_lambda_powertools.metrics import MetricUnit
+from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 from ffprobe import ffprobe_link
@@ -38,16 +37,13 @@ def map_container(probe: dict) -> str:
     """Maps the format_name found from FFprobe to a TAMS container mime type"""
     format_name = probe.get("format", {}).get("format_name", None)
     if not format_name:
-        return "video/mp2t"  # Default container value
+        raise ValueError("Unable to determine container format from media segments")
     mappings = get_containers_mappings()
     if not mappings.get(format_name):
-        with single_metric(
-            name="ContainerMappingMiss",
-            unit=MetricUnit.Count,
-            value=1,
-        ) as metric:
-            metric.add_dimension(name="format_name", value=format_name)
-    return mappings.get(format_name, f"unknown/{format_name}")
+        raise ValueError(
+            f"Unsupported container format '{format_name}' found in media segments"
+        )
+    return mappings[format_name]
 
 
 @tracer.capture_method(capture_response=False)
@@ -68,21 +64,16 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
     )
     codec_mappings = get_codec_mappings()
     if not codec_mappings.get(codec):
-        with single_metric(
-            name="CodecMappingMiss",
-            unit=MetricUnit.Count,
-            value=1,
-        ) as metric:
-            metric.add_dimension(name="codec", value=codec)
-    mapped_codec = codec_mappings.get(codec, f"unknown/{codec}")
+        raise ValueError(f"Unsupported codec '{codec}' found in HLS manifest")
+    mapped_codec = codec_mappings[codec]
     essence_parameter_handlers = {
         "avc1": get_avc1_essence_parameters,
         "mp4a": get_mp4a_essence_parameters,
     }
+    if codec not in essence_parameter_handlers:
+        raise ValueError(f"No essence parameter handler for codec '{codec}'")
     # Process codec_string into essence_parameters
-    essence_parameters = essence_parameter_handlers.get(codec, lambda x: {})(
-        codec_string
-    )
+    essence_parameters = essence_parameter_handlers[codec](codec_string)
     return mapped_codec, essence_parameters
 
 
@@ -111,8 +102,13 @@ def get_manifest(source: str) -> m3u8.M3U8:
     """Parses an m3u8 manifest from the supplied source uri"""
     file_content = get_file(source)
     if not file_content:
-        return None
-    return m3u8.loads(file_content.decode("utf-8"))
+        raise ValueError(f"Unable to retrieve manifest from '{source}'")
+    try:
+        return m3u8.loads(file_content.decode("utf-8"))
+    except KeyError as ex:
+        raise ValueError(
+            f"Manifest '{source}' is malformed - missing required attribute {ex}"
+        ) from ex
 
 
 @tracer.capture_method(capture_response=False)
@@ -165,14 +161,15 @@ def get_last_modified(source: str) -> int:
 def get_flow_segment_durations(flow_manifests: dict) -> dict:
     """Returns flow target durations from the media manifests supplied"""
     segment_durations = {}
-    for manifest_uri in flow_manifests.values():
+    for flow_id, manifest_uri in flow_manifests.items():
         manifest = get_manifest(manifest_uri)
         # pylint: disable=no-member
-        if manifest.target_duration:
-            segment_durations[manifest_uri] = manifest.target_duration
-    return {
-        flow: segment_durations[manifest] for flow, manifest in flow_manifests.items()
-    }
+        if not manifest.target_duration:
+            raise ValueError(
+                f"Media manifest '{manifest_uri}' is missing #EXT-X-TARGETDURATION"
+            )
+        segment_durations[flow_id] = manifest.target_duration
+    return segment_durations
 
 
 @tracer.capture_method(capture_response=False)
@@ -197,11 +194,12 @@ def get_manifest_segment_probe(source: str) -> dict:
 @tracer.capture_method(capture_response=False)
 def process_playlists(
     manifest: m3u8.M3U8, manifest_path: str, label: str
-) -> tuple[list, dict, dict]:
+) -> tuple[list, dict, dict, list]:
     """Parses the supplied manifest playlists to determine TAMS Flows and associated required metadata"""
     flows = []
     flow_manifests = {}
     audio_codecs = {}
+    warnings = []
     for playlist in manifest.playlists:
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = f"{manifest_path}/{playlist.uri}"
@@ -217,10 +215,18 @@ def process_playlists(
             (media.group_id for media in playlist.media if media.type == "AUDIO"),
             None,
         )
+        if not playlist.stream_info.codecs:
+            raise ValueError(
+                f"Playlist '{playlist.uri}' is missing CODECS attribute in #EXT-X-STREAM-INF"
+            )
         tams_codecs = [
             map_codec(codec) for codec in playlist.stream_info.codecs.split(",")
         ]
         if audio_group_id:
+            if len(tams_codecs) < 2:
+                raise ValueError(
+                    f"Playlist '{playlist.uri}' has AUDIO group '{audio_group_id}' but CODECS only contains one codec - expected video and audio codecs"
+                )
             audio_codecs[audio_group_id] = tams_codecs[1]
         flow = {
             "id": flow_id,
@@ -228,11 +234,24 @@ def process_playlists(
             "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
             "codec": tams_codecs[0][0],
             "container": map_container(probe),
-            "avg_bit_rate": playlist.stream_info.average_bandwidth,
-            "max_bit_rate": playlist.stream_info.bandwidth,
         }
+        avg_bit_rate = playlist.stream_info.average_bandwidth
+        if not avg_bit_rate:
+            warnings.append(
+                {
+                    "manifestUrl": flow_manifests[flow_id],
+                    "message": f"Playlist '{playlist.uri}' missing AVERAGE BANDWIDTH - bitrate information unavailable",
+                }
+            )
+        else:
+            flow["avg_bit_rate"] = avg_bit_rate
+        flow["max_bit_rate"] = playlist.stream_info.bandwidth
         # Assume Video Stream if resolution is specified
         if playlist.stream_info.resolution:
+            if not playlist.stream_info.frame_rate:
+                raise ValueError(
+                    f"Video stream '{playlist.uri}' is missing FRAME-RATE in #EXT-X-STREAM-INF"
+                )
             frame_rate_fract = Fraction(
                 playlist.stream_info.frame_rate
             ).limit_denominator()
@@ -257,14 +276,22 @@ def process_playlists(
                 ),
                 {},
             )
+            if not audio_stream.get("channels"):
+                raise ValueError(
+                    f"Audio stream '{playlist.uri}' - unable to determine channel count from media segments"
+                )
+            if not audio_stream.get("sample_rate"):
+                raise ValueError(
+                    f"Audio stream '{playlist.uri}' - unable to determine sample_rate from media segments"
+                )
             flow["format"] = "urn:x-nmos:format:audio"
             flow["essence_parameters"] = {
                 **tams_codecs[0][1],
-                "channels": int(audio_stream.get("channels", 2)),
-                "sample_rate": int(audio_stream.get("sample_rate", "48000")),
+                "channels": int(audio_stream["channels"]),
+                "sample_rate": int(audio_stream["sample_rate"]),
             }
         flows.append(flow)
-    return flows, flow_manifests, audio_codecs
+    return flows, flow_manifests, audio_codecs, warnings
 
 
 @tracer.capture_method(capture_response=False)
@@ -299,7 +326,19 @@ def process_media(
                     ),
                     {},
                 )
+                if media.group_id not in audio_codecs:
+                    raise ValueError(
+                        f"Audio media '{media.uri}' references unknown GROUP-ID '{media.group_id}'"
+                    )
                 codec = audio_codecs[media.group_id]
+                if not hasattr(media, "channels") or not media.channels:
+                    raise ValueError(
+                        f"Audio media '{media.uri}' is missing CHANNELS attribute in #EXT-X-MEDIA"
+                    )
+                if not audio_stream.get("sample_rate"):
+                    raise ValueError(
+                        f"Audio media '{media.uri}' - unable to determine sample_rate from media segments"
+                    )
                 flow = {
                     "id": flow_id,
                     "label": label,
@@ -310,7 +349,7 @@ def process_media(
                     "essence_parameters": {
                         **codec[1],
                         "channels": int(media.channels),
-                        "sample_rate": int(audio_stream.get("sample_rate", "48000")),
+                        "sample_rate": int(audio_stream["sample_rate"]),
                     },
                     "tags": tags,
                 }
@@ -380,8 +419,13 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     flow_start = get_last_modified(manifest_location) if use_epoch else 0
     manifest_path = os.path.dirname(manifest_location)
     manifest = get_manifest(manifest_location)
-    playlist_flows, playlist_flow_manifests, audio_codecs = process_playlists(
-        manifest, manifest_path, label
+    # Check if variant manifest
+    if not manifest.is_variant:
+        raise ValueError(
+            "A media manifest was provided. This workflow requires a variant/master manifest."
+        )
+    playlist_flows, playlist_flow_manifests, audio_codecs, playlist_warnings = (
+        process_playlists(manifest, manifest_path, label)
     )
     # Parse all media in manifest
     media_flows, media_flow_manifests = process_media(
@@ -399,9 +443,15 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         }
         for flow in [*playlist_flows, *media_flows]
     ]
+    if not flows:
+        raise ValueError(
+            "The variant manifest contains no video or audio streams (no playlists or media groups found)"
+        )
     # Set Source Ids and add multi if required
     multi_flows = set_source_and_multi(
-        label, f'HLS Import ({os.path.basename(manifest_location).split("?")[0]})', flows
+        label,
+        f'HLS Import ({os.path.basename(manifest_location).split("?")[0]})',
+        flows,
     )
     return {
         "flows": flows,
@@ -416,4 +466,5 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
             }
             for flow_id, uri in flow_manifests.items()
         ],
+        "warnings": playlist_warnings,
     }

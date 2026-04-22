@@ -7,6 +7,11 @@ import type { JobStatus } from "@aws-sdk/client-mediaconvert";
 import type { ChannelState } from "@aws-sdk/client-medialive";
 import type { ExecutionStatus } from "@aws-sdk/client-sfn";
 
+type warning = {
+  manifestUrl: string;
+  message: string;
+};
+
 export type JobIngestion = {
   id: string;
   fileName: string;
@@ -31,4 +36,8 @@ export type Workflow = {
   status: ExecutionStatus;
   startDate: string;
   stopDate: string | null;
+  flowId: string | null;
+  sourceId: string | null;
+  error: string | null;
+  warnings: warning[] | null;
 };

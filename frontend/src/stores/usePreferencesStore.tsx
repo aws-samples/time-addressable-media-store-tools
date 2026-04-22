@@ -28,6 +28,9 @@ type PreferencesStore = {
   webhooksPreferences: Preferences;
   setWebhooksPreferences: (preferences: Preferences) => void;
 
+  hlsIngestPreferences: Preferences;
+  setHlsIngestPreferences: (preferences: Preferences) => void;
+
   ffmpegExportsPreferences: Preferences;
   setFfmpegExportsPreferences: (preferences: Preferences) => void;
 
@@ -132,6 +135,21 @@ const usePreferencesStore = create<PreferencesStore>()(
       },
       setWebhooksPreferences: (preferences) =>
         set({ webhooksPreferences: preferences }),
+
+      hlsIngestPreferences: {
+        pageSize: PAGE_SIZE,
+        contentDisplay: [
+          { id: "elementalService", visible: true },
+          { id: "elementalId", visible: true },
+          { id: "status", visible: true },
+          { id: "startDate", visible: true },
+          { id: "stopDate", visible: true },
+          { id: "flowId", visible: true },
+          { id: "sourceId", visible: false },
+        ],
+      },
+      setHlsIngestPreferences: (preferences) =>
+        set({ hlsIngestPreferences: preferences }),
 
       ffmpegExportsPreferences: {
         pageSize: PAGE_SIZE,

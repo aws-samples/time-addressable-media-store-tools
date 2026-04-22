@@ -147,6 +147,11 @@ Resources:
                 - states:ListExecutions
               Resource:
                 - !Ref IngestHls
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${IngestHls.Name}:*
       Events:
         getJobIngestions:
           Type: HttpApi

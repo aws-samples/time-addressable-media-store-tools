@@ -15,6 +15,8 @@ States:
         {% $states.result.Payload.flows %}
       multiFlows: >-
         {% $states.result.Payload.multiFlows %}
+      warnings: >-
+        {% $states.result.Payload.warnings %}
     Retry:
       - ErrorEquals:
           - NoSuchKey
@@ -22,8 +24,17 @@ States:
         IntervalSeconds: 10
         MaxAttempts: 30
         BackoffRate: 1.0
+    Catch:
+      - ErrorEquals:
+          - States.TaskFailed
+        Next: ManifestError
     Output: null
     Next: CreateFlows
+  ManifestError:
+    Type: Fail
+    Error: ManifestParsingFailed
+    Cause: >-
+      {% $parse($states.input.Cause).errorMessage %}
   CreateFlows:
     Type: Map
     Items: >-
@@ -65,6 +76,10 @@ States:
     Items: >-
       {% $multiFlows %}
     Assign:
+      multiFlowId: >-
+        {% $multiFlows[0].id %}
+      multiSourceId: >-
+        {% $multiFlows[0].source_id %}
       multiFlows: null
     ItemProcessor:
       ProcessorConfig:
@@ -171,5 +186,11 @@ States:
           Output: >-
             {% $states.input %}
           End: True
-    Output: null
+    Output:
+      multiFlowId: >-
+        {% $multiFlowId %}
+      multiSourceId: >-
+        {% $multiSourceId %}
+      warnings: >-
+        {% $warnings %}
     End: True

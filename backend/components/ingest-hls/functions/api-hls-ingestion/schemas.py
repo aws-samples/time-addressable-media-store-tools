@@ -45,3 +45,9 @@ class Workflow(BaseModel):
     stopDate: Optional[str] = Field(
         default=None, description="Workflow stop timestamp"
     )
+    flowId: Optional[str] = Field(default=None, description="The Id of the Multi Flow created") 
+    sourceId: Optional[str] = Field(default=None, description="The Id of the Multi Source created") 
+    error: Optional[str] = Field(default=None, description="Error type if failed")
+    warnings: Optional[list] = Field(
+        default=None, description="Warnings from manifest parsing"
+    )

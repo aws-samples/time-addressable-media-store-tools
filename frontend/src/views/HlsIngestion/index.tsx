@@ -1,39 +1,37 @@
 import { useState } from "react";
-import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
+import { PAGE_SIZE_PREFERENCE } from "@/constants";
 import {
   Box,
   Button,
-  Link as ExternalLink,
+  CollectionPreferences,
   Header,
   Pagination,
-  StatusIndicator,
   Table,
   TextFilter,
 } from "@cloudscape-design/components";
+import { Link } from "react-router-dom";
 import StartIngestModal from "./components/StartIngestModal";
+import WorkflowStatus from "./components/WorkflowStatus";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useWorkflows } from "@/hooks/useStateMachine";
 import type { Workflow } from "@/types/ingestHls";
 import type { TableProps } from "@cloudscape-design/components";
+import usePreferencesStore from "@/stores/usePreferencesStore";
 
 const HlsIngestion = () => {
   const { workflows, isLoading } = useWorkflows();
   const [modalVisible, setModalVisible] = useState(false);
+  const preferences = usePreferencesStore(
+    (state) => state.hlsIngestPreferences,
+  );
+  const setPreferences = usePreferencesStore(
+    (state) => state.setHlsIngestPreferences,
+  );
 
-  const preferences = {
-    pageSize: PAGE_SIZE,
-    contentDisplay: [
-      { id: "elementalService", visible: true },
-      { id: "elementalId", visible: true },
-      { id: "status", visible: true },
-      { id: "startDate", visible: true },
-      { id: "stopDate", visible: true },
-    ],
-  };
   const columnDefinitions: TableProps.ColumnDefinition<Workflow>[] = [
     {
       id: "elementalService",
-      header: "Source",
+      header: "Origin",
       cell: (item) => item.elementalService,
       sortingField: "elementalService",
     },
@@ -47,18 +45,7 @@ const HlsIngestion = () => {
     {
       id: "status",
       header: "Status",
-      cell: (item) => (
-        <>
-          <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
-            {item.status}
-          </StatusIndicator>
-          <ExternalLink
-            external
-            href={`https://${AWS_REGION}.console.aws.amazon.com/states/home?region=${AWS_REGION}#/v2/executions/details/${item.executionArn}`}
-            variant="info"
-          />
-        </>
-      ),
+      cell: (item) => <WorkflowStatus item={item} />,
       sortingField: "status",
     },
     {
@@ -73,7 +60,38 @@ const HlsIngestion = () => {
       cell: (item) => item.stopDate,
       sortingField: "stopDate",
     },
+    {
+      id: "flowId",
+      header: "Multi Flow Id",
+      cell: (item) => item.flowId && <Link to={`/flows/${item.flowId}`}>{item.flowId}</Link>,
+      sortingField: "flowId",
+      width: 360,
+    },
+    {
+      id: "sourceId",
+      header: "Multi Source Id",
+      cell: (item) => item.sourceId && <Link to={`/sources/${item.sourceId}`}>{item.sourceId}</Link>,
+      sortingField: "sourceId",
+      width: 360,
+    },
   ];
+
+  const collectionPreferencesProps = {
+    pageSizePreference: PAGE_SIZE_PREFERENCE,
+    contentDisplayPreference: {
+      title: "Column preferences",
+      description: "Customize the columns visibility and order.",
+      options: columnDefinitions.map(({ id, header }) => ({
+        id: id!,
+        label: header as string,
+        alwaysVisible: id === "elementalId",
+      })),
+    },
+    cancelLabel: "Cancel",
+    confirmLabel: "Confirm",
+    title: "Preferences",
+  };
+
   const { items, collectionProps, filterProps, paginationProps } =
     useCollection(isLoading ? [] : workflows, {
       filtering: {
@@ -124,6 +142,13 @@ const HlsIngestion = () => {
         items={items}
         pagination={<Pagination {...paginationProps} />}
         filter={<TextFilter {...filterProps} />}
+        preferences={
+          <CollectionPreferences
+            {...collectionPreferencesProps}
+            preferences={preferences}
+            onConfirm={({ detail }) => setPreferences(detail)}
+          />
+        }
       />
       <StartIngestModal
         modalVisible={modalVisible}
