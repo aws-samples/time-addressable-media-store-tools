@@ -102,7 +102,7 @@ def map_codec(flow):
 def get_avc1_codec_string(essence_parameters):
     avc_parameters = essence_parameters.get("avc_parameters", {})
     profile = f'{avc_parameters.get("profile", 100):02x}'
-    flags = f'{avc_parameters.get("flags", 00):02x}'
+    flags = f'{avc_parameters.get("flags", 0):02x}'
     level = f'{avc_parameters.get("level", 31):02x}'
     return f"avc1.{profile}{flags}{level}"
 

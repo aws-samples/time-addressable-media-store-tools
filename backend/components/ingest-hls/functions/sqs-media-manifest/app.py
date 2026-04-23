@@ -205,12 +205,18 @@ def process_message(message: dict, task_token: str) -> None:
 def record_handler(record: SQSRecord) -> None:
     """Processes a single SQS record"""
     task_token = record.message_attributes.get("TaskToken", {}).get("stringValue", None)
-    if task_token:
-        try:
-            process_message(message=record.json_body, task_token=task_token)
-        # pylint: disable=broad-exception-caught
-        except Exception as ex:
-            sfn.send_task_failure(taskToken=task_token, error=str(ex))
+    if not task_token:
+        return
+    try:
+        process_message(message=record.json_body, task_token=task_token)
+    # pylint: disable=broad-exception-caught
+    except Exception as ex:
+        logger.exception("Failing step function task due to unhandled exception")
+        sfn.send_task_failure(
+            taskToken=task_token,
+            error=type(ex).__name__,
+            cause=str(ex),
+        )
 
 
 @logger.inject_lambda_context(log_event=True)

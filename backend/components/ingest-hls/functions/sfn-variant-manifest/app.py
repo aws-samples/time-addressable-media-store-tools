@@ -46,6 +46,7 @@ def map_container(probe: dict) -> str:
     return mappings[format_name]
 
 
+@tracer.capture_method(capture_response=False)
 @lru_cache()
 def _get_codecs_list() -> list:
     """Returns the raw list of codec mappings from the parameter store"""
@@ -54,12 +55,14 @@ def _get_codecs_list() -> list:
 
 
 @tracer.capture_method(capture_response=False)
+@lru_cache()
 def get_codec_mappings() -> dict:
     """Returns a dictionary mapping HLS codec identifiers to TAMS codec MIME types"""
     return {codec["hls"]: codec["tams"] for codec in _get_codecs_list()}
 
 
 @tracer.capture_method(capture_response=False)
+@lru_cache()
 def get_ffprobe_codec_mappings() -> dict:
     """Returns a dictionary mapping ffprobe codec_name values to TAMS codec MIME types"""
     return {codec["ffprobe"]: codec["tams"] for codec in _get_codecs_list()}
@@ -88,21 +91,24 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
 @tracer.capture_method(capture_response=False)
 def get_avc1_essence_parameters(codec_string: str) -> dict:
     """Parses a supplied avc1 codec string into TAMS essence parameters"""
-    if "." in codec_string:
-        parts = codec_string.split(".")
-        if len(parts) == 2:
-            profile, level = int(parts[0]), int(parts[1])
-            flags = 0
-        elif len(parts) == 3:
-            profile, flags, level = (int(p) for p in parts)
+    try:
+        if "." in codec_string:
+            parts = codec_string.split(".")
+            if len(parts) == 2:
+                profile, level = int(parts[0]), int(parts[1])
+                flags = 0
+            elif len(parts) == 3:
+                profile, flags, level = (int(p) for p in parts)
+            else:
+                raise ValueError
+        elif len(codec_string) == 6:
+            profile = int(codec_string[0:2], 16)
+            flags = int(codec_string[2:4], 16)
+            level = int(codec_string[4:6], 16)
         else:
-            raise ValueError(f"Unexpected avc1 codec string '{codec_string}'")
-    elif len(codec_string) == 6:
-        profile = int(codec_string[0:2], 16)
-        flags = int(codec_string[2:4], 16)
-        level = int(codec_string[4:6], 16)
-    else:
-        raise ValueError(f"Unexpected avc1 codec string '{codec_string}'")
+            raise ValueError
+    except ValueError as ex:
+        raise ValueError(f"Unexpected avc1 codec string '{codec_string}'") from ex
     return {"avc_parameters": {"profile": profile, "flags": flags, "level": level}}
 
 
@@ -177,7 +183,9 @@ def get_last_modified(source: str) -> int:
                         response.headers["Last-Modified"], "%a, %d %b %Y %H:%M:%S %Z"
                     ).timestamp()
                 )
-    return 0
+            return 0
+        case _:
+            raise ValueError(f"Unsupported URL scheme in '{source}'")
 
 
 @tracer.capture_method(capture_response=False)
@@ -257,6 +265,13 @@ def process_playlists(
             ) from ex
         if audio_group_id and len(tams_codecs) >= 2:
             audio_codecs[audio_group_id] = tams_codecs[1]
+        elif len(tams_codecs) >= 2:
+            warnings.append(
+                {
+                    "manifestUrl": flow_manifests[flow_id],
+                    "message": f"Playlist '{playlist.uri}' declares multiple codecs in CODECS but has no AUDIO group - only the first codec was used (muxed variants are not yet supported)",
+                }
+            )
         flow = {
             "id": flow_id,
             "label": label,
@@ -340,10 +355,11 @@ def process_playlists(
 @tracer.capture_method(capture_response=False)
 def process_media(
     manifest: m3u8.M3U8, manifest_path: str, label: str, audio_codecs: dict
-) -> tuple[list, dict]:
+) -> tuple[list, dict, list]:
     """Parses the supplied manifest media to determine TAMS Flows and associated required metadata"""
     flows = []
     flow_manifests = {}
+    warnings = []
     for media in manifest.media:
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = f"{manifest_path}/{media.uri}"
@@ -447,7 +463,7 @@ def process_media(
                     "tags": tags,
                 }
                 flows.append(flow)
-    return flows, flow_manifests
+    return flows, flow_manifests, warnings
 
 
 @tracer.capture_method(capture_response=False)
@@ -492,7 +508,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         process_playlists(manifest, manifest_path, label)
     )
     # Parse all media in manifest
-    media_flows, media_flow_manifests = process_media(
+    media_flows, media_flow_manifests, media_warnings = process_media(
         manifest, manifest_path, label, audio_codecs
     )
     flow_manifests = {**playlist_flow_manifests, **media_flow_manifests}
@@ -530,5 +546,5 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
             }
             for flow_id, uri in flow_manifests.items()
         ],
-        "warnings": playlist_warnings,
+        "warnings": [*playlist_warnings, *media_warnings],
     }
