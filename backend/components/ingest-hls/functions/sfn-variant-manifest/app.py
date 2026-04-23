@@ -46,19 +46,28 @@ def map_container(probe: dict) -> str:
     return mappings[format_name]
 
 
-@tracer.capture_method(capture_response=False)
 @lru_cache()
-def get_codec_mappings() -> dict:
-    """Returns a dictionary of codec mappings from the parameter store"""
+def _get_codecs_list() -> list:
+    """Returns the raw list of codec mappings from the parameter store"""
     get_parameter = ssm.get_parameter(Name=codec_parameter)["Parameter"]
-    codecs_list = json.loads(get_parameter["Value"])
-    return {codec["hls"]: codec["tams"] for codec in codecs_list}
+    return json.loads(get_parameter["Value"])
+
+
+@tracer.capture_method(capture_response=False)
+def get_codec_mappings() -> dict:
+    """Returns a dictionary mapping HLS codec identifiers to TAMS codec MIME types"""
+    return {codec["hls"]: codec["tams"] for codec in _get_codecs_list()}
+
+
+@tracer.capture_method(capture_response=False)
+def get_ffprobe_codec_mappings() -> dict:
+    """Returns a dictionary mapping ffprobe codec_name values to TAMS codec MIME types"""
+    return {codec["ffprobe"]: codec["tams"] for codec in _get_codecs_list()}
 
 
 @tracer.capture_method(capture_response=False)
 def map_codec(hls_codec: str) -> tuple[str, dict]:
     """Maps the HLS codec to a TAMS codec and returns the essence parameters"""
-    # Split codec on dot (handle if not present)
     codec, codec_string = (
         hls_codec.split(".", 1) if "." in hls_codec else (hls_codec, "")
     )
@@ -72,7 +81,6 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
     }
     if codec not in essence_parameter_handlers:
         raise ValueError(f"No essence parameter handler for codec '{codec}'")
-    # Process codec_string into essence_parameters
     essence_parameters = essence_parameter_handlers[codec](codec_string)
     return mapped_codec, essence_parameters
 
@@ -80,20 +88,34 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
 @tracer.capture_method(capture_response=False)
 def get_avc1_essence_parameters(codec_string: str) -> dict:
     """Parses a supplied avc1 codec string into TAMS essence parameters"""
-    string_iter = iter(
-        [codec_string[i : i + 2] for i in range(0, len(codec_string), 2)]
-    )
-    profile = int(next(string_iter, "64"), 16)
-    flags = int(next(string_iter, "00"), 16)
-    level = int(next(string_iter, "1f"), 16)
+    if "." in codec_string:
+        parts = codec_string.split(".")
+        if len(parts) == 2:
+            profile, level = int(parts[0]), int(parts[1])
+            flags = 0
+        elif len(parts) == 3:
+            profile, flags, level = (int(p) for p in parts)
+        else:
+            raise ValueError(f"Unexpected avc1 codec string '{codec_string}'")
+    elif len(codec_string) == 6:
+        profile = int(codec_string[0:2], 16)
+        flags = int(codec_string[2:4], 16)
+        level = int(codec_string[4:6], 16)
+    else:
+        raise ValueError(f"Unexpected avc1 codec string '{codec_string}'")
     return {"avc_parameters": {"profile": profile, "flags": flags, "level": level}}
 
 
 @tracer.capture_method(capture_response=False)
 def get_mp4a_essence_parameters(codec_string: str) -> dict:
     """Parses a supplied mp4a codec string into TAMS essence parameters"""
-    string_iter = iter(codec_string.split("."))
-    oti = int(next(string_iter, "40"), 16)
+    parts = codec_string.split(".")
+    if len(parts) not in (1, 2) or not parts[0]:
+        raise ValueError(f"Unexpected mp4a codec string '{codec_string}'")
+    try:
+        oti = int(parts[0], 16)
+    except ValueError as ex:
+        raise ValueError(f"Unexpected mp4a codec string '{codec_string}'") from ex
     return {"codec_parameters": {"mp4_oti": oti}}
 
 
@@ -177,6 +199,10 @@ def get_manifest_segment_probe(source: str) -> dict:
     """Probes the first segment of the manifest supplied"""
     manifest_path = os.path.dirname(source)
     manifest = get_manifest(source)
+    if manifest.segment_map:
+        raise ValueError(
+            f"Media manifest '{source}' uses #EXT-X-MAP (init segments / fragmented MP4) which is not supported by this HLS ingester"
+        )
     probe_result = None
     if manifest.segments:
         segment_uri = f"{manifest_path}/{manifest.segments[0].uri}"
@@ -219,14 +245,15 @@ def process_playlists(
             raise ValueError(
                 f"Playlist '{playlist.uri}' is missing CODECS attribute in #EXT-X-STREAM-INF"
             )
-        tams_codecs = [
-            map_codec(codec) for codec in playlist.stream_info.codecs.split(",")
-        ]
-        if audio_group_id:
-            if len(tams_codecs) < 2:
-                raise ValueError(
-                    f"Playlist '{playlist.uri}' has AUDIO group '{audio_group_id}' but CODECS only contains one codec - expected video and audio codecs"
-                )
+        try:
+            tams_codecs = [
+                map_codec(codec) for codec in playlist.stream_info.codecs.split(",")
+            ]
+        except ValueError as ex:
+            raise ValueError(
+                f"Playlist '{playlist.uri}' has invalid CODECS attribute: {ex}"
+            ) from ex
+        if audio_group_id and len(tams_codecs) >= 2:
             audio_codecs[audio_group_id] = tams_codecs[1]
         flow = {
             "id": flow_id,
@@ -248,13 +275,27 @@ def process_playlists(
         flow["max_bit_rate"] = playlist.stream_info.bandwidth
         # Assume Video Stream if resolution is specified
         if playlist.stream_info.resolution:
-            if not playlist.stream_info.frame_rate:
-                raise ValueError(
-                    f"Video stream '{playlist.uri}' is missing FRAME-RATE in #EXT-X-STREAM-INF"
+            if playlist.stream_info.frame_rate:
+                frame_rate_fract = Fraction(
+                    playlist.stream_info.frame_rate
+                ).limit_denominator()
+            else:
+                video_stream = next(
+                    (
+                        stream
+                        for stream in probe.get("streams", [])
+                        if stream["codec_type"] == "video"
+                    ),
+                    {},
                 )
-            frame_rate_fract = Fraction(
-                playlist.stream_info.frame_rate
-            ).limit_denominator()
+                probe_frame_rate = video_stream.get("r_frame_rate") or video_stream.get(
+                    "avg_frame_rate"
+                )
+                if not probe_frame_rate or probe_frame_rate == "0/0":
+                    raise ValueError(
+                        f"Video stream '{playlist.uri}' - unable to determine frame rate from media segments or #EXT-X-STREAM-INF"
+                    )
+                frame_rate_fract = Fraction(probe_frame_rate).limit_denominator()
             flow["format"] = "urn:x-nmos:format:video"
             flow["essence_parameters"] = {
                 **tams_codecs[0][1],
@@ -326,14 +367,27 @@ def process_media(
                     ),
                     {},
                 )
-                if media.group_id not in audio_codecs:
+                if media.group_id in audio_codecs:
+                    codec = audio_codecs[media.group_id]
+                else:
+                    codec_name = audio_stream.get("codec_name")
+                    if not codec_name:
+                        raise ValueError(
+                            f"Audio media '{media.uri}' - unable to determine codec from media segments"
+                        )
+                    ffprobe_mappings = get_ffprobe_codec_mappings()
+                    if codec_name not in ffprobe_mappings:
+                        raise ValueError(
+                            f"Audio media '{media.uri}' - unsupported codec '{codec_name}' reported by ffprobe"
+                        )
+                    codec = (ffprobe_mappings[codec_name], {})
+                if hasattr(media, "channels") and media.channels:
+                    channels = int(media.channels)
+                elif audio_stream.get("channels"):
+                    channels = int(audio_stream["channels"])
+                else:
                     raise ValueError(
-                        f"Audio media '{media.uri}' references unknown GROUP-ID '{media.group_id}'"
-                    )
-                codec = audio_codecs[media.group_id]
-                if not hasattr(media, "channels") or not media.channels:
-                    raise ValueError(
-                        f"Audio media '{media.uri}' is missing CHANNELS attribute in #EXT-X-MEDIA"
+                        f"Audio media '{media.uri}' - unable to determine channel count from media segments or #EXT-X-MEDIA"
                     )
                 if not audio_stream.get("sample_rate"):
                     raise ValueError(
@@ -348,7 +402,7 @@ def process_media(
                     "format": "urn:x-nmos:format:audio",
                     "essence_parameters": {
                         **codec[1],
-                        "channels": int(media.channels),
+                        "channels": channels,
                         "sample_rate": int(audio_stream["sample_rate"]),
                     },
                     "tags": tags,
@@ -366,7 +420,17 @@ def process_media(
                     ),
                     {},
                 )
-                codec = map_codec(subtitle_stream.get("codec_name", "NotFound"))
+                codec_name = subtitle_stream.get("codec_name")
+                if not codec_name:
+                    raise ValueError(
+                        f"Subtitle media '{media.uri}' - unable to determine codec from media segments"
+                    )
+                ffprobe_mappings = get_ffprobe_codec_mappings()
+                if codec_name not in ffprobe_mappings:
+                    raise ValueError(
+                        f"Subtitle media '{media.uri}' - unsupported codec '{codec_name}' reported by ffprobe"
+                    )
+                codec = (ffprobe_mappings[codec_name], {})
                 flow = {
                     "id": flow_id,
                     "label": label,
@@ -380,8 +444,6 @@ def process_media(
                     },
                     "tags": tags,
                 }
-                if subtitle_stream.get("codec_name"):
-                    flow["codec"] = codec[0]
                 flows.append(flow)
     return flows, flow_manifests
 

@@ -242,15 +242,18 @@ Resources:
         [
           {
             "tams": "audio/aac",
-            "hls": "mp4a"
+            "hls": "mp4a",
+            "ffprobe": "aac"
           },
           {
             "tams": "video/h264",
-            "hls": "avc1"
+            "hls": "avc1",
+            "ffprobe": "h264"
           },
           {
             "tams": "text/vtt",
-            "hls": "webvtt"
+            "hls": "webvtt",
+            "ffprobe": "webvtt"
           }
         ]
     Condition: DeployHls
