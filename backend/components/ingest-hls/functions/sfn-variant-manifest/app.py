@@ -212,6 +212,10 @@ def get_manifest_segment_probe(source: str) -> dict:
         raise ValueError(
             f"Media manifest '{source}' uses #EXT-X-MAP (init segments / fragmented MP4) which is not supported by this HLS ingester"
         )
+    if any(key for key in manifest.keys):
+        raise ValueError(
+            f"Media manifest '{source}' uses #EXT-X-KEY (segment encryption) which is not supported by this HLS ingester"
+        )
     probe_result = None
     if manifest.segments:
         first_segment = manifest.segments[0]
