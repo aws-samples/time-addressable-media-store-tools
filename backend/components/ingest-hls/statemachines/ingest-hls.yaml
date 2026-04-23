@@ -75,11 +75,12 @@ States:
     Type: Map
     Items: >-
       {% $multiFlows %}
+    MaxConcurrency: 1
     Assign:
       multiFlowId: >-
-        {% $multiFlows[0].id %}
+        {% $multiFlows[-1].id %}
       multiSourceId: >-
-        {% $multiFlows[0].source_id %}
+        {% $multiFlows[-1].source_id %}
       multiFlows: null
     ItemProcessor:
       ProcessorConfig:
