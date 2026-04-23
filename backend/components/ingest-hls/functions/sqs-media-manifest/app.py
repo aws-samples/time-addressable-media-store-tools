@@ -95,13 +95,14 @@ def get_file(source: str) -> bytes:
 @tracer.capture_method(capture_response=False)
 def extract_segment_timerange(
     start_ts: Timestamp, segment_uri: str, byterange: str = None
-) -> TimeRange:
+) -> tuple[TimeRange, Timestamp]:
     probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
     probe_stream = probe_result.get("streams", [{}])[0]
-    duration = Timestamp.from_count(
-        probe_stream["duration_ts"], 1 / Fraction(probe_stream["time_base"])
-    )
-    return TimeRange(start_ts, start_ts + duration, TimeRange.INCLUDE_START)
+    rate = 1 / Fraction(probe_stream["time_base"])
+    duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
+    media_start = Timestamp.from_count(probe_stream["start_pts"], rate)
+    timerange = TimeRange(start_ts, start_ts + duration, TimeRange.INCLUDE_START)
+    return timerange, media_start
 
 
 @tracer.capture_method(capture_response=False)
@@ -123,11 +124,12 @@ def process_segment(
         segment_start.to_nanosec() + (segment.duration * 1000000000)
     )
     timerange = TimeRange(segment_start, segment_end, TimeRange.INCLUDE_START)
+    ts_offset = str(Timestamp())
     try:
-        ffprobe_timerange = extract_segment_timerange(
+        timerange, media_start = extract_segment_timerange(
             last_timestamp, segment_uri, segment.byterange
         )
-        timerange = ffprobe_timerange
+        ts_offset = timerange.start - media_start
     except KeyError as ex:
         logger.warning(ex)
     segment_dict = {
@@ -137,6 +139,8 @@ def process_segment(
     }
     if segment.byterange:
         segment_dict["byterange"] = segment.byterange
+    if str(ts_offset) != "0:0":
+        segment_dict["ts_offset"] = str(ts_offset)
     segments.append(segment_dict)
     return timerange.end
 
