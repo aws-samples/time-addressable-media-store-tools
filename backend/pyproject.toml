@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "tams-backend-local"
+version = "0.0.0"
+description = "Local dev environment for testing backend Python snippets. Not packaged or deployed — Lambda builds use their own requirements.txt files."
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.14"
+
+[tool.poetry.group.dev.dependencies]
+aws-lambda-powertools = "^3.26.0"
+mediatimestamp = "^5.2.0"
+m3u8 = "^6.0.0"
+requests = "^2.33.0"
+crhelper = "^2.0.12"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
