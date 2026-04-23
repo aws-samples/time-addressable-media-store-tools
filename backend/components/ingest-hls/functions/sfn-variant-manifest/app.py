@@ -110,13 +110,13 @@ def get_avc1_essence_parameters(codec_string: str) -> dict:
 def get_mp4a_essence_parameters(codec_string: str) -> dict:
     """Parses a supplied mp4a codec string into TAMS essence parameters"""
     parts = codec_string.split(".")
-    if len(parts) not in (1, 2) or not parts[0]:
+    if len(parts) != 2:
         raise ValueError(f"Unexpected mp4a codec string '{codec_string}'")
     try:
-        oti = int(parts[0], 16)
+        aot = int(parts[1])
     except ValueError as ex:
         raise ValueError(f"Unexpected mp4a codec string '{codec_string}'") from ex
-    return {"codec_parameters": {"mp4_oti": oti}}
+    return {"codec_parameters": {"mp4_oti": aot}}
 
 
 @tracer.capture_method(capture_response=False)
@@ -133,7 +133,6 @@ def get_manifest(source: str) -> m3u8.M3U8:
         ) from ex
 
 
-@tracer.capture_method(capture_response=False)
 def get_file(source: str) -> bytes:
     """Reads the content of a file from the supplied source uri"""
     source_parse = urlparse(source)
@@ -147,6 +146,8 @@ def get_file(source: str) -> bytes:
             response = requests.get(source, timeout=30)
             response.raise_for_status()
             return response.content
+        case _:
+            raise ValueError(f"Unsupported URL scheme in '{source}'")
 
 
 @tracer.capture_method(capture_response=False)
@@ -205,15 +206,16 @@ def get_manifest_segment_probe(source: str) -> dict:
         )
     probe_result = None
     if manifest.segments:
-        segment_uri = f"{manifest_path}/{manifest.segments[0].uri}"
-        if manifest.segments[0].uri.startswith("http"):
-            segment_uri = manifest.segments[0].uri
-        elif manifest.segments[0].uri.startswith("/"):
+        first_segment = manifest.segments[0]
+        segment_uri = f"{manifest_path}/{first_segment.uri}"
+        if first_segment.uri.startswith("http"):
+            segment_uri = first_segment.uri
+        elif first_segment.uri.startswith("/"):
             path_parse = urlparse(manifest_path)
             segment_uri = (
-                f"{path_parse.scheme}://{path_parse.netloc}{manifest.segments[0].uri}"
+                f"{path_parse.scheme}://{path_parse.netloc}{first_segment.uri}"
             )
-        probe_result = ffprobe_link(segment_uri)
+        probe_result = ffprobe_link(segment_uri, byterange=first_segment.byterange)
     return probe_result or {}
 
 
@@ -484,7 +486,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     # Check if variant manifest
     if not manifest.is_variant:
         raise ValueError(
-            "A media manifest was provided. This workflow requires a variant/master manifest."
+            f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
     playlist_flows, playlist_flow_manifests, audio_codecs, playlist_warnings = (
         process_playlists(manifest, manifest_path, label)
@@ -507,7 +509,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     ]
     if not flows:
         raise ValueError(
-            "The variant manifest contains no video or audio streams (no playlists or media groups found)"
+            f"Variant manifest '{manifest_location}' contains no video or audio streams (no playlists or media groups found)"
         )
     # Set Source Ids and add multi if required
     multi_flows = set_source_and_multi(

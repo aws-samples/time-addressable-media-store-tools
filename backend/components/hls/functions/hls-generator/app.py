@@ -110,8 +110,8 @@ def get_avc1_codec_string(essence_parameters):
 @tracer.capture_method(capture_response=False)
 def get_mp4a_codec_string(essence_parameters):
     codec_parameters = essence_parameters.get("codec_parameters", {})
-    oti = hex(codec_parameters.get("mp4_oti", 64))[2:]
-    return f"mp4a.{oti}.2"
+    aot = codec_parameters.get("mp4_oti", 2)
+    return f"mp4a.40.{aot}"
 
 
 @tracer.capture_method(capture_response=False)

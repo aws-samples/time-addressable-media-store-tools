@@ -19,24 +19,36 @@ def get_signed_url(bucket, obj, expires_in=60):
     return presigned_url
 
 
-def ffprobe_link(source):
+def ffprobe_link(source, byterange=None):
     try:
         source_parse = urlparse(source)
-        ffprobe = subprocess.run(
+        url = (
+            get_signed_url(source_parse.netloc, source_parse.path[1:])
+            if source_parse.scheme == "s3"
+            else source
+        )
+        args = [
+            "/opt/bin/ffprobe",
+            "-loglevel",
+            "error",
+        ]
+        # Range header is deliberately unsigned so ffprobe_link can fetch byte ranges without re-signing
+        if byterange:
+            length_str, offset_str = byterange.split("@")
+            offset = int(offset_str)
+            end = offset + int(length_str) - 1
+            args.extend(["-headers", f"Range: bytes={offset}-{end}\r\n"])
+        args.extend(
             [
-                "/opt/bin/ffprobe",
-                "-loglevel",
-                "error",
                 "-show_format",
                 "-show_streams",
-                (
-                    get_signed_url(source_parse.netloc, source_parse.path[1:])
-                    if source_parse.scheme == "s3"
-                    else source
-                ),
+                url,
                 "-print_format",
                 "json",
-            ],
+            ]
+        )
+        ffprobe = subprocess.run(
+            args,
             check=True,
             shell=False,  # nosec B603 - subprocess call is safe as command input is controlled
             stdout=subprocess.PIPE,

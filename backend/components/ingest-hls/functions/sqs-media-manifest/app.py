@@ -86,12 +86,17 @@ def get_file(source: str) -> bytes:
             return response["Body"].read()
         case "https" | "http":
             response = requests.get(source, timeout=30)
+            response.raise_for_status()
             return response.content
+        case _:
+            raise ValueError(f"Unsupported URL scheme in '{source}'")
 
 
 @tracer.capture_method(capture_response=False)
-def extract_segment_timerange(start_ts: Timestamp, segment_uri: str) -> TimeRange:
-    probe_result = ffprobe_link(segment_uri) or {}
+def extract_segment_timerange(
+    start_ts: Timestamp, segment_uri: str, byterange: str = None
+) -> TimeRange:
+    probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
     probe_stream = probe_result.get("streams", [{}])[0]
     duration = Timestamp.from_count(
         probe_stream["duration_ts"], 1 / Fraction(probe_stream["time_base"])
@@ -112,16 +117,16 @@ def process_segment(
         segment_uri = segment.uri
     elif segment.uri.startswith("/"):
         path_parse = urlparse(manifest_path)
-        segment_uri = (
-            f"{path_parse.scheme}://{path_parse.netloc}{segment.uri}"
-        )
+        segment_uri = f"{path_parse.scheme}://{path_parse.netloc}{segment.uri}"
     segment_start = last_timestamp
     segment_end = Timestamp.from_nanosec(
         segment_start.to_nanosec() + (segment.duration * 1000000000)
     )
     timerange = TimeRange(segment_start, segment_end, TimeRange.INCLUDE_START)
     try:
-        ffprobe_timerange = extract_segment_timerange(last_timestamp, segment_uri)
+        ffprobe_timerange = extract_segment_timerange(
+            last_timestamp, segment_uri, segment.byterange
+        )
         timerange = ffprobe_timerange
     except KeyError as ex:
         logger.warning(ex)
