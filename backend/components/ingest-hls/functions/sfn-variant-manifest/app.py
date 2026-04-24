@@ -2,7 +2,6 @@ import json
 import os
 import uuid
 import time
-from datetime import datetime
 from fractions import Fraction
 from functools import lru_cache
 from urllib.parse import urlparse
@@ -12,7 +11,6 @@ import m3u8
 import requests
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from botocore.exceptions import ClientError
 from ffprobe import ffprobe_link
 
 tracer = Tracer()
@@ -168,35 +166,15 @@ def get_file(source: str) -> bytes:
 
 
 @tracer.capture_method(capture_response=False)
-def get_last_modified(source: str) -> int:
-    """Gets the Last Modified epoch (as int) of the supplied source uri"""
-    source_parse = urlparse(source)
-    match source_parse.scheme:
-        case "s3":
-            try:
-                response = s3.head_object(
-                    Bucket=source_parse.netloc, Key=source_parse.path[1:]
-                )
-                return int(response["LastModified"].timestamp())
-            except ClientError as ex:
-                if ex.response["Error"]["Code"] == "404":
-                    raise s3.exceptions.NoSuchKey(
-                        ex.response["Error"], "HeadObject"
-                    ) from ex
-                else:
-                    raise ex
-        case "https" | "http":
-            response = requests.head(source, timeout=30)
-            response.raise_for_status()
-            if response.headers.get("Last-Modified"):
-                return int(
-                    datetime.strptime(
-                        response.headers["Last-Modified"], "%a, %d %b %Y %H:%M:%S %Z"
-                    ).timestamp()
-                )
-            return 0
-        case _:
-            raise ValueError(f"Unsupported URL scheme in '{source}'")
+def get_manifest_start_pdt(source: str) -> int | None:
+    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch int, or None if absent."""
+    manifest = get_manifest(source)
+    if not manifest.segments:
+        return None
+    program_date_time = manifest.segments[0].program_date_time
+    if not program_date_time:
+        return None
+    return int(program_date_time.timestamp())
 
 
 @tracer.capture_method(capture_response=False)
@@ -664,14 +642,20 @@ def build_top_level_multi(
 def lambda_handler(event: dict, context: LambdaContext) -> dict:
     label = event["label"]
     manifest_location = event["manifestLocation"]
-    use_epoch = event.get("useEpoch", False)
-    flow_start = get_last_modified(manifest_location) if use_epoch else 0
     manifest_path = os.path.dirname(manifest_location)
     manifest = get_manifest(manifest_location)
     if not manifest.is_variant:
         raise ValueError(
             f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
+    # Determine flow start: prefer EXT-X-PROGRAM-DATE-TIME from the first variant's media manifest; fall back to 0
+    first_playlist_uri = manifest.playlists[0].uri if manifest.playlists else None
+    flow_start = 0
+    if first_playlist_uri:
+        first_media_manifest_url = resolve_child_uri(manifest_path, first_playlist_uri)
+        pdt = get_manifest_start_pdt(first_media_manifest_url)
+        if pdt is not None:
+            flow_start = pdt
     (
         playlist_flows,
         variant_multi_flows,
