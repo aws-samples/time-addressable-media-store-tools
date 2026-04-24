@@ -36,6 +36,8 @@ export type Workflow = {
   status: ExecutionStatus;
   startDate: string;
   stopDate: string | null;
+  label: string | null;
+  manifestLocation: string | null;
   flowId: string | null;
   sourceId: string | null;
   error: string | null;

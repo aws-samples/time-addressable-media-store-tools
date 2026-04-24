@@ -53,9 +53,12 @@ def manifest_exists(uri):
 
 @tracer.capture_method(capture_response=False)
 def get_workflow_details(workflow):
+    describe_execution = sfn.describe_execution(executionArn=workflow.executionArn)
+    workflow_input = json.loads(describe_execution.get("input", "{}")) or {}
+    workflow.label = workflow_input.get("label")
+    workflow.manifestLocation = workflow_input.get("manifestLocation")
     if workflow.status == "RUNNING":
         return workflow
-    describe_execution = sfn.describe_execution(executionArn=workflow.executionArn)
     workflow_output = json.loads(describe_execution.get("output", "{}")) or {}
     workflow.flowId = workflow_output.get("multiFlowId")
     workflow.sourceId = workflow_output.get("multiSourceId")

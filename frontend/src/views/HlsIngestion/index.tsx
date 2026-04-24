@@ -30,17 +30,29 @@ const HlsIngestion = () => {
 
   const columnDefinitions: TableProps.ColumnDefinition<Workflow>[] = [
     {
+      id: "elementalId",
+      header: "Id",
+      cell: (item) => item.elementalId,
+      sortingField: "elementalId",
+      isRowHeader: true,
+    },
+    {
       id: "elementalService",
       header: "Origin",
       cell: (item) => item.elementalService,
       sortingField: "elementalService",
     },
     {
-      id: "elementalId",
-      header: "Id",
-      cell: (item) => item.elementalId,
-      sortingField: "elementalId",
-      isRowHeader: true,
+      id: "label",
+      header: "Label",
+      cell: (item) => item.label,
+      sortingField: "label",
+    },
+    {
+      id: "manifestLocation",
+      header: "Manifest Location",
+      cell: (item) => item.manifestLocation,
+      sortingField: "manifestLocation",
     },
     {
       id: "status",
@@ -84,7 +96,6 @@ const HlsIngestion = () => {
       options: columnDefinitions.map(({ id, header }) => ({
         id: id!,
         label: header as string,
-        alwaysVisible: id === "elementalId",
       })),
     },
     cancelLabel: "Cancel",

@@ -45,6 +45,8 @@ class Workflow(BaseModel):
     stopDate: Optional[str] = Field(
         default=None, description="Workflow stop timestamp"
     )
+    label: Optional[str] = Field(default=None, description="TAMS Label supplied")
+    manifestLocation: Optional[str] = Field(default=None, description="HLS Manifest Location supplied")
     flowId: Optional[str] = Field(default=None, description="The Id of the Multi Flow created") 
     sourceId: Optional[str] = Field(default=None, description="The Id of the Multi Source created") 
     error: Optional[str] = Field(default=None, description="Error type if failed")
