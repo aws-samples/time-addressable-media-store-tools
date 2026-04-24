@@ -30,6 +30,7 @@ class ChannelIngestion(BaseModel):
     manifestUri: Optional[str] = Field(default=None, description="HLS manifest URI")
     manifestExists: bool = Field(description="Whether manifest exists in S3")
     state: str = Field(description="Channel state")
+    ingesting: bool = Field(description="Channel Currently Ingesting")
 
 
 class Workflow(BaseModel):
@@ -42,13 +43,17 @@ class Workflow(BaseModel):
     elementalId: str = Field(description="Elemental resource ID")
     status: str = Field(description="Execution status")
     startDate: str = Field(description="Workflow start timestamp")
-    stopDate: Optional[str] = Field(
-        default=None, description="Workflow stop timestamp"
-    )
+    stopDate: Optional[str] = Field(default=None, description="Workflow stop timestamp")
     label: Optional[str] = Field(default=None, description="TAMS Label supplied")
-    manifestLocation: Optional[str] = Field(default=None, description="HLS Manifest Location supplied")
-    flowId: Optional[str] = Field(default=None, description="The Id of the Multi Flow created") 
-    sourceId: Optional[str] = Field(default=None, description="The Id of the Multi Source created") 
+    manifestLocation: Optional[str] = Field(
+        default=None, description="HLS Manifest Location supplied"
+    )
+    flowId: Optional[str] = Field(
+        default=None, description="The Id of the Multi Flow created"
+    )
+    sourceId: Optional[str] = Field(
+        default=None, description="The Id of the Multi Source created"
+    )
     error: Optional[str] = Field(default=None, description="Error type if failed")
     warnings: Optional[list] = Field(
         default=None, description="Warnings from manifest parsing"

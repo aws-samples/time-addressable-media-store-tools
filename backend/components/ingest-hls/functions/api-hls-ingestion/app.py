@@ -67,6 +67,27 @@ def get_workflow_details(workflow):
     return workflow
 
 
+@tracer.capture_method(capture_response=False)
+def get_running_channel_workflows():
+    paginator = sfn.get_paginator("list_executions")
+    channel_ids = []
+    for page in paginator.paginate(
+        stateMachineArn=state_machine_arn, statusFilter="RUNNING"
+    ):
+        for execution in page["executions"]:
+            try:
+                elemental_service, elemental_id = (
+                    execution["name"].rsplit("-", 1)[0].split("-", 1)
+                )
+                if elemental_service == "medialive":
+                    channel_ids.append(elemental_id)
+            # pylint: disable=broad-exception-caught
+            except Exception as ex:
+                logger.error(ex)
+                continue
+    return channel_ids
+
+
 @app.get("/job-ingestion")
 @tracer.capture_method(capture_response=False)
 def get_job_ingestions():
@@ -108,6 +129,7 @@ def get_job_ingestions():
 @app.get("/channel-ingestion")
 @tracer.capture_method(capture_response=False)
 def get_channel_ingestions():
+    running_channel_workflows = get_running_channel_workflows()
     paginator = ml.get_paginator("list_channels")
     channels = []
     for page in paginator.paginate():
@@ -134,6 +156,7 @@ def get_channel_ingestions():
                         manifestUri=manifest_uri,
                         manifestExists=manifest_exists(manifest_uri),
                         state=channel["State"],
+                        ingesting=channel["Id"] in running_channel_workflows,
                     )
                 )
     return channels

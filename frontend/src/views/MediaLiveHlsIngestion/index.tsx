@@ -96,7 +96,8 @@ const MediaLiveHlsIngestion = () => {
               type: "icon-button",
               id: "ingest",
               iconName: "add-plus",
-              disabled: !item.manifestUri,
+              disabled: item.ingesting,
+              disabledReason: "Ingestion already in progess",
               text: "Ingest HLS",
             },
             {

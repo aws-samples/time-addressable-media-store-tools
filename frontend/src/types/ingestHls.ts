@@ -27,6 +27,7 @@ export type ChannelIngestion = {
   manifestUri: string | null;
   manifestExists: boolean;
   state: ChannelState;
+  ingesting: boolean;
 };
 
 export type Workflow = {
