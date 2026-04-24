@@ -12,7 +12,7 @@ import {
   TextContent,
   TextFilter,
 } from "@cloudscape-design/components";
-import StartIngestModal from "./components/StartIngestModal";
+import HlsIngestModal from "@/components/HlsIngestModal";
 import ConfirmationModal from "./components/ConfirmationModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useChannels } from "@/hooks/useChannels";
@@ -175,11 +175,17 @@ const MediaLiveHlsIngestion = () => {
       {
         {
           ingest: (
-            <StartIngestModal
+            <HlsIngestModal
               modalVisible={modalVisible}
               setModalVisible={setModalVisible}
-              selectedItem={selectedItem}
-              setSelectedItem={setSelectedItem}
+              idPrefix={`medialive-${selectedItem?.id ?? ""}`}
+              manifestUri={selectedItem?.manifestUri ?? ""}
+              manifestWarningText={
+                selectedItem?.manifestExists
+                  ? "Content already exists in this location.  Starting ingest now will ingest this into TAMS.  If you are setting up a new ingest process then you may wish to delete the existing content before starting the ingest process."
+                  : undefined
+              }
+              onDismiss={() => setSelectedItem(undefined)}
             />
           ),
           start: (

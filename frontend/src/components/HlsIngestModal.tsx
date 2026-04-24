@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Checkbox,
   FormField,
   Input,
   Modal,
@@ -13,38 +12,48 @@ import { AWS_HLS_INGEST_ARN } from "@/constants";
 import { useStateMachine } from "@/hooks/useStateMachine";
 import useAlertsStore from "@/stores/useAlertsStore";
 import stringify from "json-stable-stringify";
-import type { JobIngestion } from "@/types/ingestHls";
 
 type Props = {
   modalVisible: boolean;
   setModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedItem: JobIngestion | undefined;
-  setSelectedItem: React.Dispatch<
-    React.SetStateAction<JobIngestion | undefined>
-  >;
+  idPrefix: string;
+  manifestUri?: string;
+  manifestWarningText?: string;
+  onDismiss?: () => void;
 };
 
-const StartIngestModal = ({
+const HlsIngestModal = ({
   modalVisible,
   setModalVisible,
-  selectedItem,
-  setSelectedItem,
+  idPrefix,
+  manifestUri: externalManifestUri,
+  manifestWarningText,
+  onDismiss,
 }: Props) => {
-  const [useEpoch, setUseEpoch] = useState(false);
   const [label, setLabel] = useState("");
+  const [internalManifestUri, setInternalManifestUri] = useState("");
   const { execute, isExecuting } = useStateMachine();
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
+  const isReadOnly = externalManifestUri !== undefined;
+  const manifestUri = isReadOnly ? externalManifestUri : internalManifestUri;
+
+  const handleDismiss = () => {
+    setModalVisible(false);
+    setLabel("");
+    setInternalManifestUri("");
+    onDismiss?.();
+  };
+
   const performAction = async () => {
-    const id = `mediaconvert-${selectedItem!.id}-${Date.now()}`;
+    const id = `${idPrefix}-${Date.now()}`;
     await execute({
       stateMachineArn: AWS_HLS_INGEST_ARN,
       name: id,
       input: stringify({
         label,
-        manifestLocation: selectedItem!.manifestUri,
-        useEpoch: useEpoch,
+        manifestLocation: manifestUri,
       }),
       traceHeader: id,
     });
@@ -56,15 +65,7 @@ const StartIngestModal = ({
       id: id,
       onDismiss: () => delAlertItem(id),
     });
-    setModalVisible(false);
-    setSelectedItem(undefined);
-    setLabel("");
-  };
-
-  const handleDismiss = async () => {
-    setModalVisible(false);
-    setSelectedItem(undefined);
-    setLabel("");
+    handleDismiss();
   };
 
   return (
@@ -86,16 +87,18 @@ const StartIngestModal = ({
         <FormField
           description="The following manifest will be processed and ingested."
           label="Manifest URI"
+          warningText={manifestWarningText}
         >
-          <Textarea value={selectedItem?.manifestUri ?? ""} readOnly />
+          {isReadOnly ? (
+            <Textarea value={manifestUri} readOnly />
+          ) : (
+            <Textarea
+              value={manifestUri}
+              onChange={({ detail }) => setInternalManifestUri(detail.value)}
+              placeholder="Enter an http/s url or S3 uri"
+            />
+          )}
         </FormField>
-        <Checkbox
-          onChange={({ detail }) => setUseEpoch(detail.checked)}
-          checked={useEpoch}
-        >
-          Use the Last Modified timestamp of the manifest as the start of the
-          TAMS timerange.
-        </Checkbox>
         <FormField
           description="Provide a value for the label to use in TAMS."
           label="Label"
@@ -113,4 +116,4 @@ const StartIngestModal = ({
   );
 };
 
-export default StartIngestModal;
+export default HlsIngestModal;

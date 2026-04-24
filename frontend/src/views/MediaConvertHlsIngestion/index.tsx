@@ -15,7 +15,7 @@ import {
   TextContent,
   TextFilter,
 } from "@cloudscape-design/components";
-import StartIngestModal from "./components/StartIngestModal";
+import HlsIngestModal from "@/components/HlsIngestModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import useJobs from "@/hooks/useJobs";
 import type { JobIngestion } from "@/types/ingestHls";
@@ -152,11 +152,12 @@ const MediaConvertHlsIngestion = () => {
         pagination={<Pagination {...paginationProps} />}
         filter={<TextFilter {...filterProps} />}
       />
-      <StartIngestModal
+      <HlsIngestModal
         modalVisible={modalVisible}
         setModalVisible={setModalVisible}
-        selectedItem={selectedItem}
-        setSelectedItem={setSelectedItem}
+        idPrefix={`mediaconvert-${selectedItem?.id ?? ""}`}
+        manifestUri={selectedItem?.manifestUri ?? ""}
+        onDismiss={() => setSelectedItem(undefined)}
       />
     </>
   );

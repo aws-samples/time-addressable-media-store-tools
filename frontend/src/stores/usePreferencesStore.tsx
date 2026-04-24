@@ -139,8 +139,10 @@ const usePreferencesStore = create<PreferencesStore>()(
       hlsIngestPreferences: {
         pageSize: PAGE_SIZE,
         contentDisplay: [
+          { id: "elementalId", visible: false },
           { id: "elementalService", visible: true },
-          { id: "elementalId", visible: true },
+          { id: "label", visible: true },
+          { id: "manifestLocation", visible: true },
           { id: "status", visible: true },
           { id: "startDate", visible: true },
           { id: "stopDate", visible: true },

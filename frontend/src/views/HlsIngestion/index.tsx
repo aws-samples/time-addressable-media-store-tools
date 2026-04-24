@@ -10,7 +10,7 @@ import {
   TextFilter,
 } from "@cloudscape-design/components";
 import { Link } from "react-router-dom";
-import StartIngestModal from "./components/StartIngestModal";
+import HlsIngestModal from "@/components/HlsIngestModal";
 import WorkflowStatus from "./components/WorkflowStatus";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useWorkflows } from "@/hooks/useStateMachine";
@@ -161,9 +161,10 @@ const HlsIngestion = () => {
           />
         }
       />
-      <StartIngestModal
+      <HlsIngestModal
         modalVisible={modalVisible}
         setModalVisible={setModalVisible}
+        idPrefix={`hls-${crypto.randomUUID()}`}
       />
     </>
   );
