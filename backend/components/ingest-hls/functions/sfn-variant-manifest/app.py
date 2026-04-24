@@ -166,33 +166,6 @@ def get_file(source: str) -> bytes:
 
 
 @tracer.capture_method(capture_response=False)
-def get_manifest_start_pdt(source: str) -> int | None:
-    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch int, or None if absent."""
-    manifest = get_manifest(source)
-    if not manifest.segments:
-        return None
-    program_date_time = manifest.segments[0].program_date_time
-    if not program_date_time:
-        return None
-    return int(program_date_time.timestamp())
-
-
-@tracer.capture_method(capture_response=False)
-def get_flow_segment_durations(flow_manifests: dict) -> dict:
-    """Returns flow target durations from the media manifests supplied"""
-    segment_durations = {}
-    for flow_id, manifest_uri in flow_manifests.items():
-        manifest = get_manifest(manifest_uri)
-        # pylint: disable=no-member
-        if not manifest.target_duration:
-            raise ValueError(
-                f"Media manifest '{manifest_uri}' is missing #EXT-X-TARGETDURATION"
-            )
-        segment_durations[flow_id] = manifest.target_duration
-    return segment_durations
-
-
-@tracer.capture_method(capture_response=False)
 def attach_segment_duration(flow: dict, durations: dict) -> dict:
     """Return a flow with segment_duration attached if it owns segments."""
     if flow["id"] not in durations:
@@ -207,8 +180,8 @@ def attach_segment_duration(flow: dict, durations: dict) -> dict:
 
 
 @tracer.capture_method(capture_response=False)
-def get_manifest_segment_probe(source: str) -> dict:
-    """Probes the first segment of the manifest supplied"""
+def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
+    """Probes the first segment of the manifest supplied. Returns (probe_result, target_duration)."""
     manifest_path = os.path.dirname(source)
     manifest = get_manifest(source)
     if manifest.segment_map:
@@ -219,12 +192,15 @@ def get_manifest_segment_probe(source: str) -> dict:
         raise ValueError(
             f"Media manifest '{source}' uses #EXT-X-KEY (segment encryption) which is not supported by this HLS ingester"
         )
-    probe_result = None
+    # pylint: disable=no-member
+    if not manifest.target_duration:
+        raise ValueError(f"Media manifest '{source}' is missing #EXT-X-TARGETDURATION")
+    probe_result = {}
     if manifest.segments:
         first_segment = manifest.segments[0]
         segment_uri = resolve_child_uri(manifest_path, first_segment.uri)
         probe_result = ffprobe_link(segment_uri, byterange=first_segment.byterange)
-    return probe_result or {}
+    return probe_result, manifest.target_duration
 
 
 @tracer.capture_method(capture_response=False)
@@ -434,17 +410,18 @@ def build_subtitle_flow(
 @tracer.capture_method(capture_response=False)
 def process_playlists(
     manifest: m3u8.M3U8, manifest_path: str, label: str
-) -> tuple[list, list, dict, dict, list]:
+) -> tuple[list, list, dict, dict, dict, list]:
     """Parses the supplied manifest playlists to determine TAMS Flows and associated required metadata"""
     flows = []
     variant_multi_flows = []
     flow_manifests = {}
+    segment_durations = {}
     audio_codecs = {}
     warnings = []
     variant_multi_source_id = str(uuid.uuid4())
     for playlist in manifest.playlists:
         playlist_manifest_url = resolve_child_uri(manifest_path, playlist.uri)
-        probe = get_manifest_segment_probe(playlist_manifest_url)
+        probe, target_duration = get_manifest_segment_probe(playlist_manifest_url)
         audio_group_id = next(
             (media.group_id for media in playlist.media if media.type == "AUDIO"),
             None,
@@ -481,6 +458,7 @@ def process_playlists(
             flows.append(audio_flow)
             multi_flow_id = str(uuid.uuid4())
             flow_manifests[multi_flow_id] = playlist_manifest_url
+            segment_durations[multi_flow_id] = target_duration
             multi_flow = build_variant_multi_flow(
                 multi_flow_id,
                 variant_multi_source_id,
@@ -504,6 +482,7 @@ def process_playlists(
             )
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = playlist_manifest_url
+        segment_durations[flow_id] = target_duration
         # Assume Video Stream if resolution is specified, Audio Stream otherwise
         if playlist.stream_info.resolution:
             flow = build_video_flow(flow_id, label, playlist, probe, video_codec)
@@ -512,7 +491,14 @@ def process_playlists(
         flow["container"] = map_container(probe)
         apply_bitrate(flow, playlist)
         flows.append(flow)
-    return flows, variant_multi_flows, flow_manifests, audio_codecs, warnings
+    return (
+        flows,
+        variant_multi_flows,
+        flow_manifests,
+        segment_durations,
+        audio_codecs,
+        warnings,
+    )
 
 
 @tracer.capture_method(capture_response=False)
@@ -566,15 +552,17 @@ def resolve_audio_channels(media, probe_audio_stream: dict) -> int:
 @tracer.capture_method(capture_response=False)
 def process_media(
     manifest: m3u8.M3U8, manifest_path: str, label: str, audio_codecs: dict
-) -> tuple[list, dict, list]:
+) -> tuple[list, dict, dict, list]:
     """Parses the supplied manifest media to determine TAMS Flows and associated required metadata"""
     flows = []
     flow_manifests = {}
+    segment_durations = {}
     warnings = []
     for media in manifest.media:
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = resolve_child_uri(manifest_path, media.uri)
-        probe = get_manifest_segment_probe(flow_manifests[flow_id])
+        probe, target_duration = get_manifest_segment_probe(flow_manifests[flow_id])
+        segment_durations[flow_id] = target_duration
         tags = {
             f"hls_{attr}": getattr(media, attr)
             for attr in ["language", "name", "autoselect", "default", "forced"]
@@ -606,7 +594,7 @@ def process_media(
                 flows.append(
                     build_subtitle_flow(flow_id, label, media, probe, codec, tags)
                 )
-    return flows, flow_manifests, warnings
+    return flows, flow_manifests, segment_durations, warnings
 
 
 @tracer.capture_method(capture_response=False)
@@ -648,26 +636,22 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         raise ValueError(
             f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
-    # Determine flow start: prefer EXT-X-PROGRAM-DATE-TIME from the first variant's media manifest; fall back to 0
-    first_playlist_uri = manifest.playlists[0].uri if manifest.playlists else None
-    flow_start = 0
-    if first_playlist_uri:
-        first_media_manifest_url = resolve_child_uri(manifest_path, first_playlist_uri)
-        pdt = get_manifest_start_pdt(first_media_manifest_url)
-        if pdt is not None:
-            flow_start = pdt
     (
         playlist_flows,
         variant_multi_flows,
         playlist_flow_manifests,
+        playlist_segment_durations,
         audio_codecs,
         playlist_warnings,
     ) = process_playlists(manifest, manifest_path, label)
-    media_flows, media_flow_manifests, media_warnings = process_media(
-        manifest, manifest_path, label, audio_codecs
-    )
+    (
+        media_flows,
+        media_flow_manifests,
+        media_segment_durations,
+        media_warnings,
+    ) = process_media(manifest, manifest_path, label, audio_codecs)
     flow_manifests = {**playlist_flow_manifests, **media_flow_manifests}
-    flow_segment_durations = get_flow_segment_durations(flow_manifests)
+    flow_segment_durations = {**playlist_segment_durations, **media_segment_durations}
     flows = [
         attach_segment_duration(f, flow_segment_durations)
         for f in [*playlist_flows, *media_flows]
@@ -725,7 +709,6 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
                 "flowId": flow_id,
                 "manifestLocation": uri,
                 "lastMediaSequence": -1,
-                "lastTimestamp": f"{flow_start}:0",
                 "eventTimestamp": int(time.time() * 1000),
             }
             for flow_id, uri in flow_manifests.items()

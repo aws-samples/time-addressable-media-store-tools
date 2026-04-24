@@ -93,6 +93,17 @@ def get_file(source: str) -> bytes:
 
 
 @tracer.capture_method(capture_response=False)
+def get_manifest_start_pdt(manifest: m3u8.M3U8) -> int | None:
+    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch int, or None if absent."""
+    if not manifest.segments:
+        return None
+    program_date_time = manifest.segments[0].program_date_time
+    if not program_date_time:
+        return None
+    return int(program_date_time.timestamp())
+
+
+@tracer.capture_method(capture_response=False)
 def extract_segment_timerange(
     start_ts: Timestamp, segment_uri: str, byterange: str = None
 ) -> tuple[TimeRange, Timestamp]:
@@ -167,7 +178,11 @@ def process_message(message: dict, task_token: str) -> None:
     if manifest.is_variant:
         raise ValueError("Not a media manifest")
     last_media_sequence = message["lastMediaSequence"]
-    last_timestamp = Timestamp.from_str(message.get("lastTimestamp", "0:0"))
+    if "lastTimestamp" in message:
+        last_timestamp = Timestamp.from_str(message["lastTimestamp"])
+    else:
+        pdt = get_manifest_start_pdt(manifest)
+        last_timestamp = Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
     segments = []
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
