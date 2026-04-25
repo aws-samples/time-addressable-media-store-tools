@@ -106,13 +106,18 @@ def get_manifest_start_pdt(manifest: m3u8.M3U8) -> int | None:
 @tracer.capture_method(capture_response=False)
 def extract_segment_timerange(
     start_ts: Timestamp, segment_uri: str, byterange: str = None
-) -> tuple[TimeRange, Timestamp]:
+) -> tuple[TimeRange, Timestamp | None]:
+    """Returns the segment's timerange (from ffprobe duration) and media_start (from start_pts).
+    media_start will be None if ffprobe does not report start_pts for this segment."""
     probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
     probe_stream = probe_result.get("streams", [{}])[0]
     rate = 1 / Fraction(probe_stream["time_base"])
     duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
-    media_start = Timestamp.from_count(probe_stream["start_pts"], rate)
     timerange = TimeRange(start_ts, start_ts + duration, TimeRange.INCLUDE_START)
+    if "start_pts" in probe_stream:
+        media_start = Timestamp.from_count(probe_stream["start_pts"], rate)
+    else:
+        media_start = None
     return timerange, media_start
 
 
@@ -140,7 +145,8 @@ def process_segment(
         timerange, media_start = extract_segment_timerange(
             last_timestamp, segment_uri, segment.byterange
         )
-        ts_offset = timerange.start - media_start
+        if media_start is not None:
+            ts_offset = timerange.start - media_start
     except KeyError as ex:
         logger.warning(ex)
     segment_dict = {
@@ -182,7 +188,9 @@ def process_message(message: dict, task_token: str) -> None:
         last_timestamp = Timestamp.from_str(message["lastTimestamp"])
     else:
         pdt = get_manifest_start_pdt(manifest)
-        last_timestamp = Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
+        last_timestamp = (
+            Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
+        )
     segments = []
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
