@@ -37,7 +37,7 @@ def get_file(source: str, byterange: str | None) -> bytes:
     source_parse = urlparse(source)
     if byterange:
         byterange_len, byterange_start = map(int, byterange.split("@"))
-        range_string = f"{byterange_start}-{byterange_start + byterange_len}"
+        range_string = f"{byterange_start}-{byterange_start + byterange_len - 1}"
     match source_parse.scheme:
         case "s3":
             params = {
