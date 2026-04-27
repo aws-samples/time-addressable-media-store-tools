@@ -75,17 +75,29 @@ def get_manifest(source: str) -> m3u8.M3U8:
 
 
 @tracer.capture_method(capture_response=False)
-def get_file(source: str) -> bytes:
-    """Reads the content of a file from the supplied source uri"""
+def get_file(source: str, byterange: str | None = None) -> bytes:
+    """Reads the content of a file from the supplied source uri, optionally limited to a byterange.
+    byterange format matches HLS #EXT-X-BYTERANGE: 'length@offset'."""
     source_parse = urlparse(source)
+    range_header = None
+    if byterange:
+        length_str, offset_str = byterange.split("@")
+        offset = int(offset_str)
+        end = offset + int(length_str) - 1
+        range_header = f"bytes={offset}-{end}"
     match source_parse.scheme:
         case "s3":
-            response = s3.get_object(
-                Bucket=source_parse.netloc, Key=source_parse.path[1:]
-            )
+            params = {
+                "Bucket": source_parse.netloc,
+                "Key": source_parse.path[1:],
+            }
+            if range_header:
+                params["Range"] = range_header
+            response = s3.get_object(**params)
             return response["Body"].read()
         case "https" | "http":
-            response = requests.get(source, timeout=30)
+            headers = {"Range": range_header} if range_header else None
+            response = requests.get(source, headers=headers, timeout=30)
             response.raise_for_status()
             return response.content
         case _:
