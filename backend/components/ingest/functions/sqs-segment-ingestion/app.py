@@ -32,7 +32,7 @@ creds = Credentials(
 
 
 @tracer.capture_method(capture_response=False)
-def get_file(source: str, byterange: str | None) -> bytes:
+def get_file(source: str, byterange: str | None = None) -> bytes:
     """Reads the content of a file from the supplied source uri"""
     source_parse = urlparse(source)
     if byterange:
@@ -51,11 +51,14 @@ def get_file(source: str, byterange: str | None) -> bytes:
                 return response["Body"].read()
             except s3.exceptions.NoSuchKey as ex:
                 logger.error("NoSuchKey", error=ex.response["Error"])
-                return False
+                return None
         case "https" | "http":
             headers = {"Range": f"bytes={range_string}"} if byterange else None
             response = requests.get(source, headers=headers, timeout=30)
+            response.raise_for_status()
             return response.content
+        case _:
+            raise ValueError(f"Unsupported URL scheme in '{source}'")
 
 
 @tracer.capture_method(capture_response=False)
