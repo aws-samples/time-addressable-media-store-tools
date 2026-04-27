@@ -76,8 +76,7 @@ def get_manifest(source: str) -> m3u8.M3U8:
 
 @tracer.capture_method(capture_response=False)
 def get_file(source: str, byterange: str | None = None) -> bytes:
-    """Reads the content of a file from the supplied source uri, optionally limited to a byterange.
-    byterange format matches HLS #EXT-X-BYTERANGE: 'length@offset'."""
+    """Reads the content of a file from the supplied source uri, optionally limited to a byterange in HLS #EXT-X-BYTERANGE format ('length@offset')."""
     source_parse = urlparse(source)
     range_header = None
     if byterange:
@@ -116,51 +115,67 @@ def get_manifest_start_pdt(manifest: m3u8.M3U8) -> int | None:
 
 
 @tracer.capture_method(capture_response=False)
-def extract_segment_timerange(
-    start_ts: Timestamp, segment_uri: str, byterange: str = None
-) -> tuple[TimeRange, Timestamp | None]:
-    """Returns the segment's timerange (from ffprobe duration) and media_start (from start_pts).
-    media_start will be None if ffprobe does not report start_pts for this segment."""
-    probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
-    probe_stream = probe_result.get("streams", [{}])[0]
-    rate = 1 / Fraction(probe_stream["time_base"])
-    duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
-    timerange = TimeRange(start_ts, start_ts + duration, TimeRange.INCLUDE_START)
-    if "start_pts" in probe_stream:
-        media_start = Timestamp.from_count(probe_stream["start_pts"], rate)
-    else:
-        media_start = None
-    return timerange, media_start
+def probe_segment(
+    segment_uri: str,
+    byterange: str | None,
+    extinf_duration: float,
+) -> tuple[Timestamp | None, Timestamp]:
+    """Probes the segment and returns (start_pts, duration). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure."""
+    try:
+        probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
+        streams = probe_result.get("streams", [])
+        if not streams:
+            raise ValueError("ffprobe returned no streams")
+        probe_stream = streams[0]
+        rate = 1 / Fraction(probe_stream["time_base"])
+        duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
+        start_pts = (
+            Timestamp.from_count(probe_stream["start_pts"], rate)
+            if "start_pts" in probe_stream
+            else None
+        )
+        return start_pts, duration
+    except (KeyError, ValueError, TypeError) as ex:
+        logger.warning(
+            "Segment probe incomplete, falling back to #EXTINF",
+            segment_uri=segment_uri,
+            error=str(ex),
+        )
+        return None, Timestamp.from_nanosec(int(extinf_duration * 1_000_000_000))
 
 
 @tracer.capture_method(capture_response=False)
 def process_segment(
-    last_timestamp: Timestamp,
-    segment: dict,
+    state: dict,
+    segment,
     flow_id: str,
     manifest_path: str,
     segments: list,
-) -> Timestamp:
+) -> None:
+    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end) is mutated in place to carry the contiguous-region anchor, with ts_offset recomputed only on a new region (first segment or segment.discontinuity)."""
     segment_uri = f"{manifest_path}/{segment.uri}"
     if segment.uri.startswith("http"):
         segment_uri = segment.uri
     elif segment.uri.startswith("/"):
         path_parse = urlparse(manifest_path)
         segment_uri = f"{path_parse.scheme}://{path_parse.netloc}{segment.uri}"
-    segment_start = last_timestamp
-    segment_end = Timestamp.from_nanosec(
-        segment_start.to_nanosec() + (segment.duration * 1000000000)
+
+    start_pts, duration = probe_segment(
+        segment_uri, segment.byterange, segment.duration
     )
-    timerange = TimeRange(segment_start, segment_end, TimeRange.INCLUDE_START)
-    ts_offset = str(Timestamp())
-    try:
-        timerange, media_start = extract_segment_timerange(
-            last_timestamp, segment_uri, segment.byterange
-        )
-        if media_start is not None:
-            ts_offset = timerange.start - media_start
-    except KeyError as ex:
-        logger.warning(ex)
+
+    is_new_region = state["ts_offset"] is None or segment.discontinuity
+    if is_new_region:
+        file_time_at_region_start = start_pts if start_pts is not None else Timestamp()
+        state["ts_offset"] = state["last_end"] - file_time_at_region_start
+
+    if start_pts is not None:
+        seg_start = state["ts_offset"] + start_pts
+    else:
+        seg_start = state["last_end"]
+    seg_end = seg_start + duration
+    timerange = TimeRange(seg_start, seg_end, TimeRange.INCLUDE_START)
+
     segment_dict = {
         "flowId": flow_id,
         "timerange": str(timerange),
@@ -168,10 +183,10 @@ def process_segment(
     }
     if segment.byterange:
         segment_dict["byterange"] = segment.byterange
-    if str(ts_offset) != "0:0":
-        segment_dict["ts_offset"] = str(ts_offset)
+    if str(state["ts_offset"]) != "0:0":
+        segment_dict["ts_offset"] = str(state["ts_offset"])
     segments.append(segment_dict)
-    return timerange.end
+    state["last_end"] = seg_end
 
 
 @idempotent_function(
@@ -196,19 +211,19 @@ def process_message(message: dict, task_token: str) -> None:
     if manifest.is_variant:
         raise ValueError("Not a media manifest")
     last_media_sequence = message["lastMediaSequence"]
-    if "lastTimestamp" in message:
-        last_timestamp = Timestamp.from_str(message["lastTimestamp"])
+    if "tsOffset" in message:
+        state = {
+            "ts_offset": Timestamp.from_str(message["tsOffset"]),
+            "last_end": Timestamp.from_str(message["lastEnd"]),
+        }
     else:
         pdt = get_manifest_start_pdt(manifest)
-        last_timestamp = (
-            Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
-        )
+        flow_start = Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
+        state = {"ts_offset": None, "last_end": flow_start}
     segments = []
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
-            last_timestamp = process_segment(
-                last_timestamp, segment, flow_id, manifest_path, segments
-            )
+            process_segment(state, segment, flow_id, manifest_path, segments)
             last_media_sequence = segment.media_sequence
             if len(segments) == 10:
                 send_message_batch(segments)
@@ -231,7 +246,8 @@ def process_message(message: dict, task_token: str) -> None:
                 {
                     **message,
                     "lastMediaSequence": last_media_sequence,
-                    "lastTimestamp": str(last_timestamp),
+                    "tsOffset": str(state["ts_offset"]),
+                    "lastEnd": str(state["last_end"]),
                     "eventTimestamp": int(time.time() * 1000),
                 }
             ),
