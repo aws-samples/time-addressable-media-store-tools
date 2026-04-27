@@ -36,41 +36,46 @@ const FlowCreateRuleModal = ({
   const { commands, ffmpeg, selectedCommand, setSelectedCommand } =
     useFfmpegCommandSelector(true);
 
+  const createRule = async () => {
+    setIsSubmitting(true);
+    try {
+      const destination =
+        outputFlow ||
+        (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: (
+          <TextContent>
+            <p>The Rule is being created...</p>
+            <p>
+              It will ingest into flow{" "}
+              <Link to={`/flows/${destination}`}>{destination}</Link>
+            </p>
+          </TextContent>
+        ),
+        id: id,
+        onDismiss: () => delAlertItem(id),
+      });
+      await put({
+        flowId: selectedFlowId,
+        outputFlowId: destination,
+        payload: ffmpeg,
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setoutputFlow("");
     setSelectedCommand("");
     setIsSubmitting(false);
-  };
-
-  const createRule = async () => {
-    setIsSubmitting(true);
-    const destination =
-      outputFlow ||
-      (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          <p>The Rule is being created...</p>
-          <p>
-            It will ingest into flow{" "}
-            <Link to={`/flows/${destination}`}>{destination}</Link>
-          </p>
-        </TextContent>
-      ),
-      id: id,
-      onDismiss: () => delAlertItem(id),
-    });
-    await put({
-      flowId: selectedFlowId,
-      outputFlowId: destination,
-      payload: ffmpeg,
-    });
-    handleDismiss();
   };
 
   return (

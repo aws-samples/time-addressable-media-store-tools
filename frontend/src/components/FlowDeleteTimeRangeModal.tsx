@@ -22,23 +22,24 @@ const FlowDeleteTimeRangeModal = ({
   const [timerange, setTimerange] = useState("");
 
   const deleteTimerange = async () => {
-    const promises = selectedItems.map((item) =>
-      delTimerange({ flowId: item.id, timerange }),
-    );
-    const id = crypto.randomUUID();
-    addAlertItems(
-      selectedItems.map((flow, n) => ({
-        type: "success",
-        dismissible: true,
-        dismissLabel: "Dismiss message",
-        content: `Flow segments on flow ${flow.id} within the timerange ${timerange} are being deleted. This will happen asynchronously.`,
-        id: `${id}-${n}`,
-        onDismiss: () => delAlertItem(`${id}-${n}`),
-      })),
-    );
-    await Promise.all(promises);
-    setModalVisible(false);
-    setTimerange("");
+    try {
+      await Promise.all(selectedItems.map((item) => delTimerange({ flowId: item.id, timerange })));
+      const id = crypto.randomUUID();
+      addAlertItems(
+        selectedItems.map((flow, n) => ({
+          type: "success",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `Flow segments on flow ${flow.id} within the timerange ${timerange} are being deleted. This will happen asynchronously.`,
+          id: `${id}-${n}`,
+          onDismiss: () => delAlertItem(`${id}-${n}`),
+        })),
+      );
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
   };
 
   const handleDismiss = () => {

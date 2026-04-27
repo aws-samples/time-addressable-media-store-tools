@@ -25,26 +25,30 @@ const FlowDeleteModal = ({
 
   const deleteFlow = async () => {
     setIsDeleting(true);
-    const promises = selectedItems.map((item) => del({ flowId: item.id }));
-    const id = crypto.randomUUID();
-    addAlertItems(
-      selectedItems.map((flow, n) => ({
-        type: "success",
-        dismissible: true,
-        dismissLabel: "Dismiss message",
-        content: `Flow ${flow.id} is being deleted. This will happen asynchronously`,
-        id: `${id}-${n}`,
-        onDismiss: () => delAlertItem(`${id}-${n}`),
-      })),
-    );
-    await Promise.all(promises);
-    setIsDeleting(false);
-    setModalVisible(false);
-    navigate("/flows");
+    try {
+      await Promise.all(selectedItems.map((item) => del({ flowId: item.id })));
+      const id = crypto.randomUUID();
+      addAlertItems(
+        selectedItems.map((flow, n) => ({
+          type: "success",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `Flow ${flow.id} is being deleted. This will happen asynchronously`,
+          id: `${id}-${n}`,
+          onDismiss: () => delAlertItem(`${id}-${n}`),
+        })),
+      );
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
   };
 
   const handleDismiss = () => {
+    setIsDeleting(false);
     setModalVisible(false);
+    navigate("/flows");
   };
 
   return (

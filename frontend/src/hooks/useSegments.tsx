@@ -8,7 +8,7 @@ export const useLastN = (flowId: Uuid, n: number) => {
   const { data, mutate, error, isLoading, isValidating } = useSWR<Segment[]>(
     `/flows/${flowId}/segments`,
     (path: string) =>
-      paginationFetcher(
+      paginationFetcher<Segment>(
         `${path}?accept_get_urls=&reverse_order=true&include_object_timerange=true`,
         api,
         n,
@@ -36,9 +36,8 @@ export const useSegments = (
   const { data, mutate, error, isLoading, isValidating } = useSWR<Segment[]>(
     `/flows/${flowId}/segments`,
     (path: string) =>
-      paginationFetcher(
-        `${path}${
-          timerange ? `?timerange=${timerange}` : ""
+      paginationFetcher<Segment>(
+        `${path}${timerange ? `?timerange=${timerange}` : ""
         }&reverse_order=false&limit=300`,
         api,
         maxResults,
@@ -70,7 +69,7 @@ export const useFlowsSegments = (
       : null,
     async (paths: string[]) => {
       const responses = await Promise.all(
-        paths.map((path) => paginationFetcher(path, api, maxResults)),
+        paths.map((path) => paginationFetcher<Segment>(path, api, maxResults)),
       );
       return responses;
     },

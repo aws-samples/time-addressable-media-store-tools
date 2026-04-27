@@ -21,29 +21,38 @@ const DeleteModal = ({
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
   const deleteRule = async () => {
-    const [flowId, outputFlowId] = selectedKey.split("_");
-    const delPromise = del({ flowId, outputFlowId });
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: "The Rule is being deleted...",
-      id: id,
-      onDismiss: () => delAlertItem(id),
-    });
-    await delPromise;
+    try {
+      const [flowId, outputFlowId] = selectedKey.split("_");
+      const delPromise = del({ flowId, outputFlowId });
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: "The Rule is being deleted...",
+        id: id,
+        onDismiss: () => delAlertItem(id),
+      });
+      await delPromise;
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
+  const handleDismiss = () => {
     setModalVisible(false);
     setSelectedKey("");
-  };
+  }
 
   return (
     <Modal
-      onDismiss={() => setModalVisible(false)}
+      onDismiss={handleDismiss}
       visible={modalVisible}
       footer={
         <CancelModalFooter
-          onCancel={() => setModalVisible(false)}
+          onCancel={handleDismiss}
           onSubmit={deleteRule}
           submitText="Yes"
           submitLoading={isDeleting}

@@ -94,6 +94,41 @@ const WebhookRegisterUpdateModal = ({
     getInitialData(),
   );
 
+  const postWebhook = async () => {
+    setIsSubmitting(true);
+    try {
+      const id = crypto.randomUUID();
+      try {
+        if (webhook) {
+          await update(formData as WebhookPut);
+        } else {
+          await register(formData as WebhookPost);
+        }
+        addAlertItem({
+          type: "success",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `Webhook ${webhook ? "updated" : "registered"} successfully.`,
+          id: id,
+          onDismiss: () => delAlertItem(id),
+        });
+      } catch (error) {
+        addAlertItem({
+          type: "error",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `Failed to ${webhook ? "update" : "register"} webhook: ${error instanceof Error ? error.message : "Unknown error"}`,
+          id: id,
+          onDismiss: () => delAlertItem(id),
+        });
+      }
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setFormData(getInitialData());
@@ -104,36 +139,6 @@ const WebhookRegisterUpdateModal = ({
         : "",
     );
     setIsSubmitting(false);
-  };
-
-  const postWebhook = async () => {
-    setIsSubmitting(true);
-    const id = crypto.randomUUID();
-    try {
-      if (webhook) {
-        await update(formData as WebhookPut);
-      } else {
-        await register(formData as WebhookPost);
-      }
-      addAlertItem({
-        type: "success",
-        dismissible: true,
-        dismissLabel: "Dismiss message",
-        content: `Webhook ${webhook ? "updated" : "registered"} successfully.`,
-        id: id,
-        onDismiss: () => delAlertItem(id),
-      });
-    } catch (error) {
-      addAlertItem({
-        type: "error",
-        dismissible: true,
-        dismissLabel: "Dismiss message",
-        content: `Failed to ${webhook ? "update" : "register"} webhook: ${error instanceof Error ? error.message : "Unknown error"}`,
-        id: id,
-        onDismiss: () => delAlertItem(id),
-      });
-    }
-    handleDismiss();
   };
 
   return (
@@ -205,8 +210,8 @@ const WebhookRegisterUpdateModal = ({
             label="Status"
             errorText={
               webhook &&
-              formData.status &&
-              !enabledStatuses.includes(formData.status)
+                formData.status &&
+                !enabledStatuses.includes(formData.status)
                 ? "This status is system-managed"
                 : undefined
             }

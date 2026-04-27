@@ -22,23 +22,24 @@ const FlowReadOnlyModal = ({
   const [readOnlyStr, setReadOnlyStr] = useState("");
 
   const setReadOnly = async () => {
-    const promises = selectedItems.map((item) =>
-      putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" }),
-    );
-    const id = crypto.randomUUID();
-    addAlertItems(
-      selectedItems.map((flow, n) => ({
-        type: "success",
-        dismissible: true,
-        dismissLabel: "Dismiss message",
-        content: `Flow ${flow.id} read_only is being updated. This will happen asynchronously`,
-        id: `${id}-${n}`,
-        onDismiss: () => delAlertItem(`${id}-${n}`),
-      })),
-    );
-    setModalVisible(false);
-    setReadOnlyStr("");
-    await Promise.all(promises);
+    try {
+      await Promise.all(selectedItems.map((item) => putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" })));
+      const id = crypto.randomUUID();
+      addAlertItems(
+        selectedItems.map((flow, n) => ({
+          type: "success",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `Flow ${flow.id} read_only is being updated. This will happen asynchronously`,
+          id: `${id}-${n}`,
+          onDismiss: () => delAlertItem(`${id}-${n}`),
+        })),
+      );
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
   };
 
   const handleDismiss = () => {

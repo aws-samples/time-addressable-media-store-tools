@@ -32,11 +32,16 @@ const TagDeleteModal = ({
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    await del({ name: tagName });
-    if (propagate) {
-      await propagateTagAction(entityType, entity, "delete", tagName);
+    try {
+      await del({ name: tagName });
+      if (propagate) {
+        await propagateTagAction(entityType, entity, "delete", tagName);
+      }
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
     }
-    handleDismiss();
   };
 
   const handleDismiss = () => {

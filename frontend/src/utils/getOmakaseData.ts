@@ -199,7 +199,7 @@ const getSegmentationTimerange = async (
     includesEnd: true,
   };
 
-  const windowSegments = await paginationFetcher(
+  const windowSegments = await paginationFetcher<Segment>(
     `/flows/${
       earliestEndFlow.id
     }/segments?presigned=true&limit=300&timerange=${toTimerangeString(windowTimerange)}`,
@@ -283,7 +283,7 @@ const getOmakaseData = async (
     .filter((id) => !(id in segmentsCache))
     .forEach((id) =>
       fetchPromises.push(
-        paginationFetcher(
+        paginationFetcher<Segment>(
           `/flows/${id}/segments?presigned=true&limit=300&timerange=${parsedTimerange}`,
           api,
         ).then((result) => [id, result]),

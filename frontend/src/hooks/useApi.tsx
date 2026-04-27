@@ -1,6 +1,7 @@
 import { useAuth } from "react-oidc-context";
 import { useMemo } from "react";
 import parseLinkHeader from "@/utils/parseLinkHeader";
+import useAlertsStore from "@/stores/useAlertsStore";
 import { AWS_TAMS_ENDPOINT } from "@/constants";
 import type { RequestOptions } from "@/types/hooks";
 
@@ -12,6 +13,8 @@ type ApiResponse<T = unknown> = {
 
 export const useApi = () => {
   const auth = useAuth();
+  const addAlertItem = useAlertsStore((state) => state.addAlertItem);
+  const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
   return useMemo(() => {
     const makeRequest = async <T = unknown,>(
@@ -51,7 +54,17 @@ export const useApi = () => {
             errorData.error ||
             JSON.stringify(errorData);
         }
-        throw new Error(`HTTP ${response.status}: ${errorMessage}`);
+        const fullMessage = `HTTP ${response.status}: ${errorMessage}`;
+        const alertId = `api-error-${Date.now()}-${Math.random()}`;
+        addAlertItem({
+          type: "error",
+          dismissible: true,
+          dismissLabel: "Dismiss message",
+          content: `${method} ${path} failed — ${fullMessage}`,
+          id: alertId,
+          onDismiss: () => delAlertItem(alertId),
+        });
+        throw new Error(fullMessage);
       }
 
       return {
@@ -71,5 +84,5 @@ export const useApi = () => {
       post: (path: string, jsonBody: unknown, options: RequestOptions = {}) =>
         makeRequest("POST", path, { ...options, body: jsonBody }),
     };
-  }, [auth.user?.access_token]);
+  }, [auth.user?.access_token, addAlertItem, delAlertItem]);
 };

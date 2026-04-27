@@ -55,38 +55,42 @@ const ReplicationModal = ({
     },
   ];
 
+  const startExecution = async () => {
+    setIsSubmitting(true);
+    try {
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: "The requested operation has been submitted...",
+        id: id,
+        onDismiss: () => delAlertItem(id),
+      });
+
+      await execute({
+        stateMachineArn: action,
+        name: id,
+        input: stringify({
+          originConnectionArn: connection!.connectionArn,
+          originEndpoint: connection!.endpoint,
+          [`${originType.toLowerCase()}Id`]: originId,
+          timerange: timerange,
+        }),
+        traceHeader: id,
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setTimerange("");
     setOriginId("");
     setSelectedConnection("");
-    setIsSubmitting(false);
-  };
-
-  const startExecution = async () => {
-    setIsSubmitting(true);
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: "The requested operation has been submitted...",
-      id: id,
-      onDismiss: () => delAlertItem(id),
-    });
-
-    await execute({
-      stateMachineArn: action,
-      name: id,
-      input: stringify({
-        originConnectionArn: connection!.connectionArn,
-        originEndpoint: connection!.endpoint,
-        [`${originType.toLowerCase()}Id`]: originId,
-        timerange: timerange,
-      }),
-      traceHeader: id,
-    });
-    handleDismiss();
     setIsSubmitting(false);
   };
 

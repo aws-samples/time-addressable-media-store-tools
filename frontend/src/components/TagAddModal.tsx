@@ -33,16 +33,21 @@ const TagAddModal = ({
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    await update({
-      name: tagName,
-      value: tagValue.includes(",")
-        ? tagValue.split(",").map((s) => s.trim())
-        : tagValue,
-    });
-    if (propagate) {
-      await propagateTagAction(entityType, entity, "update", tagName, tagValue);
+    try {
+      await update({
+        name: tagName,
+        value: tagValue.includes(",")
+          ? tagValue.split(",").map((s) => s.trim())
+          : tagValue,
+      });
+      if (propagate) {
+        await propagateTagAction(entityType, entity, "update", tagName, tagValue);
+      }
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
     }
-    handleDismiss();
   };
 
   const handleDismiss = () => {

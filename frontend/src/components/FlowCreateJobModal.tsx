@@ -37,43 +37,48 @@ const FlowCreateJobModal = ({
   const { commands, ffmpeg, selectedCommand, setSelectedCommand } =
     useFfmpegCommandSelector(true);
 
+  const createJob = async () => {
+    setIsSubmitting(true);
+    try {
+      const destination =
+        outputFlow ||
+        (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: (
+          <TextContent>
+            <p>The Batch Job is being started...</p>
+            <p>
+              It will ingest into flow{" "}
+              <Link to={`/flows/${destination}`}>{destination}</Link>
+            </p>
+          </TextContent>
+        ),
+        id,
+        onDismiss: () => delAlertItem(id),
+      });
+      await start({
+        inputFlow: selectedFlowId,
+        timerange,
+        ffmpeg: { command: ffmpeg!.command },
+        outputFlow: destination,
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setTimerange("");
     setoutputFlow("");
     setSelectedCommand("");
     setIsSubmitting(false);
-  };
-
-  const createJob = async () => {
-    setIsSubmitting(true);
-    const destination =
-      outputFlow ||
-      (await createFFmegFlow(selectedFlowId, ffmpeg!.tams!, credentials));
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: (
-        <TextContent>
-          <p>The Batch Job is being started...</p>
-          <p>
-            It will ingest into flow{" "}
-            <Link to={`/flows/${destination}`}>{destination}</Link>
-          </p>
-        </TextContent>
-      ),
-      id,
-      onDismiss: () => delAlertItem(id),
-    });
-    await start({
-      inputFlow: selectedFlowId,
-      timerange,
-      ffmpeg: { command: ffmpeg!.command },
-      outputFlow: destination,
-    });
-    handleDismiss();
   };
 
   return (

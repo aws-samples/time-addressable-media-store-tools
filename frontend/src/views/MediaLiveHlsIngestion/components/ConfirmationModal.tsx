@@ -28,27 +28,30 @@ const ConfirmationModal = ({
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
 
-  const handleDismiss = () => {
-    setModalVisible(false);
-    setSelectedItem(undefined);
-    setActionId("");
+  const performAction = async () => {
+    try {
+      if (actionId === "start") {
+        await start({ ChannelId: channelId });
+      } else if (actionId === "stop") {
+        await stop({ ChannelId: channelId });
+      }
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: `The channel ${channelId} is being ${actionId}ed...`,
+        id: id,
+        onDismiss: () => delAlertItem(id),
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
   };
 
-  const performAction = async () => {
-    if (actionId === "start") {
-      await start({ ChannelId: channelId });
-    } else if (actionId === "stop") {
-      await stop({ ChannelId: channelId });
-    }
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: `The channel ${channelId} is being ${actionId}ed...`,
-      id: id,
-      onDismiss: () => delAlertItem(id),
-    });
+  const handleDismiss = () => {
     setModalVisible(false);
     setSelectedItem(undefined);
     setActionId("");

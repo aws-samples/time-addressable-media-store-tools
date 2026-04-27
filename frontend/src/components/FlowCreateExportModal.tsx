@@ -31,30 +31,35 @@ const FlowCreateExportModal = ({
   const { commands, ffmpeg, selectedCommand, setSelectedCommand } =
     useFfmpegCommandSelector(false);
 
+  const createJob = async () => {
+    setIsSubmitting(true);
+    try {
+      const id = crypto.randomUUID();
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: "The Export is being started...",
+        id,
+        onDismiss: () => delAlertItem(id),
+      });
+      await start({
+        timerange: timerange,
+        flowIds: selectedFlowIds,
+        ffmpeg: { command: ffmpeg!.command },
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setTimerange("");
     setSelectedCommand("");
     setIsSubmitting(false);
-  };
-
-  const createJob = async () => {
-    setIsSubmitting(true);
-    const id = crypto.randomUUID();
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: "The Export is being started...",
-      id,
-      onDismiss: () => delAlertItem(id),
-    });
-    await start({
-      timerange: timerange,
-      flowIds: selectedFlowIds,
-      ffmpeg: { command: ffmpeg!.command },
-    });
-    handleDismiss();
   };
 
   return (

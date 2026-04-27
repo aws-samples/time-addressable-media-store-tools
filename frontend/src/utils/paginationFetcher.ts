@@ -1,7 +1,7 @@
 import { AWS_TAMS_ENDPOINT } from "@/constants";
 import type { ApiClient } from "@/types/utils";
 
-const paginationFetcher = async <T extends Record<string, unknown>>(
+const paginationFetcher = async <T>(
   path: string,
   api: ApiClient,
   maxResults?: number,
@@ -22,10 +22,10 @@ const paginationFetcher = async <T extends Record<string, unknown>>(
 
   // Remove segments_updated field to avoid excessive re-renders
   return records.map((record) => {
-    const copy = { ...record };
+    const copy = { ...(record as Record<string, unknown>) };
     delete copy.segments_updated;
-    return copy;
-  }) as T[];
+    return copy as T;
+  });
 };
 
 export default paginationFetcher;

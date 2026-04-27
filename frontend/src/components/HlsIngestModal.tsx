@@ -39,33 +39,38 @@ const HlsIngestModal = ({
   const isReadOnly = externalManifestUri !== undefined;
   const manifestUri = isReadOnly ? externalManifestUri : internalManifestUri;
 
+  const performAction = async () => {
+    try {
+      const id = `${idPrefix}-${Date.now()}`;
+      await execute({
+        stateMachineArn: AWS_HLS_INGEST_ARN,
+        name: id,
+        input: stringify({
+          label,
+          manifestLocation: manifestUri,
+        }),
+        traceHeader: id,
+      });
+      addAlertItem({
+        type: "success",
+        dismissible: true,
+        dismissLabel: "Dismiss message",
+        content: `A new ingestion process: ${id} has been started...`,
+        id: id,
+        onDismiss: () => delAlertItem(id),
+      });
+    } catch {
+      // Alert emitted by useApi
+    } finally {
+      handleDismiss();
+    }
+  };
+
   const handleDismiss = () => {
     setModalVisible(false);
     setLabel("");
     setInternalManifestUri("");
     onDismiss?.();
-  };
-
-  const performAction = async () => {
-    const id = `${idPrefix}-${Date.now()}`;
-    await execute({
-      stateMachineArn: AWS_HLS_INGEST_ARN,
-      name: id,
-      input: stringify({
-        label,
-        manifestLocation: manifestUri,
-      }),
-      traceHeader: id,
-    });
-    addAlertItem({
-      type: "success",
-      dismissible: true,
-      dismissLabel: "Dismiss message",
-      content: `A new ingestion process: ${id} has been started...`,
-      id: id,
-      onDismiss: () => delAlertItem(id),
-    });
-    handleDismiss();
   };
 
   return (
