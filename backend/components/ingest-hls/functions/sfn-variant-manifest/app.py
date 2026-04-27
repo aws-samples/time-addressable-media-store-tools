@@ -422,7 +422,7 @@ def build_subtitle_flow(
 
 @tracer.capture_method(capture_response=False)
 def process_playlists(
-    manifest: m3u8.M3U8, manifest_path: str, label: str
+    manifest: m3u8.M3U8, manifest_path: str, label: str, multi_source_id: str
 ) -> tuple[list, list, dict, dict, dict, list]:
     """Parses the supplied manifest playlists to determine TAMS Flows and associated required metadata"""
     flows = []
@@ -431,7 +431,6 @@ def process_playlists(
     segment_durations = {}
     audio_codecs = {}
     warnings = []
-    variant_multi_source_id = str(uuid.uuid4())
     for playlist in manifest.playlists:
         playlist_manifest_url = resolve_child_uri(manifest_path, playlist.uri)
         probe, target_duration = get_manifest_segment_probe(playlist_manifest_url)
@@ -474,7 +473,7 @@ def process_playlists(
             segment_durations[multi_flow_id] = target_duration
             multi_flow = build_variant_multi_flow(
                 multi_flow_id,
-                variant_multi_source_id,
+                multi_source_id,
                 label,
                 playlist,
                 probe,
@@ -620,13 +619,13 @@ def assign_source_ids(flows: list) -> None:
 
 
 @tracer.capture_method(capture_response=False)
-def build_top_level_multi(
-    label: str, description: str, collection_members: list
+def build_asset_multi_flow(
+    label: str, description: str, source_id: str, collection_members: list
 ) -> dict:
-    """Builds a top-level multi flow. Assumes collection members already have source_ids assigned."""
+    """Build the asset's multi flow that collects the per-essence flows."""
     return {
         "id": str(uuid.uuid4()),
-        "source_id": str(uuid.uuid4()),
+        "source_id": source_id,
         "label": label,
         "description": description,
         "format": "urn:x-nmos:format:multi",
@@ -649,6 +648,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         raise ValueError(
             f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
+    multi_source_id = str(uuid.uuid4())
     (
         playlist_flows,
         variant_multi_flows,
@@ -656,7 +656,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         playlist_segment_durations,
         audio_codecs,
         playlist_warnings,
-    ) = process_playlists(manifest, manifest_path, label)
+    ) = process_playlists(manifest, manifest_path, label, multi_source_id)
     (
         media_flows,
         media_flow_manifests,
@@ -676,44 +676,32 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         raise ValueError(
             f"Variant manifest '{manifest_location}' contains no video or audio streams (no playlists or media groups found)"
         )
-    # Determine which per-essence flows are already collected by a per-variant multi
-    muxed_flow_ids = {
-        entry["id"]
-        for multi in variant_multi_flows_with_duration
-        for entry in multi["flow_collection"]
-    }
-    standalone_flows = [f for f in flows if f["id"] not in muxed_flow_ids]
-    # Assign source_ids to all per-essence flows (one per format, shared across muxed + standalone).
-    # Per-variant multis already have their own shared source_id from process_playlists.
+    # One source_id per per-essence format, shared across muxed + standalone flows.
     assign_source_ids(flows)
-    asset_description = (
-        f'HLS Import ({os.path.basename(manifest_location).split("?")[0]})'
-    )
-    # Top-level multi collapse logic based on how many per-variant multis we produced
-    if len(variant_multi_flows_with_duration) == 0:
-        # No muxed variants — top-level multi collects per-essence flows
-        top_level = build_top_level_multi(label, asset_description, flows)
-        multi_flows = [top_level]
-    elif len(variant_multi_flows_with_duration) == 1:
-        # Single muxed variant — the per-variant multi IS the top-level multi.
-        # Extend its flow_collection with any standalone flows (subtitles etc.)
-        collapsed = variant_multi_flows_with_duration[0]
-        for flow in standalone_flows:
-            collapsed["flow_collection"].append(
-                {"id": flow["id"], "role": flow["format"].split(":")[-1]}
-            )
-        collapsed["description"] = asset_description
-        multi_flows = [collapsed]
-    else:
-        # Two or more muxed variants — three-level hierarchy.
-        # Top-level multi collects per-variant multis + any standalone flows.
-        # Order matters: per-variant multis must be created before the top-level references them.
-        top_level = build_top_level_multi(
-            label,
-            asset_description,
-            [*variant_multi_flows_with_duration, *standalone_flows],
+    if not variant_multi_flows_with_duration:
+        # No muxed variants — single asset multi flow collects every per-essence flow.
+        asset_description = (
+            f'HLS Import ({os.path.basename(manifest_location).split("?")[0]})'
         )
-        multi_flows = [*variant_multi_flows_with_duration, top_level]
+        multi_flows = [
+            build_asset_multi_flow(label, asset_description, multi_source_id, flows)
+        ]
+    else:
+        # One or more muxed variants share the single multi source. Standalone flows
+        # (subtitles etc.) are attached to every per-variant multi so the multi source
+        # collects the data source via every variant.
+        muxed_flow_ids = {
+            entry["id"]
+            for multi in variant_multi_flows_with_duration
+            for entry in multi["flow_collection"]
+        }
+        standalone_flows = [f for f in flows if f["id"] not in muxed_flow_ids]
+        for multi in variant_multi_flows_with_duration:
+            for flow in standalone_flows:
+                multi["flow_collection"].append(
+                    {"id": flow["id"], "role": flow["format"].split(":")[-1]}
+                )
+        multi_flows = variant_multi_flows_with_duration
     return {
         "flows": flows,
         "multiFlows": multi_flows,

@@ -48,9 +48,6 @@ class Workflow(BaseModel):
     manifestLocation: Optional[str] = Field(
         default=None, description="HLS Manifest Location supplied"
     )
-    flowId: Optional[str] = Field(
-        default=None, description="The Id of the Multi Flow created"
-    )
     sourceId: Optional[str] = Field(
         default=None, description="The Id of the Multi Source created"
     )

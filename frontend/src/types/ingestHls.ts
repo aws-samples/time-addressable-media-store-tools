@@ -39,7 +39,6 @@ export type Workflow = {
   stopDate: string | null;
   label: string | null;
   manifestLocation: string | null;
-  flowId: string | null;
   sourceId: string | null;
   error: string | null;
   warnings: warning[] | null;

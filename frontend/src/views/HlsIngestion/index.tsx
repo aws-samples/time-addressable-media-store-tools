@@ -73,13 +73,6 @@ const HlsIngestion = () => {
       sortingField: "stopDate",
     },
     {
-      id: "flowId",
-      header: "Multi Flow Id",
-      cell: (item) => item.flowId && <Link to={`/flows/${item.flowId}`}>{item.flowId}</Link>,
-      sortingField: "flowId",
-      width: 360,
-    },
-    {
       id: "sourceId",
       header: "Multi Source Id",
       cell: (item) => item.sourceId && <Link to={`/sources/${item.sourceId}`}>{item.sourceId}</Link>,

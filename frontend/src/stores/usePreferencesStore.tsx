@@ -146,7 +146,6 @@ const usePreferencesStore = create<PreferencesStore>()(
           { id: "status", visible: true },
           { id: "startDate", visible: true },
           { id: "stopDate", visible: true },
-          { id: "flowId", visible: true },
           { id: "sourceId", visible: false },
         ],
       },

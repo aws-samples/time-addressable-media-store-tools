@@ -60,7 +60,6 @@ def get_workflow_details(workflow):
     if workflow.status == "RUNNING":
         return workflow
     workflow_output = json.loads(describe_execution.get("output", "{}")) or {}
-    workflow.flowId = workflow_output.get("multiFlowId")
     workflow.sourceId = workflow_output.get("multiSourceId")
     workflow.error = describe_execution.get("cause")
     workflow.warnings = workflow_output.get("warnings")

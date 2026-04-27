@@ -77,8 +77,6 @@ States:
       {% $multiFlows %}
     MaxConcurrency: 1
     Assign:
-      multiFlowId: >-
-        {% $multiFlows[-1].id %}
       multiSourceId: >-
         {% $multiFlows[-1].source_id %}
       multiFlows: null
@@ -188,8 +186,6 @@ States:
             {% $states.input %}
           End: True
     Output:
-      multiFlowId: >-
-        {% $multiFlowId %}
       multiSourceId: >-
         {% $multiSourceId %}
       warnings: >-
