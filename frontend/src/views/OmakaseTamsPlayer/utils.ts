@@ -321,12 +321,19 @@ export const createTimelineWithLanes = (
           );
         }
 
-        // Add segment visualization lanes for flows
-        if ("tamsMediaData" in video && video.tamsMediaData?.subflows) {
-          // Sort flows by format: multi -> video -> audio -> data
-          const sortedFlows = [...video.tamsMediaData.subflows].sort(
-            flowFormatSorting,
-          );
+        // Add segment visualization lanes for any flow that has segments
+        if ("tamsMediaData" in video && video.tamsMediaData?.flowsSegments) {
+          const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
+          const primaryFlow = video.tamsMediaData.flow;
+          const subflows = video.tamsMediaData.subflows ?? [];
+          const allFlows = primaryFlow ? [primaryFlow, ...subflows] : subflows;
+
+          const flowsWithSegments = allFlows.filter((f) => {
+            const segments = flowsSegmentsMap.get(f.id);
+            return segments && segments.length > 0;
+          });
+
+          const sortedFlows = [...flowsWithSegments].sort(flowFormatSorting);
 
           sortedFlows.forEach((flow: Flow) => {
             // Only show video, audio, and subtitle flows
