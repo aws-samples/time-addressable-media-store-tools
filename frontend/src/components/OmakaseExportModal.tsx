@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Modal, SpaceBetween, Box } from "@cloudscape-design/components";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useExportOperations } from "@/hooks/useExportOperations";
@@ -78,10 +78,6 @@ const OmakaseExportModal = ({
     [flows],
   );
   const [selectedFlows, setSelectedFlows] = useState(flowOptions);
-
-  useEffect(() => {
-    setSelectedFlows(flowOptions);
-  }, [flowOptions]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -163,7 +159,7 @@ const OmakaseExportModal = ({
 
         {availableOperations.length === 0 ? (
           <Box textAlign="center">
-            <SpaceBetween size="s">
+            <SpaceBetween size="xs">
               <Box variant="strong">No export operations available</Box>
               <Box variant="p">
                 Export functionality requires backend deployment.
@@ -171,7 +167,7 @@ const OmakaseExportModal = ({
             </SpaceBetween>
           </Box>
         ) : (
-          <>
+          <SpaceBetween size="s">
             <OperationSelector
               operations={availableOperations}
               selectedOperation={formData.operation}
@@ -196,7 +192,7 @@ const OmakaseExportModal = ({
                 readOnly={true}
               />
             )}
-          </>
+          </SpaceBetween>
         )}
       </SpaceBetween>
     </Modal>
