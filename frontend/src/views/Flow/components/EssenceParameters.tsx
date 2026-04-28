@@ -19,18 +19,18 @@ type HierarchicalItem = {
 const EssenceParameters = ({ essenceParameters }: Props) => {
   const hierarchicalEssenceParameters = essenceParameters
     ? Object.entries(essenceParameters).map(([key, value]) => ({
-        id: key,
-        key,
-        value: typeof value === "object" && value !== null ? undefined : value,
-        children:
-          typeof value === "object" && value !== null
-            ? Object.entries(value).map(([childKey, childValue]) => ({
-                id: `${key}.${childKey}`,
-                key: childKey,
-                value: String(childValue),
-              }))
-            : undefined,
-      }))
+      id: key,
+      key,
+      value: typeof value === "object" && value !== null ? undefined : value,
+      children:
+        typeof value === "object" && value !== null
+          ? Object.entries(value).map(([childKey, childValue]) => ({
+            id: `${key}.${childKey}`,
+            key: childKey,
+            value: String(childValue),
+          }))
+          : undefined,
+    }))
     : [];
 
   const columnDefinitions: TableProps.ColumnDefinition<HierarchicalItem>[] = [
@@ -58,7 +58,7 @@ const EssenceParameters = ({ essenceParameters }: Props) => {
         expandedItems: hierarchicalEssenceParameters.filter((param) =>
           Boolean(param.children),
         ),
-        onExpandableItemToggle: () => {},
+        onExpandableItemToggle: () => { },
       }}
       contentDensity="compact"
       items={hierarchicalEssenceParameters}
