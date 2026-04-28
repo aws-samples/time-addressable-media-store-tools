@@ -21,10 +21,10 @@ import type {
 import type { Flow } from "@/types/tams";
 
 const GRID_LAYOUT = [
-  { colspan: 5 },
-  { colspan: 7 },
-  { colspan: 5 },
-  { colspan: 7 },
+  { colspan: 6 },
+  { colspan: 6 },
+  { colspan: 6 },
+  { colspan: 6 },
   { colspan: 12 },
 ] as const;
 
