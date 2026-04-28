@@ -326,9 +326,7 @@ export const createTimelineWithLanes = (
           const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
           const primaryFlow = video.tamsMediaData.flow;
           const subflows = video.tamsMediaData.subflows ?? [];
-          const allFlows = primaryFlow ? [primaryFlow, ...subflows] : subflows;
-
-          const flowsWithSegments = allFlows.filter((f) => {
+          const flowsWithSegments = [primaryFlow, ...subflows].filter((f) => {
             const segments = flowsSegmentsMap.get(f.id);
             return segments && segments.length > 0;
           });
