@@ -1,6 +1,6 @@
 # Time-addressable Media Store Tools
 
-This solution contains a Web UI and associated tools to be used to help adoption and understanding of the AWS implementation of the [BBC TAMS API](https://github.com/bbc/tams). AWS have created an open source sample implementation of that API [here](https://github.com/awslabs/time-addressable-media-store).  This solution is designed to be used with that implementation.
+This solution contains a Web UI and associated tools to be used to help adoption and understanding of the AWS implementation of the [BBC TAMS API](https://github.com/bbc/tams). AWS have created an open source sample implementation of that API [TAMS API Spec](https://github.com/awslabs/time-addressable-media-store).  This solution is designed to be used with that implementation.
 
 **NOTE: This solution is not designed to be used in a Production environment. It is designed for dev use cases where a tool is required to help visualise the contents of a TAMS store.**
 
@@ -125,7 +125,7 @@ The solution now includes several core features available without deploying opti
 
 #### Enhanced Export Modal
 
-The export modal now supports dynamic, configurable export operations. Export operations are defined in a JSON configuration stored in AWS Systems Manager Parameter Store. See the [Export Modal Configuration](#export-modal-configuration) section for details on how to configure custom export operations.
+The export modal supports dynamic, configurable export operations. Export operations are defined in a JSON configuration stored in AWS Systems Manager Parameter Store. See [docs/OMAKASE_EXPORT_SCHEMA.md](docs/OMAKASE_EXPORT_SCHEMA.md) for details on how to configure custom export operations.
 
 #### Edit-by-Reference Support
 
@@ -145,13 +145,41 @@ This will deploy a HLS API endpoint to the solution and enable a basic Video pla
 
 #### DeployIngestHls
 
-This will deploy an option in the WebUI to ingest content into TAMS. It supports ingestion from Elemental Media Live channels (filtered to show only channels with HLS as the first output) and Elemental Media Convert jobs (filtered to show only jobs with HLS as the first output that do not use TAMS as input). It also provides an option to ingest from an external HLS manifest URL.
+This will deploy an option in the WebUI to ingest content into TAMS. It supports ingestion from Elemental Media Live channels (filtered to show only channels with HLS as the first output) and Elemental Media
+Convert jobs (filtered to show only jobs with HLS as the first output that do not use TAMS as input). It also provides an option to ingest from an external HLS manifest URL.
 
 **Required Environment Variables:**
 
 - `VITE_APP_AWS_INGEST_CREATE_NEW_FLOW_ARN` = **TAMS Tools stack** output `IngestCreateNewFlowArn`
 - `VITE_APP_AWS_HLS_INGEST_ENDPOINT` = **TAMS Tools stack** output `HlsIngestEndpoint`
 - `VITE_APP_AWS_HLS_INGEST_ARN` = **TAMS Tools stack** output `HlsIngestArn`
+
+**Supported HLS content:**
+
+Provide the URL of an HLS **master/variant manifest** (not a media manifest). S3 URLs (`s3://bucket/key`) and HTTPS URLs are both accepted.
+
+| | Supported |
+| --- | --- |
+| Containers | MPEG-TS (`.ts`), raw AAC (`.aac`), raw AC-3 (`.ac3`), raw E-AC-3 (`.ec3`), WebVTT (`.vtt`) |
+| Video codecs | H.264 (`avc1`) |
+| Audio codecs | AAC (`mp4a`), AC-3 (`ac-3`), E-AC-3 (`ec-3`) |
+| Subtitle codecs | WebVTT (`webvtt`) |
+| Variant shapes | Single-essence (video-only or audio-only), muxed (video + audio in one segment stream) |
+| Alternate renditions | `#EXT-X-MEDIA:TYPE=AUDIO`, `#EXT-X-MEDIA:TYPE=SUBTITLES` |
+| Live playlists | Polled until `#EXT-X-ENDLIST` appears |
+| Byterange segments | `#EXT-X-BYTERANGE` |
+| Discontinuities | `#EXT-X-DISCONTINUITY` — round-trips through TAMS via `ts_offset` |
+| Program date-time | `#EXT-X-PROGRAM-DATE-TIME` on the first segment sets the TAMS flow start timestamp |
+
+The codec and container lists are both configurable via SSM parameters — see [HLS_CONFIGURATION.md](docs/HLS_CONFIGURATION.md) for how to add new codecs or containers.
+
+Content using any of the following is rejected with a clear error:
+
+- **Fragmented MP4 / CMAF** (`#EXT-X-MAP` / init segments). This is the most common reason ingest will refuse real-world HLS content.
+- **Segment encryption** (`#EXT-X-KEY`). Decrypt before ingest if you need to store the content in TAMS.
+- **Alternate VIDEO renditions** (`#EXT-X-MEDIA:TYPE=VIDEO`).
+- **Closed captions** (`#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS`).
+- **Media manifests as entry point** — you must provide a variant/master manifest.
 
 #### DeployIngestFfmpeg
 
@@ -193,7 +221,7 @@ TAMS Tools uses AWS Systems Manager (SSM) parameters for runtime configuration t
 ### Available Parameters
 
 | Parameter | Component | CloudFormation Output | Documentation |
-|-----------|-----------|----------------------|---------------|
+| ----------- | ----------- | ---------------------- | --------------- |
 | Export Events Configuration | Core | `OmakaseExportEventParameter` | [docs/OMAKASE_EXPORT_SCHEMA.md](docs/OMAKASE_EXPORT_SCHEMA.md) |
 | HLS Codec Mappings | HLS API | `HlsCodecsParameter` | [docs/HLS_CONFIGURATION.md](docs/HLS_CONFIGURATION.md) |
 | FFmpeg Commands | FFmpeg Ingest | `FfmpegCommandsParameter` | [docs/FFMPEG_CONFIGURATION.md](docs/FFMPEG_CONFIGURATION.md) |
