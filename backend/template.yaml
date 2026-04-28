@@ -246,6 +246,16 @@ Resources:
             "ffprobe": "aac"
           },
           {
+            "tams": "audio/ac3",
+            "hls": "ac-3",
+            "ffprobe": "ac3"
+          },
+          {
+            "tams": "audio/eac3",
+            "hls": "ec-3",
+            "ffprobe": "eac3"
+          },
+          {
             "tams": "video/h264",
             "hls": "avc1",
             "ffprobe": "h264"

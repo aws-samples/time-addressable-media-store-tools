@@ -159,23 +159,22 @@ def process_segment(
     elif segment.uri.startswith("/"):
         path_parse = urlparse(manifest_path)
         segment_uri = f"{path_parse.scheme}://{path_parse.netloc}{segment.uri}"
-
     start_pts, duration = probe_segment(
         segment_uri, segment.byterange, segment.duration
     )
-
+    # Treat start_pts of None OR 0 identically — both mean "no meaningful position
+    # on a continuous media clock" (raw AC-3 / raw AAC / WebVTT all report 0 or nothing).
+    has_pts = start_pts is not None and start_pts != Timestamp()
     is_new_region = state["ts_offset"] is None or segment.discontinuity
     if is_new_region:
-        file_time_at_region_start = start_pts if start_pts is not None else Timestamp()
+        file_time_at_region_start = start_pts if has_pts else Timestamp()
         state["ts_offset"] = state["last_end"] - file_time_at_region_start
-
-    if start_pts is not None:
+    if has_pts:
         seg_start = state["ts_offset"] + start_pts
     else:
         seg_start = state["last_end"]
     seg_end = seg_start + duration
     timerange = TimeRange(seg_start, seg_end, TimeRange.INCLUDE_START)
-
     segment_dict = {
         "flowId": flow_id,
         "timerange": str(timerange),

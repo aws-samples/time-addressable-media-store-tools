@@ -90,6 +90,8 @@ def map_codec(hls_codec: str) -> tuple[str, dict]:
     essence_parameter_handlers = {
         "avc1": get_avc1_essence_parameters,
         "mp4a": get_mp4a_essence_parameters,
+        "ac-3": lambda _: {},
+        "ec-3": lambda _: {},
     }
     if codec not in essence_parameter_handlers:
         raise ValueError(f"No essence parameter handler for codec '{codec}'")
