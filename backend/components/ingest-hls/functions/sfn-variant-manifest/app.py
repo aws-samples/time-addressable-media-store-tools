@@ -573,6 +573,10 @@ def process_media(
     segment_durations = {}
     warnings = []
     for media in manifest.media:
+        if media.type not in ("AUDIO", "SUBTITLES"):
+            raise ValueError(
+                f"Media rendition uses TYPE={media.type} which is not supported by this HLS ingester"
+            )
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = resolve_child_uri(manifest_path, media.uri)
         probe, target_duration = get_manifest_segment_probe(flow_manifests[flow_id])
