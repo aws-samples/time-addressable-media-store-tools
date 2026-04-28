@@ -646,12 +646,26 @@ export const calculateTimerangeFromVideo = (
   }
 };
 
+const isPresignedS3Url = (url: string): boolean => {
+  try {
+    const params = new URL(url).searchParams;
+    const keys = new Set(Array.from(params.keys()).map((k) => k.toLowerCase()));
+    // SigV4 pre-signed URL
+    if (keys.has("x-amz-signature")) return true;
+    // SigV2 pre-signed URL — require both to avoid false positives
+    if (keys.has("signature") && keys.has("awsaccesskeyid")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 export const createAuthenticationConfig = (accessToken: string) => {
   return {
     type: "custom" as const,
     headers: (url: string): { headers: { [header: string]: string } } => {
       // Pre-signed URLs already have auth in query params, don't add header
-      if (url.includes("X-Amz-Signature") || url.includes("x-amz-signature")) {
+      if (isPresignedS3Url(url)) {
         return { headers: {} };
       }
       // TAMS API requests need Bearer token
