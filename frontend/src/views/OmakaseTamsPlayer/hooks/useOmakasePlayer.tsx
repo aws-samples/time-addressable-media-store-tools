@@ -19,7 +19,6 @@ type UseOmakasePlayerParams = {
   id: string | undefined;
   accessToken: string | undefined;
   mode: Mode;
-  onLoadingChange: (isLoading: boolean) => void;
   onError: (error: string | null) => void;
   onTimerangeChange: (
     timerange: string | undefined,
@@ -36,7 +35,6 @@ export const useOmakasePlayer = ({
   id,
   accessToken,
   mode,
-  onLoadingChange,
   onError,
   onTimerangeChange,
   onSegmentationLaneCreated,
@@ -83,7 +81,6 @@ export const useOmakasePlayer = ({
     player.loadVideo(tamsUrl, loadOptions).subscribe({
       next: (video) => {
         videoDataRef.current = video;
-        onLoadingChange(false);
 
         // Calculate timerange from video data
         const timerangeData = calculateTimerangeFromVideo(video);
@@ -117,7 +114,6 @@ export const useOmakasePlayer = ({
       error: (err) => {
         console.error("Error loading TAMS video:", err);
         onError(err.message || "Failed to load video");
-        onLoadingChange(false);
       },
     });
 
@@ -136,7 +132,6 @@ export const useOmakasePlayer = ({
     type,
     id,
     accessToken,
-    onLoadingChange,
     onError,
     onTimerangeChange,
     onSegmentationLaneCreated,

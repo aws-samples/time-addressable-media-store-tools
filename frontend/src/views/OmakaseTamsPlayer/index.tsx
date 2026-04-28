@@ -4,7 +4,7 @@ import "./style.css";
 import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { Box, Grid, Spinner } from "@cloudscape-design/components";
+import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
 import { AWS_TAMS_ENDPOINT } from "@/constants";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
@@ -20,19 +20,10 @@ import type {
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
 
-const GRID_LAYOUT = [
-  { colspan: 6 },
-  { colspan: 6 },
-  { colspan: 6 },
-  { colspan: 6 },
-  { colspan: 12 },
-] as const;
-
 const OmakaseTamsPlayer = () => {
   const { type, id } = useParams();
   const auth = useAuth();
   const mode = usePreferencesStore((state) => state.mode);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timerange, setTimerange] = useState<string | undefined>();
   const [maxTimerange, setMaxTimerange] = useState<string | undefined>();
@@ -87,7 +78,6 @@ const OmakaseTamsPlayer = () => {
     id,
     accessToken: auth.user?.access_token,
     mode,
-    onLoadingChange: setIsLoading,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
@@ -128,14 +118,8 @@ const OmakaseTamsPlayer = () => {
   }
 
   return (
-    <Box margin={{ top: "l" }}>
-      {isLoading && (
-        <Box textAlign="center" padding="l">
-          Loading Media <Spinner />
-        </Box>
-      )}
-
-      <Grid gridDefinition={GRID_LAYOUT}>
+    <SpaceBetween size="l">
+      <ColumnLayout columns={2}>
         <div>
           {omakasePlayer && currentSource && (
             <MarkerListAndExport
@@ -157,6 +141,8 @@ const OmakaseTamsPlayer = () => {
           )}
         </div>
         <div id="omakase-video-container" />
+      </ColumnLayout>
+      <ColumnLayout columns={2}>
         <div>
           {omakasePlayer && sourceMarkerList && currentSource && (
             <MarkerListToolbar
@@ -181,9 +167,9 @@ const OmakaseTamsPlayer = () => {
             />
           )}
         </div>
-        <div id="omakase-timeline" />
-      </Grid>
-    </Box>
+      </ColumnLayout>
+      <div id="omakase-timeline" />
+    </SpaceBetween>
   );
 };
 
