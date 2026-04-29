@@ -1,19 +1,19 @@
 import "@byomakase/omakase-player/dist/style.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
 import {
   OmakaseMarkerListComponent,
   TimeRangeUtil,
+  OmakasePlayerTimelineControlsToolbar,
+  OmakaseTimeRangePicker,
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
-import MarkerListToolbar from "./components/MarkerListToolbar";
 import MarkerListHeader from "./components/MarkerListHeader";
-import TimeRangePicker from "./components/TimeRangePicker";
 import type {
   OmakasePlayerApi,
   MarkerLane,
@@ -22,10 +22,14 @@ import type {
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
 import {
+  SEGMENTATION_PERIOD_MARKER_STYLE,
+  THEME,
+  MARKER_LANE_TEXT_LABEL_STYLE,
   MARKER_LIST_CONFIG,
   ROW_TEMPLATE_HTML,
   EMPTY_TEMPLATE_HTML,
   HEADER_TEMPLATE_HTML,
+  TIME_RANGE_PICKER_CONFIG,
 } from "./constants";
 
 const OmakaseTamsPlayer = () => {
@@ -46,6 +50,22 @@ const OmakaseTamsPlayer = () => {
   const [currentSource, setCurrentSource] = useState<MarkerLane | undefined>();
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
+
+  const toolbarConstants = useMemo(
+    () => ({
+      PERIOD_MARKER_STYLE: {
+        ...SEGMENTATION_PERIOD_MARKER_STYLE,
+        color: THEME[mode].colors.segmentationMarker,
+      },
+      HIGHLIGHTED_PERIOD_MARKER_STYLE: {
+        ...SEGMENTATION_PERIOD_MARKER_STYLE,
+        color: THEME[mode].colors.segmentationMarkerHighlighted,
+      },
+      TIMELINE_LANE_STYLE: THEME[mode].timelineLaneStyle,
+      MARKER_LANE_TEXT_LABEL_STYLE: MARKER_LANE_TEXT_LABEL_STYLE,
+    }),
+    [mode],
+  );
 
   const handleTimerangeChange = (
     currentTimerange: string | undefined,
@@ -155,24 +175,27 @@ const OmakaseTamsPlayer = () => {
       <ColumnLayout columns={2} disableGutters>
         <div id="omakase-marker-toolbar">
           {omakasePlayer && sourceMarkerList && currentSource && (
-            <MarkerListToolbar
-              omakasePlayer={omakasePlayer}
-              sourceMarkerList={sourceMarkerList}
-              currentSource={currentSource}
-              segmentationLanes={segmentationLanes}
+            <OmakasePlayerTimelineControlsToolbar
               selectedMarker={selectedMarker}
-              mode={mode}
-              onSegmentationLanesChange={setSegmentationLanes}
-              onSelectedMarkerChange={setSelectedMarker}
-              onSourceChange={setCurrentSource}
+              omakasePlayer={omakasePlayer}
+              markerListApi={sourceMarkerList}
+              setSegmentationLanes={setSegmentationLanes}
+              setSelectedMarker={setSelectedMarker}
+              onMarkerClickCallback={setSelectedMarker}
+              segmentationLanes={segmentationLanes}
+              source={currentSource}
+              setSource={setCurrentSource}
+              enableHotKeys={true}
+              constants={toolbarConstants}
             />
           )}
         </div>
         {timerange && maxTimerange && (
-          <TimeRangePicker
-            timerange={timerange}
-            maxTimerange={maxTimerange}
-            onTimeRangeChange={handleTimeRangePickerChange}
+          <OmakaseTimeRangePicker
+            {...TIME_RANGE_PICKER_CONFIG}
+            timeRange={timerange}
+            maxTimeRange={maxTimerange}
+            onCheckmarkClickCallback={handleTimeRangePickerChange}
           />
         )}
       </ColumnLayout>
