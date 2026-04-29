@@ -1,17 +1,19 @@
 import "@byomakase/omakase-player/dist/style.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
-import { AWS_TAMS_ENDPOINT } from "@/constants";
+import {
+  OmakaseMarkerListComponent,
+  TimeRangeUtil,
+} from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
-import MarkerListAndExport from "./components/MarkerListAndExport";
 import MarkerListToolbar from "./components/MarkerListToolbar";
+import MarkerListHeader from "./components/MarkerListHeader";
 import TimeRangePicker from "./components/TimeRangePicker";
-import { createTimeRangeChangeHandler } from "./utils";
 import type {
   OmakasePlayerApi,
   MarkerLane,
@@ -19,6 +21,12 @@ import type {
   MarkerListApi,
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
+import {
+  MARKER_LIST_CONFIG,
+  ROW_TEMPLATE_HTML,
+  EMPTY_TEMPLATE_HTML,
+  HEADER_TEMPLATE_HTML,
+} from "./constants";
 
 const OmakaseTamsPlayer = () => {
   const { type, id } = useParams();
@@ -39,41 +47,26 @@ const OmakaseTamsPlayer = () => {
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
 
-  const handleTimerangeChange = useCallback(
-    (
-      currentTimerange: string | undefined,
-      maxTimerangeStr: string | undefined,
-    ) => {
-      setTimerange(currentTimerange);
-      setMaxTimerange(maxTimerangeStr);
-    },
-    [],
-  );
+  const handleTimerangeChange = (
+    currentTimerange: string | undefined,
+    maxTimerangeStr: string | undefined,
+  ) => {
+    setTimerange(currentTimerange);
+    setMaxTimerange(maxTimerangeStr);
+  };
 
-  const handleSegmentationLaneCreated = useCallback((lane: MarkerLane) => {
+  const handleSegmentationLaneCreated = (lane: MarkerLane) => {
     setSegmentationLanes((prev) => {
-      // Check if lane with this ID already exists (e.g., after theme change)
-      const existingIndex = prev.findIndex((l) => l.id === lane.id);
-      if (existingIndex >= 0) {
-        // Replace existing lane with new instance
-        const updated = [...prev];
-        updated[existingIndex] = lane;
-        return updated;
-      }
-      // New lane, append it
-      return [...prev, lane];
+      const idx = prev.findIndex((l) => l.id === lane.id);
+      if (idx < 0) return [...prev, lane];
+      const next = [...prev];
+      next[idx] = lane;
+      return next;
     });
-    setCurrentSource((prev) => {
-      // If current source matches the lane ID, update to new instance
-      if (prev?.id === lane.id) {
-        return lane;
-      }
-      // Otherwise, set if no source exists
-      return prev || lane;
-    });
-  }, []);
+    setCurrentSource((prev) => (!prev || prev.id === lane.id ? lane : prev));
+  };
 
-  const playerRef = useOmakasePlayer({
+  const { reloadWithTimerange } = useOmakasePlayer({
     type,
     id,
     accessToken: auth.user?.access_token,
@@ -81,25 +74,23 @@ const OmakaseTamsPlayer = () => {
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
+    onMarkerClick: setSelectedMarker,
     onPlayerReady: setOmakasePlayer,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
 
-  const handleTimeRangePickerChange = useCallback(
-    (start: number, end: number) => {
-      const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
-      const handler = createTimeRangeChangeHandler(
-        playerRef,
-        tamsUrl,
-        mode,
-        setTimerange,
-        handleSegmentationLaneCreated,
-      );
-      handler(start, end);
-    },
-    [type, id, mode, playerRef, handleSegmentationLaneCreated],
-  );
+  const handleTimeRangePickerChange = (start: number, end: number) => {
+    const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
+    const endMoment = TimeRangeUtil.secondsToTimeMoment(end);
+    const range = TimeRangeUtil.toTimeRange(
+      startMoment,
+      endMoment,
+      true,
+      false,
+    );
+    reloadWithTimerange(TimeRangeUtil.formatTimeRangeExpr(range));
+  };
 
   if (!auth.user?.access_token) {
     return (
@@ -122,22 +113,41 @@ const OmakaseTamsPlayer = () => {
       <ColumnLayout columns={2} disableGutters>
         <div>
           {omakasePlayer && currentSource && (
-            <MarkerListAndExport
-              omakasePlayer={omakasePlayer}
-              currentSource={currentSource}
-              segmentationLanes={segmentationLanes}
-              sourceMarkerList={sourceMarkerList}
-              flows={flows}
-              mediaStartTime={mediaStartTime}
-              sourceId={id || ""}
-              onSourceChange={setCurrentSource}
-              onMarkerListCreated={(markerList) =>
-                setSourceMarkerList((prev) =>
-                  prev === markerList ? prev : markerList,
-                )
-              }
-              onSegmentationLanesChange={setSegmentationLanes}
-            />
+            <>
+              <MarkerListHeader
+                segmentationLanes={segmentationLanes}
+                source={currentSource}
+                sourceMarkerList={sourceMarkerList}
+                onSegmentationClickCallback={setCurrentSource}
+                sourceId={id || ""}
+                flows={flows}
+                markerOffset={mediaStartTime}
+                omakasePlayer={omakasePlayer}
+                onSegmentationLanesChange={setSegmentationLanes}
+              />
+              <template
+                id="header-template"
+                dangerouslySetInnerHTML={{ __html: HEADER_TEMPLATE_HTML }}
+              />
+              <template
+                id="row-template"
+                dangerouslySetInnerHTML={{ __html: ROW_TEMPLATE_HTML }}
+              />
+              <template
+                id="empty-template"
+                dangerouslySetInnerHTML={{ __html: EMPTY_TEMPLATE_HTML }}
+              />
+              <OmakaseMarkerListComponent
+                omakasePlayer={omakasePlayer}
+                config={{
+                  ...MARKER_LIST_CONFIG,
+                  source: currentSource,
+                  mode: "CUTLIST",
+                  thumbnailVttFile: omakasePlayer.timeline?.thumbnailVttFile,
+                }}
+                onCreateMarkerListCallback={setSourceMarkerList}
+              />
+            </>
           )}
         </div>
         <div id="omakase-video-container" />
@@ -158,15 +168,13 @@ const OmakaseTamsPlayer = () => {
             />
           )}
         </div>
-        <div className="time-range-picker-wrapper">
-          {timerange && maxTimerange && (
-            <TimeRangePicker
-              timerange={timerange}
-              maxTimerange={maxTimerange}
-              onTimeRangeChange={handleTimeRangePickerChange}
-            />
-          )}
-        </div>
+        {timerange && maxTimerange && (
+          <TimeRangePicker
+            timerange={timerange}
+            maxTimerange={maxTimerange}
+            onTimeRangeChange={handleTimeRangePickerChange}
+          />
+        )}
       </ColumnLayout>
       <div id="omakase-timeline" />
     </SpaceBetween>

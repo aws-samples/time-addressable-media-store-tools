@@ -1,4 +1,5 @@
 import { OmakaseTimeRangePicker } from "@byomakase/omakase-react-components";
+import { TIME_RANGE_PICKER_CONFIG } from "../constants";
 
 type TimeRangePickerProps = {
   timerange: string;
@@ -14,9 +15,7 @@ const TimeRangePicker = ({
   return (
     <div className="time-range-picker-wrapper">
       <OmakaseTimeRangePicker
-        numberOfSegments={6}
-        maxSliderRange={1800}
-        segmentSize={600}
+        {...TIME_RANGE_PICKER_CONFIG}
         timeRange={timerange}
         maxTimeRange={maxTimerange}
         onCheckmarkClickCallback={onTimeRangeChange}

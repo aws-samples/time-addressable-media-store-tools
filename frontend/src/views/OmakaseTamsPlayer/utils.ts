@@ -2,6 +2,7 @@ import {
   PeriodMarker,
   MarkerApi,
   MarkerAwareApi,
+  Marker,
 } from "@byomakase/omakase-player";
 import { TimeRangeUtil } from "@byomakase/omakase-react-components";
 import {
@@ -42,17 +43,14 @@ type VttMetadata = {
   [key: string]: unknown;
 };
 
-class ColorCycler {
-  private index = 0;
+type TamsMediaDataWithTimerange = NonNullable<TamsVideo["tamsMediaData"]> & {
+  timerange?: string;
+};
 
-  constructor(private colors: string[]) {}
-
-  getNext(): string {
-    const color = this.colors[this.index];
-    this.index = (this.index + 1) % this.colors.length;
-    return color;
-  }
-}
+const makeColorCycler = (colors: string[]) => {
+  let i = 0;
+  return () => colors[i++ % colors.length];
+};
 
 const flowFormatSorting = (a: Flow, b: Flow) => {
   if (a === b) return 0;
@@ -62,7 +60,7 @@ const flowFormatSorting = (a: Flow, b: Flow) => {
   if (b.format === "urn:x-nmos:format:video") return 1;
   if (a.format === "urn:x-nmos:format:audio") return -1;
   if (b.format === "urn:x-nmos:format:audio") return 1;
-  return 1; // Any other format is considered last
+  return 0;
 };
 
 const fetchVttUtf8 = async (url: string): Promise<string> => {
@@ -215,9 +213,154 @@ const segmentToMarker = (
     },
     editable: false,
     style: {
-      color,
       ...SEGMENT_PERIOD_MARKER_STYLE,
+      color,
     },
+  });
+};
+
+const isVideoFlow = (f: Flow) => f.format === "urn:x-nmos:format:video";
+const isAudioFlow = (f: Flow) => f.format === "urn:x-nmos:format:audio";
+const isSubtitleFlow = (f: Flow) =>
+  f.format === "urn:x-nmos:format:data" && f.container === "text/vtt";
+
+const addSegmentMarkersToLane = (
+  lane: MarkerLane,
+  segments: Segment[],
+  mediaStartTime: number,
+  videoDuration: number,
+  mode: Mode,
+) => {
+  const nextColor = makeColorCycler(THEME[mode].markerColors);
+  for (const segment of segments) {
+    const marker = segmentToMarker(
+      segment,
+      mediaStartTime,
+      videoDuration,
+      nextColor(),
+    );
+    if (marker) lane.addMarker(marker);
+  }
+};
+
+const loadAndRegisterSubtitles = (
+  subtitlesLane: SubtitlesLane,
+  player: TamsPlayer,
+  textUrl: string,
+  subtitlesLaneId: string,
+  label: string,
+) => {
+  mergeVttManifest(textUrl, player.video.getDuration())
+    .then((vttUrl) => {
+      subtitlesLane.loadVtt(vttUrl);
+      player.subtitles
+        .createVttTrack({
+          id: subtitlesLaneId,
+          src: vttUrl,
+          label,
+          language: "en",
+          default: false,
+        })
+        .subscribe({
+          error: (err) => console.error("Error creating subtitle track:", err),
+        });
+    })
+    .catch((err) => console.error("Error loading subtitle VTT:", err));
+};
+
+const addSubtitleLaneControls = (
+  subtitlesLane: SubtitlesLane,
+  markerLane: MarkerLane,
+  player: TamsPlayer,
+  subtitlesLaneId: string,
+) => {
+  const dropdownButton = new ImageButton({
+    ...DROPDOWN_BUTTON_CONFIG,
+    src: CHEVRON_RIGHT_SVG_SOURCE,
+  });
+  dropdownButton.onClick$.subscribe(() => {
+    markerLane.toggleMinimizeMaximize();
+    dropdownButton.setImage({
+      src: markerLane.isMinimized()
+        ? CHEVRON_RIGHT_SVG_SOURCE
+        : CHEVRON_DOWN_SVG_SOURCE,
+    });
+  });
+  subtitlesLane.addTimelineNode({
+    width: DROPDOWN_BUTTON_CONFIG.width!,
+    height: DROPDOWN_BUTTON_CONFIG.height!,
+    justify: "start",
+    margin: [0, 0, 0, 5],
+    timelineNode: dropdownButton,
+  });
+
+  const subtitlesButton = new ImageButton({
+    ...SUBTITLES_BUTTON_CONFIG,
+    src: CHATBOX_SVG_SOURCE,
+  });
+  subtitlesButton.onClick$.subscribe(() => {
+    const active = player.subtitles.getActiveTrack();
+    if (active?.id !== subtitlesLaneId) {
+      player.subtitles.showTrack(subtitlesLaneId).subscribe({
+        error: (err) => console.error("Error showing subtitle track:", err),
+      });
+    } else if (active?.hidden) {
+      player.subtitles.showActiveTrack().subscribe();
+    } else {
+      player.subtitles.hideActiveTrack().subscribe();
+    }
+  });
+  player.subtitles.onShow$.subscribe((event) => {
+    if (event.currentTrack?.id === subtitlesLaneId) {
+      subtitlesButton.setImage({ src: CHATBOX_ACTIVE_SVG_SOURCE });
+    } else if (subtitlesButton.getImage()?.src !== CHATBOX_SVG_SOURCE) {
+      subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
+    }
+  });
+  player.subtitles.onHide$.subscribe((event) => {
+    if (event.currentTrack?.id === subtitlesLaneId) {
+      subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
+    }
+  });
+  subtitlesLane.addTimelineNode({
+    width: SUBTITLES_BUTTON_CONFIG.width!,
+    height: SUBTITLES_BUTTON_CONFIG.height!,
+    justify: "start",
+    margin: [0, 0, 0, 5],
+    timelineNode: subtitlesButton,
+  });
+};
+
+const addAudioLaneControls = (
+  markerLane: MarkerLane,
+  flow: Flow,
+  player: TamsPlayer,
+) => {
+  const flowLabel = flow.description || flow.label;
+  const iconFor = (activeLabel: string | undefined) =>
+    activeLabel === flowLabel
+      ? "/sound-active-button.svg"
+      : "/sound-inactive-button.svg";
+
+  const soundButton = new ImageButton({
+    ...SOUND_BUTTON_CONFIG,
+    src: iconFor(player.audio.getActiveAudioTrack()?.label),
+  });
+  soundButton.onClick$.subscribe(() => {
+    const target = player.audio
+      .getAudioTracks()
+      .find((t) => t.label === flowLabel);
+    if (target) player.audio.setActiveAudioTrack(target.id);
+  });
+  player.audio.onAudioSwitched$.subscribe((event) => {
+    soundButton.setImage({ src: iconFor(event.activeAudioTrack.label) });
+  });
+  markerLane.addTimelineNode({
+    width: SOUND_BUTTON_CONFIG.width!,
+    height: SOUND_BUTTON_CONFIG.height!,
+    justify: "start",
+    margin: [0, 0, 0, 10],
+    timelineNode: soundButton,
   });
 };
 
@@ -226,6 +369,7 @@ export const createTimelineWithLanes = (
   player: TamsPlayer,
   mode: Mode,
   onSegmentationLaneCreated?: (lane: MarkerLane) => void,
+  onMarkerClick?: (marker: Marker) => void,
 ) => {
   player
     .createTimeline({
@@ -249,32 +393,19 @@ export const createTimelineWithLanes = (
         const checkMarkerOverlap = (
           lane: MarkerLane,
           checkedMarker: PeriodMarker,
-        ): boolean => {
-          return lane.getMarkers().reduce((overlaps, marker) => {
-            if (checkedMarker.id === marker.id) {
-              return overlaps;
+        ): boolean =>
+          lane.getMarkers().some((m) => {
+            if (m.id === checkedMarker.id) return false;
+            if (!(m instanceof PeriodMarker)) return false;
+            const aS = m.timeObservation.start;
+            const aE = m.timeObservation.end;
+            const bS = checkedMarker.timeObservation.start;
+            const bE = checkedMarker.timeObservation.end;
+            if (aS == null || aE == null || bS == null || bE == null) {
+              return false;
             }
-            if (
-              marker instanceof PeriodMarker &&
-              marker.timeObservation.start != undefined &&
-              marker.timeObservation.end != undefined
-            ) {
-              const timeObservation = checkedMarker.timeObservation;
-              const markerStart = marker.timeObservation.start!;
-              const markerEnd = marker.timeObservation.end!;
-              const newStart = timeObservation.start;
-              const newEnd = timeObservation.end;
-
-              if (newStart != undefined && newEnd != undefined) {
-                // Standard overlap check
-                return (
-                  overlaps || (newStart < markerEnd && newEnd > markerStart)
-                );
-              }
-            }
-            return overlaps;
-          }, false);
-        };
+            return bS < aE && bE > aS;
+          });
 
         // Create default segmentation marker spanning the video
         const segmentationMarker = new PeriodMarker({
@@ -289,7 +420,12 @@ export const createTimelineWithLanes = (
           },
         });
 
+        segmentationMarker.onClick$.subscribe({
+          next: () => onMarkerClick?.(segmentationMarker),
+        });
+
         segmentationLane.addMarker(segmentationMarker);
+        onMarkerClick?.(segmentationMarker);
 
         // Prevent marker overlap
         segmentationLane.onMarkerUpdate$.subscribe({
@@ -326,261 +462,86 @@ export const createTimelineWithLanes = (
           const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
           const primaryFlow = video.tamsMediaData.flow;
           const subflows = video.tamsMediaData.subflows ?? [];
-          const flowsWithSegments = [primaryFlow, ...subflows].filter((f) => {
-            const segments = flowsSegmentsMap.get(f.id);
-            return segments && segments.length > 0;
-          });
+          const flowsWithSegments = [primaryFlow, ...subflows].filter(
+            (f) => !!f && !!flowsSegmentsMap.get(f.id)?.length,
+          );
 
           const sortedFlows = [...flowsWithSegments].sort(flowFormatSorting);
+          const mediaStartTime = video.mediaStartTime;
+          const videoDuration = player.video.getDuration();
 
           sortedFlows.forEach((flow: Flow) => {
-            // Only show video, audio, and subtitle flows
-            const isVideo = flow.format === "urn:x-nmos:format:video";
-            const isAudio = flow.format === "urn:x-nmos:format:audio";
-            const isSubtitle =
-              flow.format === "urn:x-nmos:format:data" &&
-              flow.container === "text/vtt";
-
-            if (!isVideo && !isAudio && !isSubtitle) {
+            if (
+              !isVideoFlow(flow) &&
+              !isAudioFlow(flow) &&
+              !isSubtitleFlow(flow)
+            ) {
               return;
             }
 
-            // Get segments for this flow (flowsSegments is a Map)
-            const flowSegments = video.tamsMediaData?.flowsSegments?.get(
-              flow.id,
-            );
-            if (!flowSegments || flowSegments.length === 0) {
+            const segments = flowsSegmentsMap.get(flow.id)!;
+            const label = flow.description || flow.label || `Flow ${flow.id}`;
+            const textUrl =
+              isSubtitleFlow(flow) && "textUrls" in video
+                ? video.textUrls?.get(flow.id)
+                : undefined;
+
+            if (textUrl) {
+              const subtitlesLaneId = `subtitles-lane-${flow.id}`;
+              const subtitlesLane = new SubtitlesLane({
+                id: subtitlesLaneId,
+                description: label,
+                style: THEME[mode].subtitlesLaneStyle,
+              });
+              timelineApi.addTimelineLane(subtitlesLane);
+
+              const markerLane = new MarkerLane({
+                id: `marker-lane-${flow.id}`,
+                description: `${label} Segments`,
+                style: THEME[mode].timelineLaneStyle,
+                minimized: true,
+              });
+              timelineApi.addTimelineLane(markerLane);
+
+              addSegmentMarkersToLane(
+                markerLane,
+                segments,
+                mediaStartTime,
+                videoDuration,
+                mode,
+              );
+              loadAndRegisterSubtitles(
+                subtitlesLane,
+                player,
+                textUrl,
+                subtitlesLaneId,
+                label,
+              );
+              addSubtitleLaneControls(
+                subtitlesLane,
+                markerLane,
+                player,
+                subtitlesLaneId,
+              );
               return;
             }
 
-            // For subtitle flows, create both SubtitlesLane and MarkerLane
-            if (isSubtitle && "textUrls" in video && video.textUrls) {
-              const textUrl = video.textUrls.get(flow.id);
-              if (textUrl) {
-                const subtitlesLaneId = `subtitles-lane-${flow.id}`;
-                const markerLaneId = `marker-lane-${flow.id}`;
-
-                // Create SubtitlesLane for actual subtitle display
-                const subtitlesLane = new SubtitlesLane({
-                  id: subtitlesLaneId,
-                  description:
-                    flow.description || flow.label || `Subtitles ${flow.id}`,
-                  style: THEME[mode].subtitlesLaneStyle,
-                });
-
-                timelineApi.addTimelineLane(subtitlesLane);
-
-                // Load VTT data asynchronously and register as subtitle track
-                mergeVttManifest(textUrl, player.video.getDuration())
-                  .then((vttUrl) => {
-                    subtitlesLane.loadVtt(vttUrl);
-                    // Create subtitle track in player
-                    player.subtitles
-                      .createVttTrack({
-                        id: subtitlesLaneId,
-                        src: vttUrl,
-                        label:
-                          flow.description ||
-                          flow.label ||
-                          `Subtitles ${flow.id}`,
-                        language: "en",
-                        default: false,
-                      })
-                      .subscribe({
-                        next: () =>
-                          console.log(
-                            "Subtitle track created:",
-                            subtitlesLaneId,
-                          ),
-                        error: (err) =>
-                          console.error("Error creating subtitle track:", err),
-                      });
-                  })
-                  .catch((err) => {
-                    console.error("Error loading subtitle VTT:", err);
-                  });
-
-                // Create minimized MarkerLane for segments
-                const flowMarkerLane = new MarkerLane({
-                  id: markerLaneId,
-                  description: `${flow.description || flow.label || flow.id} Segments`,
-                  style: THEME[mode].timelineLaneStyle,
-                  minimized: true,
-                });
-
-                timelineApi.addTimelineLane(flowMarkerLane);
-
-                // Add segment markers
-                const colorCycler = new ColorCycler(THEME[mode].markerColors);
-                flowSegments.forEach((segment) => {
-                  const markerColor = colorCycler.getNext();
-                  const marker = segmentToMarker(
-                    segment,
-                    video.mediaStartTime,
-                    player.video.getDuration(),
-                    markerColor,
-                  );
-
-                  if (marker) {
-                    flowMarkerLane.addMarker(marker);
-                  }
-                });
-
-                // Create dropdown button to toggle marker lane visibility
-                const dropdownButton = new ImageButton({
-                  ...DROPDOWN_BUTTON_CONFIG,
-                  src: CHEVRON_RIGHT_SVG_SOURCE,
-                });
-
-                // Subscribe to button clicks to toggle marker lane
-                dropdownButton.onClick$.subscribe(() => {
-                  flowMarkerLane.toggleMinimizeMaximize();
-
-                  // Update button icon based on new state
-                  if (flowMarkerLane.isMinimized()) {
-                    dropdownButton.setImage({ src: CHEVRON_RIGHT_SVG_SOURCE });
-                  } else {
-                    dropdownButton.setImage({ src: CHEVRON_DOWN_SVG_SOURCE });
-                  }
-                });
-
-                // Add dropdown button to subtitle lane's left pane
-                subtitlesLane.addTimelineNode({
-                  width: DROPDOWN_BUTTON_CONFIG.width!,
-                  height: DROPDOWN_BUTTON_CONFIG.height!,
-                  justify: "start",
-                  margin: [0, 0, 0, 5],
-                  timelineNode: dropdownButton,
-                });
-
-                // Create subtitles button to show/hide subtitles
-                const subtitlesButton = new ImageButton({
-                  ...SUBTITLES_BUTTON_CONFIG,
-                  src: CHATBOX_SVG_SOURCE,
-                });
-
-                // Subscribe to button clicks to toggle subtitle visibility
-                subtitlesButton.onClick$.subscribe(() => {
-                  const activeTrack = player.subtitles.getActiveTrack();
-
-                  if (activeTrack?.id !== subtitlesLaneId) {
-                    // Show this subtitle track
-                    player.subtitles.showTrack(subtitlesLaneId).subscribe({
-                      next: () =>
-                        console.log("Showing subtitle track:", subtitlesLaneId),
-                      error: (err) =>
-                        console.error("Error showing subtitle track:", err),
-                    });
-                  } else if (activeTrack?.hidden) {
-                    // Unhide active track
-                    player.subtitles.showActiveTrack().subscribe();
-                  } else {
-                    // Hide active track
-                    player.subtitles.hideActiveTrack().subscribe();
-                  }
-                });
-
-                // Subscribe to subtitle show/hide events to update button icon
-                player.subtitles.onShow$.subscribe((event) => {
-                  if (event.currentTrack?.id === subtitlesLaneId) {
-                    subtitlesButton.setImage({
-                      src: CHATBOX_ACTIVE_SVG_SOURCE,
-                    });
-                  } else if (
-                    subtitlesButton.getImage()?.src !== CHATBOX_SVG_SOURCE
-                  ) {
-                    subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
-                  }
-                });
-
-                player.subtitles.onHide$.subscribe((event) => {
-                  if (event.currentTrack?.id === subtitlesLaneId) {
-                    subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
-                  }
-                });
-
-                // Add subtitles button to subtitle lane's left pane
-                subtitlesLane.addTimelineNode({
-                  width: SUBTITLES_BUTTON_CONFIG.width!,
-                  height: SUBTITLES_BUTTON_CONFIG.height!,
-                  justify: "start",
-                  margin: [0, 0, 0, 5],
-                  timelineNode: subtitlesButton,
-                });
-
-                return;
-              }
-            }
-
-            // For non-subtitle flows, create MarkerLane
-            const flowMarkerLane = new MarkerLane({
+            const markerLane = new MarkerLane({
               id: `marker-lane-${flow.id}`,
-              description: flow.description || flow.label || `Flow ${flow.id}`,
+              description: label,
               style: THEME[mode].timelineLaneStyle,
             });
+            timelineApi.addTimelineLane(markerLane);
 
-            timelineApi.addTimelineLane(flowMarkerLane);
-
-            // Add segment markers - each segment gets a different color
-            const colorCycler = new ColorCycler(THEME[mode].markerColors);
-            flowSegments.forEach((segment) => {
-              const markerColor = colorCycler.getNext();
-              const marker = segmentToMarker(
-                segment,
-                video.mediaStartTime,
-                player.video.getDuration(),
-                markerColor,
-              );
-
-              // Only add marker if it has valid time observations
-              if (marker) {
-                flowMarkerLane.addMarker(marker);
-              }
-            });
-
-            // Add sound button for audio flows
-            if (isAudio) {
-              const activeAudioTrack = player.audio.getActiveAudioTrack();
-              const buttonImageSrc =
-                activeAudioTrack?.label === (flow.description || flow.label)
-                  ? "/sound-active-button.svg"
-                  : "/sound-inactive-button.svg";
-
-              const soundButton = new ImageButton({
-                ...SOUND_BUTTON_CONFIG,
-                src: buttonImageSrc,
-              });
-
-              // Subscribe to button clicks to switch audio track
-              soundButton.onClick$.subscribe(() => {
-                const audioTracks = player.audio.getAudioTracks();
-                const targetTrack = audioTracks.find(
-                  (track) => track.label === (flow.description || flow.label),
-                );
-
-                if (targetTrack) {
-                  player.audio.setActiveAudioTrack(targetTrack.id);
-                }
-              });
-
-              // Subscribe to audio switch events to update button icon
-              player.audio.onAudioSwitched$.subscribe((event) => {
-                const buttonImageSrc =
-                  event.activeAudioTrack.label ===
-                  (flow.description || flow.label)
-                    ? "/sound-active-button.svg"
-                    : "/sound-inactive-button.svg";
-                soundButton.setImage({ src: buttonImageSrc });
-              });
-
-              // Add sound button to marker lane's left pane
-              flowMarkerLane.addTimelineNode({
-                width: SOUND_BUTTON_CONFIG.width!,
-                height: SOUND_BUTTON_CONFIG.height!,
-                justify: "start",
-                margin: [0, 0, 0, 10],
-                timelineNode: soundButton,
-              });
+            addSegmentMarkersToLane(
+              markerLane,
+              segments,
+              mediaStartTime,
+              videoDuration,
+              mode,
+            );
+            if (isAudioFlow(flow)) {
+              addAudioLaneControls(markerLane, flow, player);
             }
           });
         }
@@ -599,19 +560,15 @@ export const createTimelineWithLanes = (
 export const calculateTimerangeFromVideo = (
   video: TamsVideo | Video,
 ): { timerange: string; maxTimerange: string } | null => {
-  // Type narrowing: check if this is a TamsVideo with tamsMediaData
   if (!("tamsMediaData" in video) || !video.tamsMediaData) {
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const timerangeStr = (video.tamsMediaData as any).timerange as
-    | string
-    | undefined;
+  const timerangeStr = (video.tamsMediaData as TamsMediaDataWithTimerange)
+    .timerange;
   if (!timerangeStr) {
     return null;
   }
-
   // Check if video has required properties
   if (
     !video.duration ||
@@ -680,52 +637,6 @@ export const createAuthenticationConfig = (accessToken: string) => {
         },
       };
     },
-  };
-};
-
-export const createTimeRangeChangeHandler = (
-  playerRef: React.RefObject<TamsPlayer | null>,
-  tamsUrl: string,
-  mode: Mode,
-  setTimerange: (timerange: string) => void,
-  onSegmentationLaneCreated?: (lane: MarkerLane) => void,
-) => {
-  return (start: number, end: number) => {
-    const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
-    const endMoment = TimeRangeUtil.secondsToTimeMoment(end);
-    const newTimeRange = TimeRangeUtil.toTimeRange(
-      startMoment,
-      endMoment,
-      true,
-      false,
-    );
-    const formattedTimeRange = TimeRangeUtil.formatTimeRangeExpr(newTimeRange);
-
-    setTimerange(formattedTimeRange);
-
-    // Reload video with new time range
-    if (playerRef.current) {
-      playerRef.current
-        .loadVideo(tamsUrl, {
-          returnTamsMediaData: true,
-          timerange: formattedTimeRange,
-        })
-        .subscribe({
-          next: (video) => {
-            console.log("Video reloaded with new time range");
-            if (playerRef.current?.timeline) {
-              playerRef.current.timeline.destroy();
-            }
-            createTimelineWithLanes(
-              video,
-              playerRef.current!,
-              mode,
-              onSegmentationLaneCreated,
-            );
-          },
-          error: (err) => console.error("Error reloading video:", err),
-        });
-    }
   };
 };
 
