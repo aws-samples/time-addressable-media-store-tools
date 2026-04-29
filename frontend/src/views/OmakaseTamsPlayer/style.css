@@ -31,3 +31,33 @@
   min-width: 0;
   overflow-x: auto;
 }
+
+/* Toolbar */
+.control-panel {
+  background-color: var(--omakase-background) !important;
+}
+.control-panel button svg *,
+.segmentation-button-wrapper button svg * {
+  fill: var(--omakase-textFill) !important;
+}
+.segmentation-button-wrapper button {
+  color: var(--omakase-textFill) !important;
+}
+
+/* Time range picker */
+.omakase-time-range-selector-segment-marker {
+  background-color: var(--omakase-background) !important;
+  border-color: var(--omakase-laneBackground) !important;
+}
+.omakase-time-range-selector-segment-label,
+.omakase-time-range-selector-segment-first-label,
+.omakase-time-range-selector-segment-second-label,
+.omakase-time-range-selector-range-selector-duration {
+  color: var(--omakase-textFill) !important;
+}
+.omakase-time-range-selector-range-selector {
+  background-color: var(--omakase-segmentationMarker) !important;
+}
+.omakase-time-range-selector-range-selector-handle {
+  background-color: var(--omakase-segmentationMarker) !important;
+}
