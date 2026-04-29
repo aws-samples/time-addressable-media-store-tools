@@ -41,3 +41,9 @@
   outline: none;
   box-shadow: none;
 }
+
+#omakase-marker-list,
+#omakase-marker-toolbar {
+  min-width: 0;
+  overflow-x: auto;
+}

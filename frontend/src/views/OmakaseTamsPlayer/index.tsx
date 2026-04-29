@@ -111,7 +111,7 @@ const OmakaseTamsPlayer = () => {
   return (
     <SpaceBetween size="xs">
       <ColumnLayout columns={2} disableGutters>
-        <div>
+        <div id="omakase-marker-list">
           {omakasePlayer && currentSource && (
             <>
               <MarkerListHeader
@@ -153,7 +153,7 @@ const OmakaseTamsPlayer = () => {
         <div id="omakase-video-container" />
       </ColumnLayout>
       <ColumnLayout columns={2} disableGutters>
-        <div>
+        <div id="omakase-marker-toolbar">
           {omakasePlayer && sourceMarkerList && currentSource && (
             <MarkerListToolbar
               omakasePlayer={omakasePlayer}
