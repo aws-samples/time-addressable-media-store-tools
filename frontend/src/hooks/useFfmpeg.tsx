@@ -5,6 +5,7 @@ import {
   AWS_FFMPEG_BATCH_ARN,
   AWS_FFMPEG_EXPORT_ARN,
   AWS_FFMPEG_ENDPOINT,
+  TAMS_POLLING_INTERVAL,
 } from "@/constants";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useIamApi from "@/hooks/useIamApi";
@@ -64,7 +65,7 @@ export const useRules = () => {
     "/ffmpeg-rules",
     (path) => hierachyFetcher<RuleTarget>(api, path),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
@@ -139,7 +140,7 @@ export const useJobs = () => {
     "/ffmpeg-jobs",
     (path) => hierachyFetcher<JobTarget>(api, path),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
@@ -157,7 +158,7 @@ export const useExports = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR<
     FfmpegExport[]
   >("/ffmpeg-exports", (path) => api.get(path), {
-    refreshInterval: 3000,
+    refreshInterval: TAMS_POLLING_INTERVAL,
   });
 
   return {

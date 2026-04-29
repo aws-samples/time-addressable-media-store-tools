@@ -2,6 +2,7 @@ import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import paginationFetcher from "@/utils/paginationFetcher";
+import { TAMS_PAGE_LIMIT, TAMS_POLLING_INTERVAL } from "@/constants";
 import type { Uuid, WebhookGet, WebhookPost, WebhookPut } from "@/types/tams";
 
 type DeleteArg = {
@@ -11,10 +12,10 @@ type DeleteArg = {
 export const useWebhooks = () => {
   const api = useApi();
   const { data, mutate, error, isLoading, isValidating } = useSWR<WebhookGet[]>(
-    "/service/webhooks?limit=300",
+    `/service/webhooks?limit=${TAMS_PAGE_LIMIT}`,
     (path) => paginationFetcher(path, api),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
@@ -43,7 +44,7 @@ export const useWebhook = (webhookId: Uuid) => {
     ["/service/webhooks", webhookId],
     ([path, webhookId]) => get(`${path}/${webhookId}`),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 

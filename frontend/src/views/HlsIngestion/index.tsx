@@ -75,7 +75,10 @@ const HlsIngestion = () => {
     {
       id: "sourceId",
       header: "Multi Source Id",
-      cell: (item) => item.sourceId && <Link to={`/sources/${item.sourceId}`}>{item.sourceId}</Link>,
+      cell: (item) =>
+        item.sourceId && (
+          <Link to={`/sources/${item.sourceId}`}>{item.sourceId}</Link>
+        ),
       sortingField: "sourceId",
       width: 360,
     },

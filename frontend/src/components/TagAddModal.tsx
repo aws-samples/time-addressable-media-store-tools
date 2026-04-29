@@ -41,7 +41,13 @@ const TagAddModal = ({
           : tagValue,
       });
       if (propagate) {
-        await propagateTagAction(entityType, entity, "update", tagName, tagValue);
+        await propagateTagAction(
+          entityType,
+          entity,
+          "update",
+          tagName,
+          tagValue,
+        );
       }
     } catch {
       // Alert emitted by useApi

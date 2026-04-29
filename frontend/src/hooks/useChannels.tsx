@@ -6,7 +6,11 @@ import {
   StopChannelCommandInput,
 } from "@aws-sdk/client-medialive";
 
-import { AWS_REGION, AWS_HLS_INGEST_ENDPOINT } from "@/constants";
+import {
+  AWS_REGION,
+  AWS_HLS_INGEST_ENDPOINT,
+  TAMS_POLLING_INTERVAL,
+} from "@/constants";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useIamApi from "@/hooks/useIamApi";
 import useSWR from "swr";
@@ -18,7 +22,7 @@ export const useChannels = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR<
     ChannelIngestion[]
   >("/channel-ingestion", (path) => api.get(path), {
-    refreshInterval: 3000,
+    refreshInterval: TAMS_POLLING_INTERVAL,
   });
 
   return {

@@ -15,7 +15,9 @@ export const useTagPropagation = () => {
 
   const createApiFunctions = () => ({
     fetchFlow: async (flowId: Uuid) => {
-      const response = await get<Flow | null>(`/flows/${flowId}?include_timerange=true`);
+      const response = await get<Flow | null>(
+        `/flows/${flowId}?include_timerange=true`,
+      );
       return response.data;
     },
     fetchFlowsBySource: async (sourceId: Uuid) => {
@@ -37,10 +39,10 @@ export const useTagPropagation = () => {
       entityType === "flows"
         ? await collectFlowPropagationEntities(entity as Flow, fetchFlow)
         : await collectSourcePropagationEntities(
-          entity.id,
-          fetchFlow,
-          fetchFlowsBySource,
-        );
+            entity.id,
+            fetchFlow,
+            fetchFlowsBySource,
+          );
 
     let promises;
 

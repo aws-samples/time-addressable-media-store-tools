@@ -4,7 +4,7 @@ import {
   StartExecutionCommandInput,
 } from "@aws-sdk/client-sfn";
 
-import { AWS_REGION } from "@/constants";
+import { AWS_REGION, TAMS_POLLING_INTERVAL } from "@/constants";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useIamApi from "@/hooks/useIamApi";
 import { AWS_HLS_INGEST_ENDPOINT } from "@/constants";
@@ -17,7 +17,7 @@ export const useWorkflows = () => {
     "/workflows",
     (path) => api.get(path),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 

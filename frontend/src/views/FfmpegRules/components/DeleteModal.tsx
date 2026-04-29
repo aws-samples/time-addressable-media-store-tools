@@ -44,7 +44,7 @@ const DeleteModal = ({
   const handleDismiss = () => {
     setModalVisible(false);
     setSelectedKey("");
-  }
+  };
 
   return (
     <Modal

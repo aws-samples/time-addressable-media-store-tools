@@ -210,8 +210,8 @@ const WebhookRegisterUpdateModal = ({
             label="Status"
             errorText={
               webhook &&
-                formData.status &&
-                !enabledStatuses.includes(formData.status)
+              formData.status &&
+              !enabledStatuses.includes(formData.status)
                 ? "This status is system-managed"
                 : undefined
             }

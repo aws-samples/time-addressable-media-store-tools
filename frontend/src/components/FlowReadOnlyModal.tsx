@@ -23,7 +23,11 @@ const FlowReadOnlyModal = ({
 
   const setReadOnly = async () => {
     try {
-      await Promise.all(selectedItems.map((item) => putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" })));
+      await Promise.all(
+        selectedItems.map((item) =>
+          putReadOnly({ flowId: item.id, readOnly: readOnlyStr === "true" }),
+        ),
+      );
       const id = crypto.randomUUID();
       addAlertItems(
         selectedItems.map((flow, n) => ({

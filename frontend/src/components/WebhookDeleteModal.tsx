@@ -26,7 +26,9 @@ const WebhookDeleteModal = ({
   const deleteFlow = async () => {
     setIsDeleting(true);
     try {
-      await Promise.all(selectedItems.map((item) => del({ webhookId: item.id })));
+      await Promise.all(
+        selectedItems.map((item) => del({ webhookId: item.id })),
+      );
       const id = crypto.randomUUID();
       addAlertItems(
         selectedItems.map((webhook, n) => ({

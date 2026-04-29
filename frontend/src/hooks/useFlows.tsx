@@ -2,6 +2,7 @@ import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
 import paginationFetcher from "@/utils/paginationFetcher";
+import { TAMS_PAGE_LIMIT, TAMS_POLLING_INTERVAL } from "@/constants";
 import type { Uuid, Flow, Timerange } from "@/types/tams";
 
 type UpdateArg = {
@@ -29,7 +30,7 @@ const useFlowsQuery = (url: string | null) => {
     url,
     (path) => paginationFetcher(path, api),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
@@ -42,7 +43,7 @@ const useFlowsQuery = (url: string | null) => {
   };
 };
 
-export const useFlows = () => useFlowsQuery("/flows?limit=300");
+export const useFlows = () => useFlowsQuery(`/flows?limit=${TAMS_PAGE_LIMIT}`);
 
 export const useFlowsBySource = (sourceId: Uuid) =>
   useFlowsQuery(sourceId ? `/flows?source_id=${sourceId}` : null);
@@ -63,7 +64,7 @@ export const useFlow = (flowId: Uuid) => {
     ["/flows", flowId],
     ([path, flowId]) => get(`${path}/${flowId}?include_timerange=true`),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 

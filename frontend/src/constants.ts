@@ -20,7 +20,7 @@ export const MEDIACONVERT_ROLE_ARN = import.meta.env
   .VITE_APP_AWS_MEDIACONVERT_ROLE_ARN;
 export const MEDIACONVERT_BUCKET = import.meta.env
   .VITE_APP_AWS_MEDIACONVERT_BUCKET;
-export const LOOP_RECORDER_ARN = import.meta.env.VITE_APP_AWS_LOOP_RECORDER_ARN;
+const LOOP_RECORDER_ARN = import.meta.env.VITE_APP_AWS_LOOP_RECORDER_ARN;
 export const AWS_HLS_FUNCTION_URL = import.meta.env
   .VITE_APP_AWS_HLS_FUNCTION_URL;
 export const AWS_INGEST_CREATE_NEW_FLOW_ARN = import.meta.env
@@ -81,9 +81,6 @@ export const IS_LOOP_RECORDER_DEPLOYED = !!(
 );
 /************* END OF FEATURE FLAGS **************/
 export const AWS_REGION = AWS_IDENTITY_POOL_ID?.split(":")[0];
-export const AWS_USER_POOL_ID = OIDC_AUTHORITY.includes("cognito")
-  ? OIDC_AUTHORITY.split("/").pop()
-  : null;
 export const OIDC_SCOPES = [
   "openid",
   "email",
@@ -102,6 +99,7 @@ export const PAGE_SIZE_PREFERENCE: CollectionPreferencesProps.PageSizePreference
       { value: 100, label: "100 resources" },
     ],
   };
+export const TAMS_POLLING_INTERVAL = 3000;
 export const TAMS_PAGE_LIMIT = 300;
 export const SEGMENT_COUNT = 30;
 export const STATUS_MAPPINGS: Record<

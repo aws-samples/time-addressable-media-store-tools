@@ -1,5 +1,5 @@
 import useIamApi from "@/hooks/useIamApi";
-import { AWS_HLS_INGEST_ENDPOINT } from "@/constants";
+import { AWS_HLS_INGEST_ENDPOINT, TAMS_POLLING_INTERVAL } from "@/constants";
 import useSWR from "swr";
 import type { JobIngestion } from "@/types/ingestHls";
 
@@ -8,7 +8,7 @@ const useJobs = () => {
   const { data, mutate, error, isLoading, isValidating } = useSWR<
     JobIngestion[]
   >("/job-ingestion", (path) => api.get(path), {
-    refreshInterval: 3000,
+    refreshInterval: TAMS_POLLING_INTERVAL,
   });
 
   return {

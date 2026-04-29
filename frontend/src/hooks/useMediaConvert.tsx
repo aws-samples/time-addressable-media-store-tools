@@ -7,7 +7,11 @@ import { AWS_REGION, MEDIACONVERT_BUCKET } from "@/constants";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
 import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { AWS_TAMS_ENDPOINT, TAMS_AUTH_CONNECTION_ARN } from "@/constants";
+import {
+  AWS_TAMS_ENDPOINT,
+  TAMS_AUTH_CONNECTION_ARN,
+  TAMS_POLLING_INTERVAL,
+} from "@/constants";
 import type { Job } from "@aws-sdk/client-mediaconvert";
 import type { CognitoIdentityCredentialProvider } from "@aws-sdk/credential-providers";
 import type { Uuid } from "@/types/tams";
@@ -43,7 +47,7 @@ export const useTamsJobs = () => {
     "mediaconvert-jobs",
     () => mediaConvertFetcher(credentials),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 

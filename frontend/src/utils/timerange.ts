@@ -155,62 +155,6 @@ export const parseTimerange = (timerange: string): TimerangeBigIntResult => {
 };
 
 /**
- * Converts a timerange object with BigInt values to a string
- *
- * @param {Object} obj - Object with start and end as BigInt nanoseconds
- * @param {BigInt|null} obj.start - Start time as BigInt nanoseconds or null
- * @param {BigInt|null} obj.end - End time as BigInt nanoseconds or null
- * @param {boolean} [obj.includesStart=true] - Whether the start value is inclusive
- * @param {boolean} [obj.includesEnd=false] - Whether the end value is inclusive
- * @returns {string} The formatted timerange string
- */
-export const toTimerangeString = ({
-  start,
-  end,
-  includesStart = true,
-  includesEnd = false,
-}: TimerangeBigIntResult): string => {
-  try {
-    // Handle special cases
-    if (start === null && end === null) {
-      if (includesStart === false && includesEnd === false) {
-        return "()";
-      }
-      return "_";
-    }
-
-    // Format BigInt value as "seconds:nanos"
-    const formatBigInt = (value: bigint): string => {
-      const isNegative = value < 0n;
-      const absValue = isNegative ? -value : value;
-      const seconds = absValue / NANOS_PER_SECOND;
-      const nanos = absValue % NANOS_PER_SECOND;
-      return `${isNegative ? "-" : ""}${seconds}:${nanos}`;
-    };
-
-    let result = "";
-
-    if (start !== null) {
-      result += includesStart ? "[" : "(";
-      result += formatBigInt(start);
-    }
-
-    result += "_";
-
-    if (end !== null) {
-      result += formatBigInt(end);
-      result += includesEnd ? "]" : ")";
-    }
-
-    return result;
-  } catch (error) {
-    console.error(error);
-    // Return empty timerange if error thrown
-    return "()";
-  }
-};
-
-/**
  * Parses a timerange string into an object with Luxon DateTime values
  *
  * @param {string} timerange - The timerange string to parse

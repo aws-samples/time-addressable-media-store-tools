@@ -132,6 +132,7 @@ const Layout = () => {
             <Outlet />
           </ContentLayout>
         }
+        maxContentWidth={Number.MAX_VALUE}
       />
     </>
   );

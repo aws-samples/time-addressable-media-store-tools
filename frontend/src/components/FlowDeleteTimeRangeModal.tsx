@@ -23,7 +23,11 @@ const FlowDeleteTimeRangeModal = ({
 
   const deleteTimerange = async () => {
     try {
-      await Promise.all(selectedItems.map((item) => delTimerange({ flowId: item.id, timerange })));
+      await Promise.all(
+        selectedItems.map((item) =>
+          delTimerange({ flowId: item.id, timerange }),
+        ),
+      );
       const id = crypto.randomUUID();
       addAlertItems(
         selectedItems.map((flow, n) => ({

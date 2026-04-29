@@ -1,6 +1,7 @@
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
 import paginationFetcher from "@/utils/paginationFetcher";
+import { TAMS_PAGE_LIMIT, TAMS_POLLING_INTERVAL } from "@/constants";
 import type { Uuid, Timerange, Flow, Segment } from "@/types/tams";
 
 export const useLastN = (flowId: Uuid, n: number) => {
@@ -14,7 +15,7 @@ export const useLastN = (flowId: Uuid, n: number) => {
         n,
       ),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
@@ -37,8 +38,9 @@ export const useSegments = (
     `/flows/${flowId}/segments`,
     (path: string) =>
       paginationFetcher<Segment>(
-        `${path}${timerange ? `?timerange=${timerange}` : ""
-        }&reverse_order=false&limit=300`,
+        `${path}${
+          timerange ? `?timerange=${timerange}` : ""
+        }&reverse_order=false&limit=${TAMS_PAGE_LIMIT}`,
         api,
         maxResults,
       ),
@@ -60,8 +62,8 @@ export const useFlowsSegments = (
 ) => {
   const api = useApi();
   const params = timerange
-    ? `?timerange=${timerange}&reverse_order=false&limit=300`
-    : `?reverse_order=false&limit=300`;
+    ? `?timerange=${timerange}&reverse_order=false&limit=${TAMS_PAGE_LIMIT}`
+    : `?reverse_order=false&limit=${TAMS_PAGE_LIMIT}`;
 
   const { data, mutate, error, isLoading, isValidating } = useSWR<Segment[][]>(
     flows?.length > 0

@@ -1,5 +1,6 @@
 import { useApi } from "@/hooks/useApi";
 import useSWR from "swr";
+import { TAMS_POLLING_INTERVAL } from "@/constants";
 import type { Object } from "@/types/tams";
 
 export const useObjects = (objectId: string) => {
@@ -12,7 +13,7 @@ export const useObjects = (objectId: string) => {
     objectId ? ["/objects", objectId] : null,
     ([path, objectId]) => get(`${path}/${objectId}?accept_get_urls=`),
     {
-      refreshInterval: 3000,
+      refreshInterval: TAMS_POLLING_INTERVAL,
     },
   );
 
