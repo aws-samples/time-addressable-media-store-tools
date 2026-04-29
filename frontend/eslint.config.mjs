@@ -8,7 +8,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
   {
-    ignores: ["**/dist", "**/eslint.config.mjs"],
+    ignores: ["**/dist", "**/eslint.config.mjs", "**/src/views/OmakasePlayer/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

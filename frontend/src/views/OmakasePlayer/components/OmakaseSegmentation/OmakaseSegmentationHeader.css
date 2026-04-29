@@ -1,0 +1,16 @@
+.segmentation-export {
+  padding: 0.5em 1em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.segmentation-export-disabled {
+  padding: 0.5em 1em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+  opacity: 0.3;
+}
