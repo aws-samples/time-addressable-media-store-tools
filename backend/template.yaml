@@ -113,7 +113,7 @@ Parameters:
 Mappings:
   Solution:
     Constants:
-      Version: "4.1"
+      Version: "4.2.beta"
 
 Conditions:
   UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, "-"], !Equals [!Ref OAuthAuthorizationEndpoint, ""] ]
