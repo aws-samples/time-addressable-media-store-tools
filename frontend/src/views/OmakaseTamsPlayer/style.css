@@ -44,6 +44,10 @@
 .segmentation-button-wrapper button {
   color: var(--omakase-textFill) !important;
 }
+.control-panel button:disabled svg *,
+.segmentation-button-wrapper button:disabled svg * {
+  opacity: 0.2 !important;
+}
 
 /* Time range picker */
 .omakase-time-range-selector-segment-marker {
