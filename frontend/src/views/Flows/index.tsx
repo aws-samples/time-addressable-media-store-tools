@@ -254,6 +254,12 @@ const Flows = () => {
                 direction="horizontal"
                 alignItems="center"
               >
+                <Toggle
+                  onChange={({ detail }) => setShowHierarchy(detail.checked)}
+                  checked={showHierarchy}
+                >
+                  Hierarchical View
+                </Toggle>
                 {IS_REPLICATION_DEPLOYED && (
                   <Button
                     onClick={() =>
@@ -265,12 +271,6 @@ const Flows = () => {
                   </Button>
                 )}
                 <FlowActionsButton selectedItems={selectedItems ?? []} />
-                <Toggle
-                  onChange={({ detail }) => setShowHierarchy(detail.checked)}
-                  checked={showHierarchy}
-                >
-                  Hierarchical View
-                </Toggle>
               </SpaceBetween>
             }
           >

@@ -162,6 +162,12 @@ const Sources = () => {
                 direction="horizontal"
                 alignItems="center"
               >
+                <Toggle
+                  onChange={({ detail }) => setShowHierarchy(detail.checked)}
+                  checked={showHierarchy}
+                >
+                  Hierarchical View
+                </Toggle>
                 {IS_REPLICATION_DEPLOYED && (
                   <Button
                     onClick={() =>
@@ -173,12 +179,6 @@ const Sources = () => {
                   </Button>
                 )}
                 <SourceActionsButton selectedItems={selectedItems ?? []} />
-                <Toggle
-                  onChange={({ detail }) => setShowHierarchy(detail.checked)}
-                  checked={showHierarchy}
-                >
-                  Hierarchical View
-                </Toggle>
               </SpaceBetween>
             }
           >
