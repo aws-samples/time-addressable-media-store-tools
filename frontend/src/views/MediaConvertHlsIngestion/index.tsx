@@ -81,7 +81,7 @@ const MediaConvertHlsIngestion = () => {
         item.jobPercentComplete ? (
           <ProgressBar value={item.jobPercentComplete} />
         ) : (
-          <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
+          <StatusIndicator {...STATUS_MAPPINGS[item.status]}>
             {item.status}
           </StatusIndicator>
         ),

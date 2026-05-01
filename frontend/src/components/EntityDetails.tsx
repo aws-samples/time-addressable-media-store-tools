@@ -110,7 +110,7 @@ const EntityDetails = ({ entityType, entity }: Props) => {
 
     if (label === "status" && typeof value === "string") {
       return (
-        <StatusIndicator type={STATUS_MAPPINGS[value]}>{value}</StatusIndicator>
+        <StatusIndicator {...STATUS_MAPPINGS[value]}>{value}</StatusIndicator>
       );
     }
 

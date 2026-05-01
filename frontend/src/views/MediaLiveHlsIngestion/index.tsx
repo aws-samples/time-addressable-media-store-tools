@@ -79,7 +79,7 @@ const MediaLiveHlsIngestion = () => {
       id: "state",
       header: "Channel State",
       cell: (item) => (
-        <StatusIndicator type={STATUS_MAPPINGS[item.state]}>
+        <StatusIndicator {...STATUS_MAPPINGS[item.state]}>
           {item.state}
         </StatusIndicator>
       ),

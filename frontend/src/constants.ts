@@ -1,4 +1,12 @@
-import type { CollectionPreferencesProps } from "@cloudscape-design/components";
+import type {
+  CollectionPreferencesProps,
+  StatusIndicatorProps,
+} from "@cloudscape-design/components";
+
+type StatusMapping = {
+  type: StatusIndicatorProps["type"];
+  colorOverride?: StatusIndicatorProps["colorOverride"];
+};
 
 /************* ENVIRONMENT VARIABLES **************/
 export const APP_TITLE = import.meta.env.VITE_APP_TITLE;
@@ -102,42 +110,32 @@ export const PAGE_SIZE_PREFERENCE: CollectionPreferencesProps.PageSizePreference
 export const TAMS_POLLING_INTERVAL = 3000;
 export const TAMS_PAGE_LIMIT = 300;
 export const SEGMENT_COUNT = 30;
-export const STATUS_MAPPINGS: Record<
-  string,
-  | "warning"
-  | "success"
-  | "error"
-  | "loading"
-  | "stopped"
-  | "info"
-  | "pending"
-  | "in-progress"
-> = {
-  ABORTED: "warning",
-  CANCELED: "warning",
-  COMPLETE: "success",
-  CREATE_FAILED: "error",
-  CREATING: "loading",
-  DELETED: "stopped",
-  DELETING: "loading",
-  ERROR: "error",
-  FAILED: "error",
-  IDLE: "info",
-  PENDING_REDRIVE: "error",
-  PROGRESSING: "loading",
-  RECOVERING: "loading",
-  RUNNING: "loading",
-  STARTING: "loading",
-  STOPPING: "loading",
-  SUBMITTED: "info",
-  SUCCEEDED: "success",
-  TIMED_OUT: "error",
-  UPDATE_FAILED: "error",
-  UPDATING: "loading",
-  created: "pending",
-  started: "in-progress",
-  disabled: "stopped",
-  error: "error",
+export const STATUS_MAPPINGS: Record<string, StatusMapping> = {
+  ABORTED: { type: "warning" },
+  CANCELED: { type: "warning" },
+  COMPLETE: { type: "success" },
+  CREATE_FAILED: { type: "error" },
+  CREATING: { type: "loading" },
+  DELETED: { type: "stopped" },
+  DELETING: { type: "loading" },
+  ERROR: { type: "error" },
+  FAILED: { type: "error" },
+  IDLE: { type: "info" },
+  PENDING_REDRIVE: { type: "error" },
+  PROGRESSING: { type: "loading" },
+  RECOVERING: { type: "loading" },
+  RUNNING: { type: "loading" },
+  STARTING: { type: "loading" },
+  STOPPING: { type: "loading" },
+  SUBMITTED: { type: "info" },
+  SUCCEEDED: { type: "success" },
+  TIMED_OUT: { type: "error" },
+  UPDATE_FAILED: { type: "error" },
+  UPDATING: { type: "loading" },
+  created: { type: "pending" },
+  started: { type: "in-progress", colorOverride: "green" },
+  disabled: { type: "stopped", colorOverride: "yellow" },
+  error: { type: "error" },
 } as const;
 export const DATE_FORMAT: Intl.DateTimeFormatOptions = {
   year: "numeric",

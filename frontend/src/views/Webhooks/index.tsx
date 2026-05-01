@@ -47,7 +47,7 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
     id: "status",
     header: "Status",
     cell: (item) => (
-      <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
+      <StatusIndicator {...STATUS_MAPPINGS[item.status]}>
         {item.status}
       </StatusIndicator>
     ),

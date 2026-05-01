@@ -66,7 +66,7 @@ const columnDefinitions: TableProps.ColumnDefinition<JobItem>[] = [
       item.parentId &&
       item.status && (
         <>
-          <StatusIndicator type={STATUS_MAPPINGS[item.status]}>
+          <StatusIndicator {...STATUS_MAPPINGS[item.status]}>
             {item.status}
           </StatusIndicator>
           <ExternalLink

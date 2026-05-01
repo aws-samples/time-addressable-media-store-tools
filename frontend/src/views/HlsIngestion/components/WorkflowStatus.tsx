@@ -12,7 +12,9 @@ const WorkflowStatus = ({ item }: { item: Workflow }) => {
   const hasWarnings = (item.warnings?.length ?? 0) > 0;
   const statusIndicator = (
     <StatusIndicator
-      type={hasWarnings ? "warning" : STATUS_MAPPINGS[item.status]}
+      {...(hasWarnings
+        ? { type: "warning" as const }
+        : STATUS_MAPPINGS[item.status])}
     >
       {item.status}
     </StatusIndicator>

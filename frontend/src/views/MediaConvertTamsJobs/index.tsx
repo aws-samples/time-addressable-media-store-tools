@@ -152,7 +152,7 @@ const MediaConvertTamsJobs = () => {
           {item.JobPercentComplete ? (
             <ProgressBar value={item.JobPercentComplete} />
           ) : (
-            <StatusIndicator type={STATUS_MAPPINGS[item.Status!]}>
+            <StatusIndicator {...STATUS_MAPPINGS[item.Status!]}>
               {item.Status}
             </StatusIndicator>
           )}
