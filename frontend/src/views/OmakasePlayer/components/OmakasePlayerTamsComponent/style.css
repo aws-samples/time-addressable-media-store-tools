@@ -123,5 +123,5 @@ div.omakase-help
   .omakase-help
   .omakase-help-dropdown
   .omakase-help-button {
-  background-image: url(/help.svg) !important;
+  background-image: url(../../../../assets/help.svg) !important;
 }

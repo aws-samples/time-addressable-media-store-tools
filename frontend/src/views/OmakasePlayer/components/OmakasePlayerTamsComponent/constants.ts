@@ -13,6 +13,13 @@ import {
   TimelineLaneStyle,
   TimelineStyle,
 } from "@byomakase/omakase-player";
+import chatboxActiveSvg from "@/assets/chatbox-active.svg";
+import chatboxDisabledSvg from "@/assets/chatbox-disabled.svg";
+import chatboxSvg from "@/assets/chatbox.svg";
+import chevronDownSvg from "@/assets/chevron-down.svg";
+import chevronRightSvg from "@/assets/chevron-right.svg";
+import soundActiveButton from "@/assets/sound-active-button.svg";
+import soundInactiveButton from "@/assets/sound-inactive-button.svg";
 
 export const PLAYER_CHROMING: PlayerChroming = {
   theme: PlayerChromingTheme.Default,
@@ -55,11 +62,13 @@ export const PLAYER_CHROMING_TEXT_TRACK: PlayerChroming = {
   },
 };
 
-export const CHEVRON_DOWN_SVG_SOURCE = `/chevron-down.svg`;
-export const CHEVRON_RIGHT_SVG_SOURCE = `/chevron-right.svg`;
-export const CHATBOX_SVG_SOURCE = `/chatbox.svg`;
-export const CHATBOX_ACTIVE_SVG_SOURCE = `/chatbox-active.svg`;
-export const CHATBOX_DISABLED_SVG_SOURCE = `/chatbox-disabled.svg`;
+export const CHEVRON_DOWN_SVG_SOURCE = chevronDownSvg;
+export const CHEVRON_RIGHT_SVG_SOURCE = chevronRightSvg;
+export const CHATBOX_SVG_SOURCE = chatboxSvg;
+export const CHATBOX_ACTIVE_SVG_SOURCE = chatboxActiveSvg;
+export const CHATBOX_DISABLED_SVG_SOURCE = chatboxDisabledSvg;
+export const SOUND_ACTIVE_BUTTON_SOURCE = soundActiveButton;
+export const SOUND_INACTIVE_BUTTON_SOURCE = soundInactiveButton;
 
 export const VARIABLES = {
   text: {
@@ -280,7 +289,7 @@ export const MARKER_LIST_CONFIG: MarkerListConfig = {
 };
 
 export const SOUND_BUTTON_CONFIG: ImageButtonConfig = {
-  src: "/sound-inactive-button.svg",
+  src: SOUND_INACTIVE_BUTTON_SOURCE,
   width: 14,
   height: 20,
   listening: true,

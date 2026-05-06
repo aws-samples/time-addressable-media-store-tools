@@ -2,6 +2,7 @@ import { TopNavigation } from "@cloudscape-design/components";
 import { useAuth } from "react-oidc-context";
 import { Mode, applyMode } from "@cloudscape-design/global-styles";
 import { APP_TITLE, APP_TITLE_LOGO, SOLUTION_VERSION } from "@/constants";
+import awsLogo from "@/assets/aws.svg";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import "@/styles/Header.css";
 
@@ -35,9 +36,9 @@ const Header = () => {
   return (
     <TopNavigation
       identity={{
-        href: "/",
+        href: "#/",
         title: APP_TITLE ?? "TAMS Tools",
-        logo: { src: APP_TITLE_LOGO ?? "/aws.svg" },
+        logo: { src: APP_TITLE_LOGO ?? awsLogo },
       }}
       utilities={[
         {

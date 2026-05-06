@@ -19,6 +19,8 @@ import {
   CHEVRON_RIGHT_SVG_SOURCE,
   DROPDOWN_BUTTON_CONFIG,
   MARKER_LANE_TEXT_LABEL_STYLE,
+  SOUND_ACTIVE_BUTTON_SOURCE,
+  SOUND_INACTIVE_BUTTON_SOURCE,
   SOUND_BUTTON_CONFIG,
 } from "../components/OmakasePlayerTamsComponent/constants";
 
@@ -171,8 +173,8 @@ export function createAudioButton(
 ) {
   const buttonImageSrc =
     omakasePlayer.audio.getActiveAudioTrack()?.label === flow.description
-      ? "/sound-active-button.svg"
-      : "/sound-inactive-button.svg";
+      ? SOUND_ACTIVE_BUTTON_SOURCE
+      : SOUND_INACTIVE_BUTTON_SOURCE;
 
   const soundControlButton = new ImageButton({
     ...SOUND_BUTTON_CONFIG,
@@ -193,8 +195,8 @@ export function createAudioButton(
       const buttonImageSrc =
         audioSwitchedEvent.activeAudioTrack.label ===
         resolveAudioManifestName(flow)
-          ? "/sound-active-button.svg"
-          : "/sound-inactive-button.svg";
+          ? SOUND_ACTIVE_BUTTON_SOURCE
+          : SOUND_INACTIVE_BUTTON_SOURCE;
       soundControlButton.setImage({
         ...SOUND_BUTTON_CONFIG,
         src: buttonImageSrc,
@@ -208,8 +210,8 @@ export function createAudioButton(
       if (activeAudioTrack) {
         const buttonImageSrc =
           activeAudioTrack.label === resolveAudioManifestName(flow)
-            ? "/sound-active-button.svg"
-            : "/sound-inactive-button.svg";
+            ? SOUND_ACTIVE_BUTTON_SOURCE
+            : SOUND_INACTIVE_BUTTON_SOURCE;
         soundControlButton.setImage({
           ...SOUND_BUTTON_CONFIG,
           src: buttonImageSrc,

@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: "./",
   define: {
     global: "globalThis", //<-- AWS SDK
   },
@@ -24,5 +25,11 @@ export default defineConfig({
         replacement: "./runtimeConfig.browser", // ensures browser compatible version of AWS JS SDK is used
       },
     ],
+  },
+  preview: {
+    allowedHosts: true,
+  },
+  server: {
+    allowedHosts: true,
   },
 });

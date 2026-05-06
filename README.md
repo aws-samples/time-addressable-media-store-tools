@@ -238,7 +238,7 @@ For detailed configuration instructions for each parameter, see the linked docum
 The application supports visual customisation to help differentiate between multiple TAMS Tools UI instances:
 
 - **Application Title**: Customise the application title by setting the `VITE_APP_TITLE` environment variable. For example, use `VITE_APP_TITLE="My Custom TAMS Tools"`. If not set, defaults to "TAMS Tools".
-- **Header Logo**: Customise the logo displayed in the header by setting the `VITE_APP_TITLE_LOGO` environment variable with the path to your image file. For example, use `VITE_APP_TITLE_LOGO="/my-logo.png"`. If not set, defaults to "/aws.svg". Place your image files in the `frontend/public/` directory to make them accessible.
+- **Header Logo**: Customise the logo displayed in the header by setting the `VITE_APP_TITLE_LOGO` environment variable to a full URL of your image (e.g. `VITE_APP_TITLE_LOGO="https://example.com/my-logo.png"` or a `data:` URL). If not set, defaults to the bundled AWS logo.
 
 ## Cleanup
 
