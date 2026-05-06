@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   OmakaseTamsPlayer as TamsPlayer,
   TamsVideo,
+  TamsVideoLoadOptions,
 } from "@byomakase/omakase-tams-player";
 import { Mode } from "@cloudscape-design/global-styles";
 import { AWS_TAMS_ENDPOINT } from "@/constants";
@@ -10,7 +11,11 @@ import {
   calculateTimerangeFromVideo,
   createAuthenticationConfig,
 } from "@/views/OmakaseTamsPlayer/utils";
-import type { OmakasePlayerApi, MarkerLane } from "@byomakase/omakase-player";
+import type {
+  OmakasePlayerApi,
+  MarkerLane,
+  Marker,
+} from "@byomakase/omakase-player";
 import type { Video } from "@byomakase/omakase-player/dist/video/model";
 import type { Flow } from "@/types/tams";
 
@@ -19,13 +24,13 @@ type UseOmakasePlayerParams = {
   id: string | undefined;
   accessToken: string | undefined;
   mode: Mode;
-  onLoadingChange: (isLoading: boolean) => void;
   onError: (error: string | null) => void;
   onTimerangeChange: (
     timerange: string | undefined,
     maxTimerange: string | undefined,
   ) => void;
   onSegmentationLaneCreated?: (lane: MarkerLane) => void;
+  onMarkerClick?: (marker: Marker) => void;
   onPlayerReady?: (player: OmakasePlayerApi) => void;
   onMediaStartTimeCalculated?: (mediaStartTime: number) => void;
   onFlowsCalculated?: (flows: Flow[]) => void;
@@ -36,135 +41,128 @@ export const useOmakasePlayer = ({
   id,
   accessToken,
   mode,
-  onLoadingChange,
   onError,
   onTimerangeChange,
   onSegmentationLaneCreated,
+  onMarkerClick,
   onPlayerReady,
   onMediaStartTimeCalculated,
   onFlowsCalculated,
 }: UseOmakasePlayerParams) => {
   const playerRef = useRef<TamsPlayer | null>(null);
   const videoDataRef = useRef<TamsVideo | Video | null>(null);
-
-  // Main effect: Create player and load video
-  useEffect(() => {
-    if (!accessToken) return;
-
-    // Verify DOM element exists
-    const videoContainer = document.getElementById("omakase-video-container");
-    if (!videoContainer) {
-      console.error("Video container element not found");
-      return;
-    }
-
-    // Construct TAMS URL
-    const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
-
-    // Create player instance
-    const player = new TamsPlayer({
-      playerHTMLElementId: "omakase-video-container",
-    });
-
-    playerRef.current = player;
-
-    // Set TAMS endpoint
-    player.setTamsEndpoint(AWS_TAMS_ENDPOINT);
-
-    // Configure authentication
-    player.setAuthentication(createAuthenticationConfig(accessToken || ""));
-
-    // Load video from TAMS URL - always load last 300 seconds initially
-    const loadOptions = {
-      returnTamsMediaData: true,
-      duration: 300,
-    };
-
-    player.loadVideo(tamsUrl, loadOptions).subscribe({
-      next: (video) => {
-        videoDataRef.current = video;
-        onLoadingChange(false);
-
-        // Calculate timerange from video data
-        const timerangeData = calculateTimerangeFromVideo(video);
-        if (timerangeData) {
-          onTimerangeChange(
-            timerangeData.timerange,
-            timerangeData.maxTimerange,
-          );
-        }
-
-        // Store media start time
-        if ("mediaStartTime" in video && video.mediaStartTime !== undefined) {
-          if (onMediaStartTimeCalculated) {
-            onMediaStartTimeCalculated(video.mediaStartTime);
-          }
-        }
-
-        // Extract flows for export
-        if ("tamsMediaData" in video && video.tamsMediaData?.subflows) {
-          if (onFlowsCalculated) {
-            onFlowsCalculated(video.tamsMediaData.subflows);
-          }
-        }
-
-        createTimelineWithLanes(video, player, mode, onSegmentationLaneCreated);
-
-        if (onPlayerReady) {
-          onPlayerReady(player);
-        }
-      },
-      error: (err) => {
-        console.error("Error loading TAMS video:", err);
-        onError(err.message || "Failed to load video");
-        onLoadingChange(false);
-      },
-    });
-
-    // Cleanup
-    return () => {
-      console.log("Revoking all blobs");
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-      videoDataRef.current = null;
-    };
-    // mode is intentionally omitted - handled in separate effect to avoid full player reload
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    type,
-    id,
-    accessToken,
-    onLoadingChange,
+  const callbacks = {
     onError,
     onTimerangeChange,
     onSegmentationLaneCreated,
+    onMarkerClick,
     onPlayerReady,
     onMediaStartTimeCalculated,
     onFlowsCalculated,
-  ]);
-
-  // Separate effect: Update timeline theme when mode changes
+  };
+  const callbacksRef = useRef(callbacks);
+  const modeRef = useRef(mode);
   useEffect(() => {
-    if (
-      playerRef.current &&
-      videoDataRef.current &&
-      playerRef.current.timeline
-    ) {
-      // Destroy old timeline
-      playerRef.current.timeline.destroy();
+    callbacksRef.current = callbacks;
+    modeRef.current = mode;
+  });
 
-      // Recreate timeline with new theme
-      // Pass callback to update lane reference (not add a new lane)
-      createTimelineWithLanes(
-        videoDataRef.current,
-        playerRef.current,
-        mode,
-        onSegmentationLaneCreated,
-      );
-    }
-  }, [mode, onSegmentationLaneCreated]);
+  const loadAndBuildTimeline = useCallback(
+    (tamsUrl: string, options: TamsVideoLoadOptions) => {
+      const player = playerRef.current;
+      if (!player) return;
 
-  return playerRef;
+      player.loadVideo(tamsUrl, options).subscribe({
+        next: (video) => {
+          videoDataRef.current = video;
+          const cb = callbacksRef.current;
+
+          const timerangeData = calculateTimerangeFromVideo(video);
+          if (timerangeData) {
+            cb.onTimerangeChange(
+              timerangeData.timerange,
+              timerangeData.maxTimerange,
+            );
+          }
+
+          if ("mediaStartTime" in video && video.mediaStartTime !== undefined) {
+            cb.onMediaStartTimeCalculated?.(video.mediaStartTime);
+          }
+
+          if ("tamsMediaData" in video && video.tamsMediaData?.subflows) {
+            cb.onFlowsCalculated?.(video.tamsMediaData.subflows);
+          }
+
+          player.timeline?.destroy();
+          createTimelineWithLanes(
+            video,
+            player,
+            modeRef.current,
+            cb.onSegmentationLaneCreated,
+            cb.onMarkerClick,
+          );
+
+          cb.onPlayerReady?.(player);
+        },
+        error: (err) => {
+          console.error("Error loading TAMS video:", err);
+          callbacksRef.current.onError(err.message || "Failed to load video");
+        },
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!accessToken || !type || !id) return;
+
+    const player = new TamsPlayer({
+      playerHTMLElementId: "omakase-video-container",
+    });
+    playerRef.current = player;
+
+    player.setTamsEndpoint(AWS_TAMS_ENDPOINT);
+    player.setAuthentication(createAuthenticationConfig(accessToken));
+
+    const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
+    loadAndBuildTimeline(tamsUrl, {
+      returnTamsMediaData: true,
+      duration: 300,
+    });
+
+    return () => {
+      playerRef.current?.destroy();
+      playerRef.current = null;
+      videoDataRef.current = null;
+    };
+  }, [type, id, accessToken, loadAndBuildTimeline]);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    const video = videoDataRef.current;
+    if (!player || !video) return;
+
+    player.timeline?.destroy();
+    createTimelineWithLanes(
+      video,
+      player,
+      mode,
+      callbacksRef.current.onSegmentationLaneCreated,
+      callbacksRef.current.onMarkerClick,
+    );
+  }, [mode]);
+
+  const reloadWithTimerange = useCallback(
+    (timerange: string) => {
+      if (!type || !id) return;
+      const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
+      loadAndBuildTimeline(tamsUrl, {
+        returnTamsMediaData: true,
+        timerange,
+      });
+    },
+    [type, id, loadAndBuildTimeline],
+  );
+
+  return { playerRef, reloadWithTimerange };
 };

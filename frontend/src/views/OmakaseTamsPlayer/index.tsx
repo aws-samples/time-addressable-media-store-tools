@@ -1,17 +1,19 @@
 import "@byomakase/omakase-player/dist/style.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { Box, Grid, Spinner } from "@cloudscape-design/components";
-import { AWS_TAMS_ENDPOINT } from "@/constants";
+import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
+import {
+  OmakaseMarkerListComponent,
+  TimeRangeUtil,
+  OmakasePlayerTimelineControlsToolbar,
+  OmakaseTimeRangePicker,
+} from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
-import MarkerListAndExport from "./components/MarkerListAndExport";
-import MarkerListToolbar from "./components/MarkerListToolbar";
-import TimeRangePicker from "./components/TimeRangePicker";
-import { createTimeRangeChangeHandler } from "./utils";
+import MarkerListHeader from "./components/MarkerListHeader";
 import type {
   OmakasePlayerApi,
   MarkerLane,
@@ -19,20 +21,21 @@ import type {
   MarkerListApi,
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
-
-const GRID_LAYOUT = [
-  { colspan: 5 },
-  { colspan: 7 },
-  { colspan: 5 },
-  { colspan: 7 },
-  { colspan: 12 },
-] as const;
+import {
+  SEGMENTATION_PERIOD_MARKER_STYLE,
+  THEME,
+  MARKER_LANE_TEXT_LABEL_STYLE,
+  MARKER_LIST_CONFIG,
+  ROW_TEMPLATE_HTML,
+  EMPTY_TEMPLATE_HTML,
+  HEADER_TEMPLATE_HTML,
+  TIME_RANGE_PICKER_CONFIG,
+} from "./constants";
 
 const OmakaseTamsPlayer = () => {
   const { type, id } = useParams();
   const auth = useAuth();
   const mode = usePreferencesStore((state) => state.mode);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timerange, setTimerange] = useState<string | undefined>();
   const [maxTimerange, setMaxTimerange] = useState<string | undefined>();
@@ -48,68 +51,73 @@ const OmakaseTamsPlayer = () => {
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
 
-  const handleTimerangeChange = useCallback(
-    (
-      currentTimerange: string | undefined,
-      maxTimerangeStr: string | undefined,
-    ) => {
-      setTimerange(currentTimerange);
-      setMaxTimerange(maxTimerangeStr);
-    },
-    [],
+  const paletteVars = {
+    "--omakase-background": THEME[mode].colors.background,
+    "--omakase-textFill": THEME[mode].text.fill,
+    "--omakase-laneBackground": THEME[mode].colors.laneBackground,
+    "--omakase-segmentationMarker": THEME[mode].colors.segmentationMarker,
+  } as React.CSSProperties;
+
+  const toolbarConstants = useMemo(
+    () => ({
+      PERIOD_MARKER_STYLE: {
+        ...SEGMENTATION_PERIOD_MARKER_STYLE,
+        color: THEME[mode].colors.segmentationMarker,
+      },
+      HIGHLIGHTED_PERIOD_MARKER_STYLE: {
+        ...SEGMENTATION_PERIOD_MARKER_STYLE,
+        color: THEME[mode].colors.segmentationMarkerHighlighted,
+      },
+      TIMELINE_LANE_STYLE: THEME[mode].timelineLaneStyle,
+      MARKER_LANE_TEXT_LABEL_STYLE: MARKER_LANE_TEXT_LABEL_STYLE,
+    }),
+    [mode],
   );
 
-  const handleSegmentationLaneCreated = useCallback((lane: MarkerLane) => {
-    setSegmentationLanes((prev) => {
-      // Check if lane with this ID already exists (e.g., after theme change)
-      const existingIndex = prev.findIndex((l) => l.id === lane.id);
-      if (existingIndex >= 0) {
-        // Replace existing lane with new instance
-        const updated = [...prev];
-        updated[existingIndex] = lane;
-        return updated;
-      }
-      // New lane, append it
-      return [...prev, lane];
-    });
-    setCurrentSource((prev) => {
-      // If current source matches the lane ID, update to new instance
-      if (prev?.id === lane.id) {
-        return lane;
-      }
-      // Otherwise, set if no source exists
-      return prev || lane;
-    });
-  }, []);
+  const handleTimerangeChange = (
+    currentTimerange: string | undefined,
+    maxTimerangeStr: string | undefined,
+  ) => {
+    setTimerange(currentTimerange);
+    setMaxTimerange(maxTimerangeStr);
+  };
 
-  const playerRef = useOmakasePlayer({
+  const handleSegmentationLaneCreated = (lane: MarkerLane) => {
+    setSegmentationLanes((prev) => {
+      const idx = prev.findIndex((l) => l.id === lane.id);
+      if (idx < 0) return [...prev, lane];
+      const next = [...prev];
+      next[idx] = lane;
+      return next;
+    });
+    setCurrentSource((prev) => (!prev || prev.id === lane.id ? lane : prev));
+  };
+
+  const { reloadWithTimerange } = useOmakasePlayer({
     type,
     id,
     accessToken: auth.user?.access_token,
     mode,
-    onLoadingChange: setIsLoading,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
+    onMarkerClick: setSelectedMarker,
     onPlayerReady: setOmakasePlayer,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
 
-  const handleTimeRangePickerChange = useCallback(
-    (start: number, end: number) => {
-      const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
-      const handler = createTimeRangeChangeHandler(
-        playerRef,
-        tamsUrl,
-        mode,
-        setTimerange,
-        handleSegmentationLaneCreated,
-      );
-      handler(start, end);
-    },
-    [type, id, mode, playerRef, handleSegmentationLaneCreated],
-  );
+  const handleTimeRangePickerChange = (start: number, end: number) => {
+    const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
+    const endMoment = TimeRangeUtil.secondsToTimeMoment(end);
+    const range = TimeRangeUtil.toTimeRange(
+      startMoment,
+      endMoment,
+      true,
+      false,
+    );
+    reloadWithTimerange(TimeRangeUtil.formatTimeRangeExpr(range));
+  };
 
   if (!auth.user?.access_token) {
     return (
@@ -128,62 +136,80 @@ const OmakaseTamsPlayer = () => {
   }
 
   return (
-    <Box margin={{ top: "l" }}>
-      {isLoading && (
-        <Box textAlign="center" padding="l">
-          Loading Media <Spinner />
-        </Box>
-      )}
-
-      <Grid gridDefinition={GRID_LAYOUT}>
-        <div>
-          {omakasePlayer && currentSource && (
-            <MarkerListAndExport
-              omakasePlayer={omakasePlayer}
-              currentSource={currentSource}
-              segmentationLanes={segmentationLanes}
-              sourceMarkerList={sourceMarkerList}
-              flows={flows}
-              mediaStartTime={mediaStartTime}
-              sourceId={id || ""}
-              onSourceChange={setCurrentSource}
-              onMarkerListCreated={(markerList) =>
-                setSourceMarkerList((prev) =>
-                  prev === markerList ? prev : markerList,
-                )
-              }
-              onSegmentationLanesChange={setSegmentationLanes}
-            />
-          )}
-        </div>
-        <div id="omakase-video-container" />
-        <div>
-          {omakasePlayer && sourceMarkerList && currentSource && (
-            <MarkerListToolbar
-              omakasePlayer={omakasePlayer}
-              sourceMarkerList={sourceMarkerList}
-              currentSource={currentSource}
-              segmentationLanes={segmentationLanes}
-              selectedMarker={selectedMarker}
-              mode={mode}
-              onSegmentationLanesChange={setSegmentationLanes}
-              onSelectedMarkerChange={setSelectedMarker}
-              onSourceChange={setCurrentSource}
-            />
-          )}
-        </div>
-        <div className="time-range-picker-wrapper">
+    <div style={paletteVars}>
+      <SpaceBetween size="xs">
+        <ColumnLayout columns={2} disableGutters>
+          <div id="omakase-marker-list">
+            {omakasePlayer && currentSource && (
+              <>
+                <MarkerListHeader
+                  segmentationLanes={segmentationLanes}
+                  source={currentSource}
+                  sourceMarkerList={sourceMarkerList}
+                  onSegmentationClickCallback={setCurrentSource}
+                  sourceId={id || ""}
+                  flows={flows}
+                  markerOffset={mediaStartTime}
+                  omakasePlayer={omakasePlayer}
+                  onSegmentationLanesChange={setSegmentationLanes}
+                />
+                <template
+                  id="header-template"
+                  dangerouslySetInnerHTML={{ __html: HEADER_TEMPLATE_HTML }}
+                />
+                <template
+                  id="row-template"
+                  dangerouslySetInnerHTML={{ __html: ROW_TEMPLATE_HTML }}
+                />
+                <template
+                  id="empty-template"
+                  dangerouslySetInnerHTML={{ __html: EMPTY_TEMPLATE_HTML }}
+                />
+                <OmakaseMarkerListComponent
+                  omakasePlayer={omakasePlayer}
+                  config={{
+                    ...MARKER_LIST_CONFIG,
+                    source: currentSource,
+                    mode: "CUTLIST",
+                    thumbnailVttFile: omakasePlayer.timeline?.thumbnailVttFile,
+                  }}
+                  onCreateMarkerListCallback={setSourceMarkerList}
+                />
+              </>
+            )}
+          </div>
+          <div id="omakase-video-container" />
+        </ColumnLayout>
+        <ColumnLayout columns={2} disableGutters>
+          <div id="omakase-marker-toolbar">
+            {omakasePlayer && sourceMarkerList && currentSource && (
+              <OmakasePlayerTimelineControlsToolbar
+                selectedMarker={selectedMarker}
+                omakasePlayer={omakasePlayer}
+                markerListApi={sourceMarkerList}
+                setSegmentationLanes={setSegmentationLanes}
+                setSelectedMarker={setSelectedMarker}
+                onMarkerClickCallback={setSelectedMarker}
+                segmentationLanes={segmentationLanes}
+                source={currentSource}
+                setSource={setCurrentSource}
+                enableHotKeys={true}
+                constants={toolbarConstants}
+              />
+            )}
+          </div>
           {timerange && maxTimerange && (
-            <TimeRangePicker
-              timerange={timerange}
-              maxTimerange={maxTimerange}
-              onTimeRangeChange={handleTimeRangePickerChange}
+            <OmakaseTimeRangePicker
+              {...TIME_RANGE_PICKER_CONFIG}
+              timeRange={timerange}
+              maxTimeRange={maxTimerange}
+              onCheckmarkClickCallback={handleTimeRangePickerChange}
             />
           )}
-        </div>
+        </ColumnLayout>
         <div id="omakase-timeline" />
-      </Grid>
-    </Box>
+      </SpaceBetween>
+    </div>
   );
 };
 

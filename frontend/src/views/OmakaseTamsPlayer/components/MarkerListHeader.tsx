@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { Tabs, Button } from "@cloudscape-design/components";
 import {
   MarkerLane,
@@ -37,50 +37,39 @@ const MarkerListHeader = ({
   const [editTimeranges, setEditTimeranges] = useState<string[] | undefined>();
   const [omakaseModalVisible, setOmakaseModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [laneToDelete, setLaneToDelete] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [markerChangeCounter, setMarkerChangeCounter] = useState(0);
+  const [laneToDelete, setLaneToDelete] = useState<string | null>(null);
 
-  const exportDisabled = useMemo(() => {
-    if (!source) return true;
+  const subscribeToMarkerChanges = useCallback(
+    (onChange: () => void) => {
+      if (!source) return () => {};
+      const subs = [
+        source.onMarkerCreate$.subscribe({ next: onChange }),
+        source.onMarkerUpdate$.subscribe({ next: onChange }),
+        source.onMarkerDelete$.subscribe({ next: onChange }),
+      ];
+      return () => subs.forEach((s) => s.unsubscribe());
+    },
+    [source],
+  );
 
-    const validMarkers = source
+  const getHasValidMarker = useCallback(() => {
+    if (!source) return false;
+    return source
       .getMarkers()
-      .filter(
-        (marker) =>
-          marker instanceof PeriodMarker &&
-          marker.timeObservation.start != null &&
-          marker.timeObservation.end != null,
+      .some(
+        (m) =>
+          m instanceof PeriodMarker &&
+          m.timeObservation.start != null &&
+          m.timeObservation.end != null,
       );
-
-    return validMarkers.length === 0;
-    // markerChangeCounter is intentionally included to trigger re-computation when markers change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, markerChangeCounter]);
-
-  useEffect(() => {
-    if (!source) return;
-
-    const subscriptionUpdate = source.onMarkerUpdate$.subscribe({
-      next: () => setMarkerChangeCounter((c) => c + 1),
-    });
-
-    const subscriptionDelete = source.onMarkerDelete$.subscribe({
-      next: () => setMarkerChangeCounter((c) => c + 1),
-    });
-
-    const subscriptionCreate = source.onMarkerCreate$.subscribe({
-      next: () => setMarkerChangeCounter((c) => c + 1),
-    });
-
-    return () => {
-      subscriptionUpdate.unsubscribe();
-      subscriptionDelete.unsubscribe();
-      subscriptionCreate.unsubscribe();
-    };
   }, [source]);
+
+  const hasValidMarker = useSyncExternalStore(
+    subscribeToMarkerChanges,
+    getHasValidMarker,
+  );
+
+  const exportDisabled = !hasValidMarker;
 
   const handleExportModal = () => {
     if (sourceMarkerList) {
@@ -92,43 +81,40 @@ const MarkerListHeader = ({
   };
 
   const handleDismissTab = (laneId: string) => {
-    const lane = segmentationLanes.find((l) => l.id === laneId);
-    if (!lane) return;
-
-    setLaneToDelete({
-      id: laneId,
-      name: lane.description || `${segmentationLanes.indexOf(lane) + 1}`,
-    });
+    setLaneToDelete(laneId);
     setDeleteModalVisible(true);
   };
 
   const handleConfirmDelete = () => {
     if (!laneToDelete || !onSegmentationLanesChange) return;
-
-    // Remove from timeline
     if (omakasePlayer.timeline) {
-      omakasePlayer.timeline.removeTimelineLane(laneToDelete.id);
+      omakasePlayer.timeline.removeTimelineLane(laneToDelete);
     }
-
-    // Update lanes state
-    const newLanes = segmentationLanes.filter((l) => l.id !== laneToDelete.id);
+    const newLanes = segmentationLanes.filter((l) => l.id !== laneToDelete);
     onSegmentationLanesChange(newLanes);
-
-    // If we deleted the current source, switch to first remaining lane
-    if (source?.id === laneToDelete.id && newLanes.length > 0) {
+    if (source?.id === laneToDelete && newLanes.length > 0) {
       onSegmentationClickCallback(newLanes[0]);
     }
-
     setLaneToDelete(null);
   };
 
-  const hasVideoFlow = flows.find(
+  const hasVideoFlow = flows.some(
     (flow) => flow.format === "urn:x-nmos:format:video",
   );
 
   if (!source || !hasVideoFlow) {
     return null;
   }
+
+  const labelForLane = (lane: MarkerLane) =>
+    lane.description || `${segmentationLanes.indexOf(lane) + 1}`;
+
+  const deleteModalLaneName = laneToDelete
+    ? (() => {
+        const lane = segmentationLanes.find((l) => l.id === laneToDelete);
+        return lane ? labelForLane(lane) : "";
+      })()
+    : "";
 
   return (
     <>
@@ -140,14 +126,17 @@ const MarkerListHeader = ({
           );
           if (lane) onSegmentationClickCallback(lane);
         }}
-        tabs={segmentationLanes.map((lane, i) => ({
-          id: lane.id,
-          label: lane.description || `${i + 1}`,
-          dismissible: segmentationLanes.length > 1,
-          dismissLabel: `Remove ${lane.description || `${i + 1}`}`,
-          onDismiss: () => handleDismissTab(lane.id),
-          content: null,
-        }))}
+        tabs={segmentationLanes.map((lane) => {
+          const label = labelForLane(lane);
+          return {
+            id: lane.id,
+            label,
+            dismissible: segmentationLanes.length > 1,
+            dismissLabel: `Remove ${label}`,
+            onDismiss: () => handleDismissTab(lane.id),
+            content: null,
+          };
+        })}
         actions={
           <Button
             iconName="external"
@@ -170,7 +159,7 @@ const MarkerListHeader = ({
       <DeleteModal
         modalVisible={deleteModalVisible}
         setModalVisible={setDeleteModalVisible}
-        laneName={laneToDelete?.name || ""}
+        laneName={deleteModalLaneName}
         onConfirm={handleConfirmDelete}
       />
     </>
