@@ -57,10 +57,11 @@ def get_workflow_details(workflow):
     workflow_input = json.loads(describe_execution.get("input", "{}")) or {}
     workflow.label = workflow_input.get("label")
     workflow.manifestLocation = workflow_input.get("manifestLocation")
+    workflow.sourceId = workflow_input.get("sourceId")
     if workflow.status == "RUNNING":
         return workflow
     workflow_output = json.loads(describe_execution.get("output", "{}")) or {}
-    workflow.sourceId = workflow_output.get("multiSourceId")
+    workflow.sourceId = workflow_output.get("multiSourceId", workflow.sourceId)
     workflow.error = describe_execution.get("cause")
     workflow.warnings = workflow_output.get("warnings")
     return workflow

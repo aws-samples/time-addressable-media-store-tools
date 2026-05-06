@@ -654,7 +654,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         raise ValueError(
             f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
-    multi_source_id = str(uuid.uuid4())
+    multi_source_id = event.get("sourceId") or str(uuid.uuid4())
     (
         playlist_flows,
         variant_multi_flows,
