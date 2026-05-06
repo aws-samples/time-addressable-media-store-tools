@@ -14,6 +14,8 @@ import {
   SUBTITLES_BUTTON_CONFIG,
   CHATBOX_SVG_SOURCE,
   CHATBOX_ACTIVE_SVG_SOURCE,
+  SOUND_ACTIVE_BUTTON_SOURCE,
+  SOUND_INACTIVE_BUTTON_SOURCE,
   SOUND_BUTTON_CONFIG,
 } from "./constants";
 import type { Flow, Segment } from "@/types/tams";
@@ -339,8 +341,8 @@ const addAudioLaneControls = (
   const flowLabel = flow.description || flow.label;
   const iconFor = (activeLabel: string | undefined) =>
     activeLabel === flowLabel
-      ? "/sound-active-button.svg"
-      : "/sound-inactive-button.svg";
+      ? SOUND_ACTIVE_BUTTON_SOURCE
+      : SOUND_INACTIVE_BUTTON_SOURCE;
 
   const soundButton = new ImageButton({
     ...SOUND_BUTTON_CONFIG,
