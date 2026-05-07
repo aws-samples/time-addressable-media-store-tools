@@ -136,7 +136,7 @@ const OmakaseTamsPlayer = () => {
   }
 
   return (
-    <div style={paletteVars}>
+    <div className="omakase-tams-player" style={paletteVars}>
       <SpaceBetween size="xs">
         <ColumnLayout columns={2} disableGutters>
           <div id="omakase-marker-list">

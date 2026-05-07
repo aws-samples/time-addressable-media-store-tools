@@ -1,68 +1,68 @@
 /* Force Omakase player to respect container width */
-#omakase-video-container .omakase-player,
-#omakase-video-container .omakase-player-wrapper,
-#omakase-video-container video {
+.omakase-tams-player #omakase-video-container .omakase-player,
+.omakase-tams-player #omakase-video-container .omakase-player-wrapper,
+.omakase-tams-player #omakase-video-container video {
   width: 100%;
   max-width: 100%;
   max-height: 50vh;
 }
 
-#omakase-timeline {
+.omakase-tams-player #omakase-timeline {
   overflow: hidden;
 }
 
 /* Override hardcoded widths in Omakase time range selector */
-.omakase-time-range-selector-container {
+.omakase-tams-player .omakase-time-range-selector-container {
   max-width: 100% !important;
 }
-.omakase-time-range-selector-segments {
+.omakase-tams-player .omakase-time-range-selector-segments {
   width: 100% !important;
 }
 
 /* Hide Cloudscape focus rings on library-managed elements */
-#omakase-video-container *:focus,
-#omakase-timeline *:focus {
+.omakase-tams-player #omakase-video-container *:focus,
+.omakase-tams-player #omakase-timeline *:focus {
   outline: none;
   box-shadow: none;
 }
 
 /* Allow ColumnLayout children to shrink below their content's min-width */
-#omakase-marker-list,
-#omakase-marker-toolbar {
+.omakase-tams-player #omakase-marker-list,
+.omakase-tams-player #omakase-marker-toolbar {
   min-width: 0;
   overflow-x: auto;
 }
 
 /* Toolbar */
-.control-panel {
+.omakase-tams-player .control-panel {
   background-color: var(--omakase-background) !important;
 }
-.control-panel button svg *,
-.segmentation-button-wrapper button svg * {
+.omakase-tams-player .control-panel button svg *,
+.omakase-tams-player .segmentation-button-wrapper button svg * {
   fill: var(--omakase-textFill) !important;
 }
-.segmentation-button-wrapper button {
+.omakase-tams-player .segmentation-button-wrapper button {
   color: var(--omakase-textFill) !important;
 }
-.control-panel button:disabled svg *,
-.segmentation-button-wrapper button:disabled svg * {
+.omakase-tams-player .control-panel button:disabled svg *,
+.omakase-tams-player .segmentation-button-wrapper button:disabled svg * {
   opacity: 0.2 !important;
 }
 
 /* Time range picker */
-.omakase-time-range-selector-segment-marker {
+.omakase-tams-player .omakase-time-range-selector-segment-marker {
   background-color: var(--omakase-background) !important;
   border-color: var(--omakase-laneBackground) !important;
 }
-.omakase-time-range-selector-segment-label,
-.omakase-time-range-selector-segment-first-label,
-.omakase-time-range-selector-segment-second-label,
-.omakase-time-range-selector-range-selector-duration {
+.omakase-tams-player .omakase-time-range-selector-segment-label,
+.omakase-tams-player .omakase-time-range-selector-segment-first-label,
+.omakase-tams-player .omakase-time-range-selector-segment-second-label,
+.omakase-tams-player .omakase-time-range-selector-range-selector-duration {
   color: var(--omakase-textFill) !important;
 }
-.omakase-time-range-selector-range-selector {
+.omakase-tams-player .omakase-time-range-selector-range-selector {
   background-color: var(--omakase-segmentationMarker) !important;
 }
-.omakase-time-range-selector-range-selector-handle {
+.omakase-tams-player .omakase-time-range-selector-range-selector-handle {
   background-color: var(--omakase-segmentationMarker) !important;
 }
