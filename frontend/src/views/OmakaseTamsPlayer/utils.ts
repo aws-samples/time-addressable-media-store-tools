@@ -4,7 +4,11 @@ import {
   MarkerAwareApi,
   Marker,
 } from "@byomakase/omakase-player";
-import { TimeRangeUtil } from "@byomakase/omakase-react-components";
+import {
+  TimeRangeUtil,
+  resolveAudioManifestName,
+  resolveTextManifestName,
+} from "@byomakase/omakase-react-components";
 import {
   SEGMENT_PERIOD_MARKER_STYLE,
   SEGMENTATION_PERIOD_MARKER_STYLE,
@@ -17,6 +21,8 @@ import {
   SOUND_ACTIVE_BUTTON_SOURCE,
   SOUND_INACTIVE_BUTTON_SOURCE,
   SOUND_BUTTON_CONFIG,
+  THEME,
+  LANE_LABEL_CONFIG,
 } from "./constants";
 import type { Flow, Segment } from "@/types/tams";
 import {
@@ -25,29 +31,15 @@ import {
   OmakasePlayerApi,
   SubtitlesLane,
   ImageButton,
+  TextLabel,
 } from "@byomakase/omakase-player";
-import { THEME } from "./constants";
 import { Mode } from "@cloudscape-design/global-styles";
+import { type Observable, takeUntil } from "rxjs";
 import type { OmakaseTamsPlayer as TamsPlayer } from "@byomakase/omakase-tams-player";
 import type { TamsVideo } from "@byomakase/omakase-tams-player";
 import type { Video } from "@byomakase/omakase-player/dist/video/model";
-// @ts-expect-error - node-webvtt doesn't have type definitions
-import * as webvtt from "node-webvtt";
-
-type VttCue = {
-  start: number;
-  end: number;
-  text: string;
-  [key: string]: unknown;
-};
-
-type VttMetadata = {
-  [key: string]: unknown;
-};
-
-type TamsMediaDataWithTimerange = NonNullable<TamsVideo["tamsMediaData"]> & {
-  timerange?: string;
-};
+import type { SegmentationLaneSnapshot } from "./types";
+import { mergeVttManifest } from "./vtt-util";
 
 const makeColorCycler = (colors: string[]) => {
   let i = 0;
@@ -63,103 +55,6 @@ const flowFormatSorting = (a: Flow, b: Flow) => {
   if (a.format === "urn:x-nmos:format:audio") return -1;
   if (b.format === "urn:x-nmos:format:audio") return 1;
   return 0;
-};
-
-const fetchVttUtf8 = async (url: string): Promise<string> => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch: ${url}`);
-  const buffer = await res.arrayBuffer();
-  return new TextDecoder("utf-8").decode(buffer);
-};
-
-const formatSecondsToVttTimestamp = (seconds: number): string => {
-  if (seconds < 0) seconds = 0;
-
-  const h = Math.floor(seconds / 3600)
-    .toString()
-    .padStart(2, "0");
-
-  const m = Math.floor((seconds % 3600) / 60)
-    .toString()
-    .padStart(2, "0");
-
-  const s = (seconds % 60).toFixed(3).padStart(6, "0");
-
-  return `${h}:${m}:${s}`;
-};
-
-const mergeVttManifest = async (
-  manifestUrl: string,
-  videoDuration: number,
-): Promise<string> => {
-  const manifestRes = await fetch(manifestUrl);
-  if (!manifestRes.ok) {
-    throw new Error(
-      `Failed to fetch manifest: ${manifestRes.status} ${manifestRes.statusText}`,
-    );
-  }
-
-  const manifestText = await manifestRes.text();
-  if (!manifestText.trim()) throw new Error("Empty manifest text");
-
-  const vttUrls: string[] = [];
-  const lines = manifestText.split("\n");
-
-  const masterUrl = new URL(manifestUrl);
-  const host = `${
-    masterUrl.protocol === "blob:" ? masterUrl.protocol : ""
-  }${masterUrl.origin}`;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#")) {
-      const vttUrl = `${host}/${trimmed}`;
-      vttUrls.push(vttUrl);
-    }
-  }
-
-  if (!vttUrls.length) throw new Error("No VTT files found in manifest");
-
-  const contents = await Promise.all(vttUrls.map(fetchVttUtf8));
-
-  const allCues: VttCue[] = [];
-  let metadata: VttMetadata | undefined;
-
-  for (const text of contents) {
-    const parsed = webvtt.parse(text, { strict: false, meta: true });
-
-    if (!metadata) metadata = parsed.meta;
-
-    for (const cue of parsed.cues) {
-      allCues.push({
-        ...cue,
-        start: Math.max(0, Math.min(cue.start, videoDuration)),
-        end: Math.max(0, Math.min(cue.end, videoDuration)),
-      });
-    }
-  }
-
-  const final: string[] = [];
-  final.push("WEBVTT");
-
-  if (metadata?.["X-TIMESTAMP-MAP=LOCAL"]) {
-    final.push(`X-TIMESTAMP-MAP=LOCAL${metadata["X-TIMESTAMP-MAP=LOCAL"]}`);
-    final.push("");
-  } else {
-    final.push("");
-  }
-
-  for (const cue of allCues) {
-    final.push(
-      `${formatSecondsToVttTimestamp(cue.start)} --> ${formatSecondsToVttTimestamp(cue.end)}`,
-    );
-    final.push(cue.text);
-    final.push("");
-  }
-
-  const vtt = final.join("\n").trim() + "\n";
-  const blob = new Blob([vtt], { type: "text/vtt" });
-  return URL.createObjectURL(blob);
 };
 
 const segmentToMarker = (
@@ -249,23 +144,10 @@ const loadAndRegisterSubtitles = (
   subtitlesLane: SubtitlesLane,
   player: TamsPlayer,
   textUrl: string,
-  subtitlesLaneId: string,
-  label: string,
 ) => {
   mergeVttManifest(textUrl, player.video.getDuration())
     .then((vttUrl) => {
       subtitlesLane.loadVtt(vttUrl);
-      player.subtitles
-        .createVttTrack({
-          id: subtitlesLaneId,
-          src: vttUrl,
-          label,
-          language: "en",
-          default: false,
-        })
-        .subscribe({
-          error: (err) => console.error("Error creating subtitle track:", err),
-        });
     })
     .catch((err) => console.error("Error loading subtitle VTT:", err));
 };
@@ -274,7 +156,8 @@ const addSubtitleLaneControls = (
   subtitlesLane: SubtitlesLane,
   markerLane: MarkerLane,
   player: TamsPlayer,
-  subtitlesLaneId: string,
+  flow: Flow,
+  destroy$: Observable<void>,
 ) => {
   const dropdownButton = new ImageButton({
     ...DROPDOWN_BUTTON_CONFIG,
@@ -301,9 +184,13 @@ const addSubtitleLaneControls = (
     src: CHATBOX_SVG_SOURCE,
   });
   subtitlesButton.onClick$.subscribe(() => {
+    const track = player.subtitles
+      .getTracks()
+      .find((t) => t.label === resolveTextManifestName(flow));
+    if (!track) return;
     const active = player.subtitles.getActiveTrack();
-    if (active?.id !== subtitlesLaneId) {
-      player.subtitles.showTrack(subtitlesLaneId).subscribe({
+    if (active?.id !== track.id) {
+      player.subtitles.showTrack(track.id).subscribe({
         error: (err) => console.error("Error showing subtitle track:", err),
       });
     } else if (active?.hidden) {
@@ -312,15 +199,21 @@ const addSubtitleLaneControls = (
       player.subtitles.hideActiveTrack().subscribe();
     }
   });
-  player.subtitles.onShow$.subscribe((event) => {
-    if (event.currentTrack?.id === subtitlesLaneId) {
+  player.subtitles.onShow$.pipe(takeUntil(destroy$)).subscribe((event) => {
+    const track = player.subtitles
+      .getTracks()
+      .find((t) => t.label === resolveTextManifestName(flow));
+    if (event.currentTrack?.id === track?.id) {
       subtitlesButton.setImage({ src: CHATBOX_ACTIVE_SVG_SOURCE });
     } else if (subtitlesButton.getImage()?.src !== CHATBOX_SVG_SOURCE) {
       subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
     }
   });
-  player.subtitles.onHide$.subscribe((event) => {
-    if (event.currentTrack?.id === subtitlesLaneId) {
+  player.subtitles.onHide$.pipe(takeUntil(destroy$)).subscribe((event) => {
+    const track = player.subtitles
+      .getTracks()
+      .find((t) => t.label === resolveTextManifestName(flow));
+    if (event.currentTrack?.id === track?.id) {
       subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
     }
   });
@@ -328,7 +221,7 @@ const addSubtitleLaneControls = (
     width: SUBTITLES_BUTTON_CONFIG.width!,
     height: SUBTITLES_BUTTON_CONFIG.height!,
     justify: "start",
-    margin: [0, 0, 0, 5],
+    margin: [0, 0, 0, 10],
     timelineNode: subtitlesButton,
   });
 };
@@ -337,8 +230,9 @@ const addAudioLaneControls = (
   markerLane: MarkerLane,
   flow: Flow,
   player: TamsPlayer,
+  destroy$: Observable<void>,
 ) => {
-  const flowLabel = flow.description || flow.label;
+  const flowLabel = resolveAudioManifestName(flow);
   const iconFor = (activeLabel: string | undefined) =>
     activeLabel === flowLabel
       ? SOUND_ACTIVE_BUTTON_SOURCE
@@ -354,25 +248,105 @@ const addAudioLaneControls = (
       .find((t) => t.label === flowLabel);
     if (target) player.audio.setActiveAudioTrack(target.id);
   });
-  player.audio.onAudioSwitched$.subscribe((event) => {
+  player.audio.onAudioSwitched$.pipe(takeUntil(destroy$)).subscribe((event) => {
     soundButton.setImage({ src: iconFor(event.activeAudioTrack.label) });
   });
   markerLane.addTimelineNode({
     width: SOUND_BUTTON_CONFIG.width!,
     height: SOUND_BUTTON_CONFIG.height!,
     justify: "start",
-    margin: [0, 0, 0, 10],
+    margin: [0, 10, 0, 10],
     timelineNode: soundButton,
   });
 };
 
-export const createTimelineWithLanes = (
-  video: TamsVideo | Video,
-  player: TamsPlayer,
+const addLaneLabel = (
+  lane: MarkerLane | SubtitlesLane,
+  text: string,
   mode: Mode,
-  onSegmentationLaneCreated?: (lane: MarkerLane) => void,
-  onMarkerClick?: (marker: Marker) => void,
 ) => {
+  const label = new TextLabel({
+    text,
+    style: THEME[mode].markerLaneTextLabelStyle,
+  });
+  lane.addTimelineNode({
+    timelineNode: label,
+    justify: "end",
+    ...LANE_LABEL_CONFIG,
+  });
+};
+
+const computeMaxTimerangeFromFlows = (flows: Flow[]): string | null => {
+  if (!flows.length) return null;
+
+  let minStart: number | null = null;
+  let maxEnd: number | null = null;
+
+  for (const flow of flows) {
+    if (!flow.timerange) continue;
+    const parsed = TimeRangeUtil.parseTimeRange(flow.timerange);
+    if (!parsed.start || !parsed.end) continue;
+
+    const startSeconds = TimeRangeUtil.timeMomentToSeconds(parsed.start);
+    const endSeconds = TimeRangeUtil.timeMomentToSeconds(parsed.end);
+
+    if (minStart === null || startSeconds < minStart) minStart = startSeconds;
+    if (maxEnd === null || endSeconds > maxEnd) maxEnd = endSeconds;
+  }
+
+  if (minStart === null || maxEnd === null) return null;
+
+  const startMoment = TimeRangeUtil.secondsToTimeMoment(minStart);
+  const endMoment = TimeRangeUtil.secondsToTimeMoment(maxEnd);
+  const range = TimeRangeUtil.toTimeRange(startMoment, endMoment, true, true);
+  return TimeRangeUtil.formatTimeRangeExpr(range);
+};
+
+export const segmentationNameFor = (index: number) =>
+  `Segmentation ${index + 1}`;
+
+export const renumberSegmentationLanes = (lanes: MarkerLane[]) => {
+  lanes.forEach((lane, index) => {
+    lane.description = segmentationNameFor(index);
+  });
+};
+
+export const snapshotSegmentationLanes = (
+  lanes: MarkerLane[],
+): SegmentationLaneSnapshot[] =>
+  lanes.map((lane) => ({
+    id: lane.id,
+    description: lane.description,
+    markers: lane
+      .getMarkers()
+      .filter((m): m is PeriodMarker => m instanceof PeriodMarker)
+      .filter(
+        (m) => m.timeObservation.start != null && m.timeObservation.end != null,
+      )
+      .map((m) => ({
+        start: m.timeObservation.start as number,
+        end: m.timeObservation.end as number,
+        editable: m.editable,
+      })),
+  }));
+
+export const createTimelineWithLanes = ({
+  video,
+  player,
+  mode,
+  destroy$,
+  segmentationSnapshot,
+  onSegmentationLaneCreated,
+  onMarkerClick,
+}: {
+  video: TamsVideo | Video;
+  player: TamsPlayer;
+  mode: Mode;
+  destroy$: Observable<void>;
+  segmentationSnapshot?: SegmentationLaneSnapshot[];
+  onSegmentationLaneCreated?: (lane: MarkerLane) => void;
+  onMarkerClick?: (marker: Marker) => void;
+}) => {
   player
     .createTimeline({
       timelineHTMLElementId: "omakase-timeline",
@@ -386,7 +360,7 @@ export const createTimelineWithLanes = (
         const segmentationLaneId = "segmentation";
         const segmentationLane = new MarkerLane({
           id: segmentationLaneId,
-          description: "Segmentation",
+          description: segmentationNameFor(0),
           style: THEME[mode].timelineLaneStyle,
         });
         timelineApi.addTimelineLane(segmentationLane);
@@ -409,39 +383,85 @@ export const createTimelineWithLanes = (
             return bS < aE && bE > aS;
           });
 
-        // Create default segmentation marker spanning the video
-        const segmentationMarker = new PeriodMarker({
-          timeObservation: {
-            start: 0,
-            end: player.video.getDuration(),
-          },
-          editable: true,
-          style: {
-            ...SEGMENTATION_PERIOD_MARKER_STYLE,
-            color: THEME[mode].colors.segmentationMarker,
-          },
-        });
+        const segMarkerColor = THEME[mode].colors.segmentationMarker;
 
-        segmentationMarker.onClick$.subscribe({
-          next: () => onMarkerClick?.(segmentationMarker),
-        });
+        const addSegMarker = (
+          lane: MarkerLane,
+          start: number,
+          end: number,
+          editable: boolean,
+        ) => {
+          const marker = new PeriodMarker({
+            timeObservation: { start, end },
+            editable,
+            style: {
+              ...SEGMENTATION_PERIOD_MARKER_STYLE,
+              color: segMarkerColor,
+            },
+          });
+          marker.onClick$
+            .pipe(takeUntil(destroy$))
+            .subscribe({ next: () => onMarkerClick?.(marker) });
+          lane.addMarker(marker);
+          return marker;
+        };
 
-        segmentationLane.addMarker(segmentationMarker);
-        onMarkerClick?.(segmentationMarker);
+        const wireOverlapGuard = (lane: MarkerLane) => {
+          lane.onMarkerUpdate$.pipe(takeUntil(destroy$)).subscribe({
+            next: (markerUpdateEvent) => {
+              if (
+                checkMarkerOverlap(
+                  lane,
+                  markerUpdateEvent.marker as PeriodMarker,
+                )
+              ) {
+                markerUpdateEvent.marker.timeObservation =
+                  markerUpdateEvent.oldValue.timeObservation;
+              }
+            },
+          });
+        };
 
-        // Prevent marker overlap
-        segmentationLane.onMarkerUpdate$.subscribe({
-          next: (markerUpdateEvent) => {
-            if (
-              checkMarkerOverlap(
-                segmentationLane,
-                markerUpdateEvent.marker as PeriodMarker,
-              )
-            ) {
-              markerUpdateEvent.marker.timeObservation =
-                markerUpdateEvent.oldValue.timeObservation;
-            }
-          },
+        const defaultSnap = segmentationSnapshot?.find(
+          (s) => s.id === segmentationLaneId,
+        );
+
+        if (defaultSnap && defaultSnap.markers.length > 0) {
+          defaultSnap.markers.forEach((m) => {
+            addSegMarker(segmentationLane, m.start, m.end, m.editable);
+          });
+          const first = segmentationLane
+            .getMarkers()
+            .find((m): m is PeriodMarker => m instanceof PeriodMarker);
+          if (first) onMarkerClick?.(first);
+        } else {
+          const defaultMarker = addSegMarker(
+            segmentationLane,
+            0,
+            player.video.getDuration(),
+            true,
+          );
+          onMarkerClick?.(defaultMarker);
+        }
+
+        wireOverlapGuard(segmentationLane);
+
+        const customSnaps =
+          segmentationSnapshot?.filter((s) => s.id !== segmentationLaneId) ??
+          [];
+
+        customSnaps.forEach((snap) => {
+          const customLane = new MarkerLane({
+            id: snap.id,
+            description: snap.description,
+            style: THEME[mode].timelineLaneStyle,
+          });
+          timelineApi.addTimelineLane(customLane);
+          wireOverlapGuard(customLane);
+          snap.markers.forEach((m) => {
+            addSegMarker(customLane, m.start, m.end, m.editable);
+          });
+          onSegmentationLaneCreated?.(customLane);
         });
 
         // Add thumbnail lane if available (only on TamsVideo)
@@ -492,18 +512,18 @@ export const createTimelineWithLanes = (
               const subtitlesLaneId = `subtitles-lane-${flow.id}`;
               const subtitlesLane = new SubtitlesLane({
                 id: subtitlesLaneId,
-                description: label,
                 style: THEME[mode].subtitlesLaneStyle,
               });
               timelineApi.addTimelineLane(subtitlesLane);
+              addLaneLabel(subtitlesLane, label, mode);
 
               const markerLane = new MarkerLane({
                 id: `marker-lane-${flow.id}`,
-                description: `${label} Segments`,
                 style: THEME[mode].timelineLaneStyle,
                 minimized: true,
               });
               timelineApi.addTimelineLane(markerLane);
+              addLaneLabel(markerLane, `${label} Segments`, mode);
 
               addSegmentMarkersToLane(
                 markerLane,
@@ -512,28 +532,23 @@ export const createTimelineWithLanes = (
                 videoDuration,
                 mode,
               );
-              loadAndRegisterSubtitles(
-                subtitlesLane,
-                player,
-                textUrl,
-                subtitlesLaneId,
-                label,
-              );
+              loadAndRegisterSubtitles(subtitlesLane, player, textUrl);
               addSubtitleLaneControls(
                 subtitlesLane,
                 markerLane,
                 player,
-                subtitlesLaneId,
+                flow,
+                destroy$,
               );
               return;
             }
 
             const markerLane = new MarkerLane({
               id: `marker-lane-${flow.id}`,
-              description: label,
               style: THEME[mode].timelineLaneStyle,
             });
             timelineApi.addTimelineLane(markerLane);
+            addLaneLabel(markerLane, label, mode);
 
             addSegmentMarkersToLane(
               markerLane,
@@ -543,7 +558,7 @@ export const createTimelineWithLanes = (
               mode,
             );
             if (isAudioFlow(flow)) {
-              addAudioLaneControls(markerLane, flow, player);
+              addAudioLaneControls(markerLane, flow, player, destroy$);
             }
           });
         }
@@ -565,13 +580,6 @@ export const calculateTimerangeFromVideo = (
   if (!("tamsMediaData" in video) || !video.tamsMediaData) {
     return null;
   }
-
-  const timerangeStr = (video.tamsMediaData as TamsMediaDataWithTimerange)
-    .timerange;
-  if (!timerangeStr) {
-    return null;
-  }
-  // Check if video has required properties
   if (
     !video.duration ||
     !("mediaStartTime" in video) ||
@@ -580,17 +588,23 @@ export const calculateTimerangeFromVideo = (
     return null;
   }
 
+  const primaryFlow = video.tamsMediaData.flow;
+  const subflows = video.tamsMediaData.subflows ?? [];
+  const allFlows = [primaryFlow, ...subflows].filter(
+    (f): f is Flow => !!f && !!f.timerange,
+  );
+
+  const maxTimerange = computeMaxTimerangeFromFlows(allFlows);
+  if (!maxTimerange) {
+    return null;
+  }
+
   try {
-    const parsedTimerange = TimeRangeUtil.parseTimeRange(timerangeStr);
-    if (!parsedTimerange.end || !parsedTimerange.start) {
-      return null;
-    }
+    const loadedStartSeconds = video.mediaStartTime;
+    const loadedEndSeconds = video.mediaStartTime + video.duration;
 
-    const endSeconds = TimeRangeUtil.timeMomentToSeconds(parsedTimerange.end);
-    const startSeconds = Math.max(0, endSeconds - video.duration);
-
-    const startMoment = TimeRangeUtil.secondsToTimeMoment(startSeconds);
-    const endMoment = TimeRangeUtil.secondsToTimeMoment(endSeconds);
+    const startMoment = TimeRangeUtil.secondsToTimeMoment(loadedStartSeconds);
+    const endMoment = TimeRangeUtil.secondsToTimeMoment(loadedEndSeconds);
 
     const calculatedRange = TimeRangeUtil.toTimeRange(
       startMoment,
@@ -602,10 +616,10 @@ export const calculateTimerangeFromVideo = (
 
     return {
       timerange: currentTimerange,
-      maxTimerange: timerangeStr,
+      maxTimerange,
     };
   } catch (err) {
-    console.error("Failed to parse timerange:", err);
+    console.error("Failed to derive current timerange:", err);
     return null;
   }
 };

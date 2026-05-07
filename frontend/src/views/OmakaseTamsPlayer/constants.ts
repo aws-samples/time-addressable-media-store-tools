@@ -32,7 +32,7 @@ export const TIMELINE_DIMENSIONS = {
   headerHeight: 10,
   footerHeight: 50,
   footerMarginTop: 1,
-  leftPaneWidth: 270,
+  leftPaneWidth: 235,
   rightPaneMarginLeft: 20,
   rightPaneMarginRight: 20,
   rightPaneClipPadding: 20,
@@ -66,6 +66,12 @@ export const LANE_CONFIG = {
   marginBottom: 1,
   height: 50,
   descriptionTextFontSize: 12,
+};
+
+export const LANE_LABEL_CONFIG = {
+  width: 150,
+  height: 42,
+  margin: [0, 0, 0, 10] as [number, number, number, number],
 };
 
 export const SCRUBBER_LANE_CONFIG = {
@@ -279,6 +285,16 @@ function buildThemeConfig(mode: Mode) {
       paddingTop: 12,
       paddingBottom: 12,
     } as Partial<SubtitlesLaneStyle>,
+
+    markerLaneTextLabelStyle: {
+      ...FONT_CONFIG,
+      verticalAlign: "middle",
+      fill: colors.text,
+      align: "right",
+      wrap: "char",
+      offsetX: 0,
+      textAreaStretch: true,
+    } as Partial<TextLabelStyle>,
   };
 }
 

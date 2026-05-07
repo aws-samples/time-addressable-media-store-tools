@@ -9,7 +9,7 @@ import {
 import OmakaseExportModal from "@/components/OmakaseExportModal";
 import DeleteModal from "./DeleteModal";
 import { Flow } from "@/types/tams";
-import { createEditTimeranges } from "../utils";
+import { createEditTimeranges, segmentationNameFor } from "../utils";
 
 type Props = {
   segmentationLanes: MarkerLane[];
@@ -41,7 +41,7 @@ const MarkerListHeader = ({
 
   const subscribeToMarkerChanges = useCallback(
     (onChange: () => void) => {
-      if (!source) return () => {};
+      if (!source) return () => { };
       const subs = [
         source.onMarkerCreate$.subscribe({ next: onChange }),
         source.onMarkerUpdate$.subscribe({ next: onChange }),
@@ -107,13 +107,13 @@ const MarkerListHeader = ({
   }
 
   const labelForLane = (lane: MarkerLane) =>
-    lane.description || `${segmentationLanes.indexOf(lane) + 1}`;
+    segmentationNameFor(segmentationLanes.indexOf(lane));
 
   const deleteModalLaneName = laneToDelete
     ? (() => {
-        const lane = segmentationLanes.find((l) => l.id === laneToDelete);
-        return lane ? labelForLane(lane) : "";
-      })()
+      const lane = segmentationLanes.find((l) => l.id === laneToDelete);
+      return lane ? labelForLane(lane) : "";
+    })()
     : "";
 
   return (

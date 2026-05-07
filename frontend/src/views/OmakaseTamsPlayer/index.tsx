@@ -1,7 +1,7 @@
 import "@byomakase/omakase-player/dist/style.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
@@ -14,6 +14,7 @@ import {
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
 import MarkerListHeader from "./components/MarkerListHeader";
+import { renumberSegmentationLanes } from "./utils";
 import type {
   OmakasePlayerApi,
   MarkerLane,
@@ -24,7 +25,6 @@ import type { Flow } from "@/types/tams";
 import {
   SEGMENTATION_PERIOD_MARKER_STYLE,
   THEME,
-  MARKER_LANE_TEXT_LABEL_STYLE,
   MARKER_LIST_CONFIG,
   ROW_TEMPLATE_HTML,
   EMPTY_TEMPLATE_HTML,
@@ -51,6 +51,60 @@ const OmakaseTamsPlayer = () => {
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
 
+  useEffect(() => {
+    renumberSegmentationLanes(segmentationLanes);
+  }, [segmentationLanes]);
+
+  useEffect(() => {
+    // Deselect any lane-selected marker that no longer matches selectedMarker
+    segmentationLanes.forEach((lane) => {
+      const laneSelected = lane.getSelectedMarker();
+      if (laneSelected && laneSelected.id !== selectedMarker?.id) {
+        lane.toggleMarker(laneSelected.id);
+      }
+    });
+
+    // Select the right marker on its owning lane (if any)
+    if (selectedMarker) {
+      const owningLane = segmentationLanes.find((l) =>
+        l.getMarker(selectedMarker.id),
+      );
+      if (
+        owningLane &&
+        owningLane.getSelectedMarker()?.id !== selectedMarker.id
+      ) {
+        owningLane.toggleMarker(selectedMarker.id);
+      }
+    }
+
+    // Sync the marker list (only highlights when selected marker is in currentSource)
+    if (sourceMarkerList) {
+      const listMarkerIds = new Set(
+        sourceMarkerList.getMarkers().map((m) => m.id),
+      );
+      const listSelected = sourceMarkerList.getSelectedMarker();
+      const wantId =
+        selectedMarker && currentSource?.getMarker(selectedMarker.id)
+          ? selectedMarker.id
+          : undefined;
+
+      if (
+        listSelected &&
+        listSelected.id !== wantId &&
+        listMarkerIds.has(listSelected.id)
+      ) {
+        sourceMarkerList.toggleMarker(listSelected.id);
+      }
+      if (
+        wantId &&
+        listMarkerIds.has(wantId) &&
+        sourceMarkerList.getSelectedMarker()?.id !== wantId
+      ) {
+        sourceMarkerList.toggleMarker(wantId);
+      }
+    }
+  }, [selectedMarker, segmentationLanes, sourceMarkerList, currentSource]);
+
   const paletteVars = {
     "--omakase-background": THEME[mode].colors.background,
     "--omakase-textFill": THEME[mode].text.fill,
@@ -69,7 +123,7 @@ const OmakaseTamsPlayer = () => {
         color: THEME[mode].colors.segmentationMarkerHighlighted,
       },
       TIMELINE_LANE_STYLE: THEME[mode].timelineLaneStyle,
-      MARKER_LANE_TEXT_LABEL_STYLE: MARKER_LANE_TEXT_LABEL_STYLE,
+      MARKER_LANE_TEXT_LABEL_STYLE: THEME[mode].markerLaneTextLabelStyle,
     }),
     [mode],
   );
@@ -98,6 +152,7 @@ const OmakaseTamsPlayer = () => {
     id,
     accessToken: auth.user?.access_token,
     mode,
+    segmentationLanes,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,

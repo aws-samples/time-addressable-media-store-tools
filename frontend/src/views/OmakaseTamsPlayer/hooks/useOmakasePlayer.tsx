@@ -10,7 +10,9 @@ import {
   createTimelineWithLanes,
   calculateTimerangeFromVideo,
   createAuthenticationConfig,
-} from "@/views/OmakaseTamsPlayer/utils";
+  snapshotSegmentationLanes,
+} from "../utils";
+import { Subject } from "rxjs";
 import type {
   OmakasePlayerApi,
   MarkerLane,
@@ -24,6 +26,7 @@ type UseOmakasePlayerParams = {
   id: string | undefined;
   accessToken: string | undefined;
   mode: Mode;
+  segmentationLanes: MarkerLane[];
   onError: (error: string | null) => void;
   onTimerangeChange: (
     timerange: string | undefined,
@@ -41,6 +44,7 @@ export const useOmakasePlayer = ({
   id,
   accessToken,
   mode,
+  segmentationLanes,
   onError,
   onTimerangeChange,
   onSegmentationLaneCreated,
@@ -51,6 +55,7 @@ export const useOmakasePlayer = ({
 }: UseOmakasePlayerParams) => {
   const playerRef = useRef<TamsPlayer | null>(null);
   const videoDataRef = useRef<TamsVideo | Video | null>(null);
+  const timelineDestroyRef = useRef<Subject<void> | null>(null);
   const callbacks = {
     onError,
     onTimerangeChange,
@@ -62,10 +67,20 @@ export const useOmakasePlayer = ({
   };
   const callbacksRef = useRef(callbacks);
   const modeRef = useRef(mode);
+  const segmentationLanesRef = useRef(segmentationLanes);
   useEffect(() => {
     callbacksRef.current = callbacks;
     modeRef.current = mode;
+    segmentationLanesRef.current = segmentationLanes;
   });
+
+  const swapTimelineDestroy = useCallback(() => {
+    timelineDestroyRef.current?.next();
+    timelineDestroyRef.current?.complete();
+    const next$ = new Subject<void>();
+    timelineDestroyRef.current = next$;
+    return next$;
+  }, []);
 
   const loadAndBuildTimeline = useCallback(
     (tamsUrl: string, options: TamsVideoLoadOptions) => {
@@ -94,13 +109,15 @@ export const useOmakasePlayer = ({
           }
 
           player.timeline?.destroy();
-          createTimelineWithLanes(
+          const destroy$ = swapTimelineDestroy();
+          createTimelineWithLanes({
             video,
             player,
-            modeRef.current,
-            cb.onSegmentationLaneCreated,
-            cb.onMarkerClick,
-          );
+            mode: modeRef.current,
+            destroy$,
+            onSegmentationLaneCreated: cb.onSegmentationLaneCreated,
+            onMarkerClick: cb.onMarkerClick,
+          });
 
           cb.onPlayerReady?.(player);
         },
@@ -110,7 +127,7 @@ export const useOmakasePlayer = ({
         },
       });
     },
-    [],
+    [swapTimelineDestroy],
   );
 
   useEffect(() => {
@@ -131,6 +148,9 @@ export const useOmakasePlayer = ({
     });
 
     return () => {
+      timelineDestroyRef.current?.next();
+      timelineDestroyRef.current?.complete();
+      timelineDestroyRef.current = null;
       playerRef.current?.destroy();
       playerRef.current = null;
       videoDataRef.current = null;
@@ -142,15 +162,20 @@ export const useOmakasePlayer = ({
     const video = videoDataRef.current;
     if (!player || !video) return;
 
+    const snapshot = snapshotSegmentationLanes(segmentationLanesRef.current);
+
     player.timeline?.destroy();
-    createTimelineWithLanes(
+    const destroy$ = swapTimelineDestroy();
+    createTimelineWithLanes({
       video,
       player,
       mode,
-      callbacksRef.current.onSegmentationLaneCreated,
-      callbacksRef.current.onMarkerClick,
-    );
-  }, [mode]);
+      destroy$,
+      onSegmentationLaneCreated: callbacksRef.current.onSegmentationLaneCreated,
+      onMarkerClick: callbacksRef.current.onMarkerClick,
+      segmentationSnapshot: snapshot,
+    });
+  }, [mode, swapTimelineDestroy]);
 
   const reloadWithTimerange = useCallback(
     (timerange: string) => {
