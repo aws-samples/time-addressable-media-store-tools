@@ -523,7 +523,6 @@ export const createTimelineWithLanes = ({
                 minimized: true,
               });
               timelineApi.addTimelineLane(markerLane);
-              addLaneLabel(markerLane, `${label} Segments`, mode);
 
               addSegmentMarkersToLane(
                 markerLane,
