@@ -122,6 +122,7 @@ const Layout = () => {
         onNavigationChange={({ detail }) => setNavigationOpen(detail.open)}
         navigation={
           <SideNavigation
+            activeHref={pathname}
             onFollow={followLink}
             items={getNavItems() as SideNavigationProps.Item[]}
           />
