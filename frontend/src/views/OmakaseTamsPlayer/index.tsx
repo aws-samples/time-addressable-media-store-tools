@@ -4,7 +4,7 @@ import "./style.css";
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { Box, ColumnLayout, SpaceBetween } from "@cloudscape-design/components";
+import { Box, ColumnLayout } from "@cloudscape-design/components";
 import {
   OmakaseMarkerListComponent,
   TimeRangeUtil,
@@ -192,67 +192,48 @@ const OmakaseTamsPlayer = () => {
 
   return (
     <div className="omakase-tams-player" style={paletteVars}>
-      <SpaceBetween size="xs">
-        <ColumnLayout columns={2} disableGutters>
-          <div id="omakase-marker-list">
-            {omakasePlayer && currentSource && (
-              <>
-                <MarkerListHeader
-                  segmentationLanes={segmentationLanes}
-                  source={currentSource}
-                  sourceMarkerList={sourceMarkerList}
-                  onSegmentationClickCallback={setCurrentSource}
-                  sourceId={id || ""}
-                  flows={flows}
-                  markerOffset={mediaStartTime}
-                  omakasePlayer={omakasePlayer}
-                  onSegmentationLanesChange={setSegmentationLanes}
-                />
-                <template
-                  id="header-template"
-                  dangerouslySetInnerHTML={{ __html: HEADER_TEMPLATE_HTML }}
-                />
-                <template
-                  id="row-template"
-                  dangerouslySetInnerHTML={{ __html: ROW_TEMPLATE_HTML }}
-                />
-                <template
-                  id="empty-template"
-                  dangerouslySetInnerHTML={{ __html: EMPTY_TEMPLATE_HTML }}
-                />
-                <OmakaseMarkerListComponent
-                  omakasePlayer={omakasePlayer}
-                  config={{
-                    ...MARKER_LIST_CONFIG,
-                    source: currentSource,
-                    mode: "CUTLIST",
-                    thumbnailVttFile: omakasePlayer.timeline?.thumbnailVttFile,
-                  }}
-                  onCreateMarkerListCallback={setSourceMarkerList}
-                />
-              </>
-            )}
-          </div>
-          <div id="omakase-video-container" />
-        </ColumnLayout>
-        <ColumnLayout columns={2} disableGutters>
-          <div id="omakase-marker-toolbar">
-            {omakasePlayer && sourceMarkerList && currentSource && (
-              <OmakasePlayerTimelineControlsToolbar
-                selectedMarker={selectedMarker}
-                omakasePlayer={omakasePlayer}
-                markerListApi={sourceMarkerList}
-                setSegmentationLanes={setSegmentationLanes}
-                setSelectedMarker={setSelectedMarker}
-                onMarkerClickCallback={setSelectedMarker}
+      <ColumnLayout columns={2}>
+        <div id="omakase-marker-list">
+          {omakasePlayer && currentSource && (
+            <>
+              <MarkerListHeader
                 segmentationLanes={segmentationLanes}
                 source={currentSource}
-                setSource={setCurrentSource}
-                enableHotKeys={true}
-                constants={toolbarConstants}
+                sourceMarkerList={sourceMarkerList}
+                onSegmentationClickCallback={setCurrentSource}
+                sourceId={id || ""}
+                flows={flows}
+                markerOffset={mediaStartTime}
+                omakasePlayer={omakasePlayer}
+                onSegmentationLanesChange={setSegmentationLanes}
               />
-            )}
-          </div>
+              <template
+                id="header-template"
+                dangerouslySetInnerHTML={{ __html: HEADER_TEMPLATE_HTML }}
+              />
+              <template
+                id="row-template"
+                dangerouslySetInnerHTML={{ __html: ROW_TEMPLATE_HTML }}
+              />
+              <template
+                id="empty-template"
+                dangerouslySetInnerHTML={{ __html: EMPTY_TEMPLATE_HTML }}
+              />
+              <OmakaseMarkerListComponent
+                omakasePlayer={omakasePlayer}
+                config={{
+                  ...MARKER_LIST_CONFIG,
+                  source: currentSource,
+                  mode: "CUTLIST",
+                  thumbnailVttFile: omakasePlayer.timeline?.thumbnailVttFile,
+                }}
+                onCreateMarkerListCallback={setSourceMarkerList}
+              />
+            </>
+          )}
+        </div>
+        <Box>
+          <div id="omakase-video-container" />
           {timerange && maxTimerange && (
             <OmakaseTimeRangePicker
               {...TIME_RANGE_PICKER_CONFIG}
@@ -261,9 +242,26 @@ const OmakaseTamsPlayer = () => {
               onCheckmarkClickCallback={handleTimeRangePickerChange}
             />
           )}
-        </ColumnLayout>
-        <div id="omakase-timeline" />
-      </SpaceBetween>
+        </Box>
+      </ColumnLayout>
+      <Box>
+        {omakasePlayer && sourceMarkerList && currentSource && (
+          <OmakasePlayerTimelineControlsToolbar
+            selectedMarker={selectedMarker}
+            omakasePlayer={omakasePlayer}
+            markerListApi={sourceMarkerList}
+            setSegmentationLanes={setSegmentationLanes}
+            setSelectedMarker={setSelectedMarker}
+            onMarkerClickCallback={setSelectedMarker}
+            segmentationLanes={segmentationLanes}
+            source={currentSource}
+            setSource={setCurrentSource}
+            enableHotKeys={true}
+            constants={toolbarConstants}
+          />
+        )}
+      </Box>
+      <div id="omakase-timeline" />
     </div>
   );
 };

@@ -26,13 +26,6 @@
   box-shadow: none;
 }
 
-/* Allow ColumnLayout children to shrink below their content's min-width */
-.omakase-tams-player #omakase-marker-list,
-.omakase-tams-player #omakase-marker-toolbar {
-  min-width: 0;
-  overflow-x: auto;
-}
-
 /* Toolbar */
 .omakase-tams-player .control-panel {
   background-color: var(--omakase-background) !important;
