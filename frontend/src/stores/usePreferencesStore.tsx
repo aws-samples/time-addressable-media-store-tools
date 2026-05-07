@@ -146,7 +146,7 @@ const usePreferencesStore = create<PreferencesStore>()(
           { id: "status", visible: true },
           { id: "startDate", visible: true },
           { id: "stopDate", visible: true },
-          { id: "sourceId", visible: false },
+          { id: "sourceId", visible: true },
         ],
       },
       setHlsIngestPreferences: (preferences) =>
