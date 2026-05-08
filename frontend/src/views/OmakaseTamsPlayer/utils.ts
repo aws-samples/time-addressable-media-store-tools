@@ -483,7 +483,9 @@ export const createTimelineWithLanes = ({
         if ("tamsMediaData" in video && video.tamsMediaData?.flowsSegments) {
           const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
           const primaryFlow = video.tamsMediaData.flow;
-          const subflows = video.tamsMediaData.subflows ?? [];
+          const subflows = [...(video.tamsMediaData.subflows ?? [])]
+            .sort((a, b) => (a.avg_bit_rate || 0) - (b.avg_bit_rate || 0))
+            .reverse();
           const flowsWithSegments = [primaryFlow, ...subflows].filter(
             (f) => !!f && !!flowsSegmentsMap.get(f.id)?.length,
           );

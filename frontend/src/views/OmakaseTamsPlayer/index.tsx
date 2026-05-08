@@ -4,7 +4,7 @@ import "./style.css";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { Box, ColumnLayout } from "@cloudscape-design/components";
+import { Box, Grid } from "@cloudscape-design/components";
 import {
   OmakaseMarkerListComponent,
   TimeRangeUtil,
@@ -225,7 +225,7 @@ const OmakaseTamsPlayer = () => {
 
   return (
     <div className="omakase-tams-player" style={paletteVars}>
-      <ColumnLayout columns={2}>
+      <Grid gridDefinition={[{ colspan: 5 }, { colspan: 7 }]}>
         <div id="omakase-marker-list">
           {omakasePlayer && currentSource && (
             <>
@@ -276,7 +276,7 @@ const OmakaseTamsPlayer = () => {
             />
           )}
         </Box>
-      </ColumnLayout>
+      </Grid>
       <Box>
         {omakasePlayer && sourceMarkerList && currentSource && (
           <OmakasePlayerTimelineControlsToolbar
