@@ -157,7 +157,8 @@ const OmakaseTamsPlayer = () => {
     "--omakase-background": THEME[mode].colors.background,
     "--omakase-textFill": THEME[mode].text.fill,
     "--omakase-laneBackground": THEME[mode].colors.laneBackground,
-    "--omakase-segmentationMarker": THEME[mode].colors.segmentationMarker,
+    "--omakase-scrollbarHandle": THEME[mode].colors.scrollbarHandle,
+    "--omakase-scrollbarBorder": THEME[mode].colors.scrollbarBorder,
   } as React.CSSProperties;
 
   const handleTimerangeChange = (

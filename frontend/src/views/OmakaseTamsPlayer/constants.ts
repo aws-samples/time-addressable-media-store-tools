@@ -114,6 +114,7 @@ const COLORS = {
       backgroundLight: "hsl(230, 12%, 31%)",
       scrollbarBackground: "hsl(234, 68%, 49%)",
       scrollbarHandle: "hsl(274, 53%, 37%)",
+      scrollbarBorder: "hsl(275, 16%, 39%)",
       playheadPrimary: "hsl(184, 100%, 63%)",
       playheadBuffered: "hsl(238, 100%, 80%)",
       playheadBackground: "hsl(227, 12%, 57%)",
@@ -155,6 +156,7 @@ const COLORS = {
       backgroundLight: "hsl(230, 4%, 85%)",
       scrollbarBackground: "hsl(234, 58%, 37%)",
       scrollbarHandle: "hsl(274, 45%, 30%)",
+      scrollbarBorder: "hsl(275, 8%, 32%)",
       playheadPrimary: "hsl(184, 85%, 38%)",
       playheadBuffered: "hsl(238, 85%, 66%)",
       playheadBackground: "hsl(227, 20%, 64%)",
@@ -210,6 +212,7 @@ function buildThemeConfig(mode: Mode) {
       // Scrollbar
       scrollbarBackground: colors.scrollbarBackground,
       scrollbarHandle: colors.scrollbarHandle,
+      scrollbarBorder: colors.scrollbarBorder,
 
       // Playhead
       playhead: colors.playheadPrimary,

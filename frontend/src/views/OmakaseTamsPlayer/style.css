@@ -54,8 +54,12 @@
   color: var(--omakase-textFill) !important;
 }
 .omakase-tams-player .omakase-time-range-selector-range-selector {
-  background-color: var(--omakase-segmentationMarker) !important;
+  background-color: var(--omakase-scrollbarHandle) !important;
 }
 .omakase-tams-player .omakase-time-range-selector-range-selector-handle {
-  background-color: var(--omakase-segmentationMarker) !important;
+  background-color: var(--omakase-scrollbarHandle) !important;
+}
+.omakase-tams-player .omakase-time-range-selector-segment-marker,
+.omakase-tams-player .omakase-time-range-selector-segment-tick {
+  border-color: var(--omakase-scrollbarBorder) !important;
 }
