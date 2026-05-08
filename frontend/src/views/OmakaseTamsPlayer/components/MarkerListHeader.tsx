@@ -41,7 +41,7 @@ const MarkerListHeader = ({
 
   const subscribeToMarkerChanges = useCallback(
     (onChange: () => void) => {
-      if (!source) return () => { };
+      if (!source) return () => {};
       const subs = [
         source.onMarkerCreate$.subscribe({ next: onChange }),
         source.onMarkerUpdate$.subscribe({ next: onChange }),
@@ -111,9 +111,9 @@ const MarkerListHeader = ({
 
   const deleteModalLaneName = laneToDelete
     ? (() => {
-      const lane = segmentationLanes.find((l) => l.id === laneToDelete);
-      return lane ? labelForLane(lane) : "";
-    })()
+        const lane = segmentationLanes.find((l) => l.id === laneToDelete);
+        return lane ? labelForLane(lane) : "";
+      })()
     : "";
 
   return (
