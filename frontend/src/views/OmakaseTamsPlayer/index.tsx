@@ -1,7 +1,7 @@
 import "@byomakase/omakase-player/dist/style.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { Box, ColumnLayout } from "@cloudscape-design/components";
@@ -50,13 +50,51 @@ const OmakaseTamsPlayer = () => {
   const [currentSource, setCurrentSource] = useState<MarkerLane | undefined>();
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
+  const segmentationLanesRef = useRef(segmentationLanes);
+  const currentSourceRef = useRef(currentSource);
+
+  const setSelectedMarkerWithSync = useCallback<
+    React.Dispatch<React.SetStateAction<Marker | undefined>>
+  >((action) => {
+    // Function-form actions (used by the toolbar to clear selection on marker
+    // delete) skip the lane/source sync — clearing doesn't need a tab switch
+    // and the dispatch path doesn't have the new marker to look up.
+    if (typeof action !== "function" && action) {
+      const owning = segmentationLanesRef.current.find((l) =>
+        l.getMarker(action.id),
+      );
+      if (owning) {
+        if (owning.getSelectedMarker()?.id !== action.id) {
+          owning.toggleMarker(action.id);
+        }
+        if (currentSourceRef.current?.id !== owning.id) {
+          setCurrentSource(owning);
+        }
+      }
+    }
+    setSelectedMarker(action);
+  }, []);
+
+  const handleSegmentationTabClick = useCallback((lane: MarkerLane) => {
+    setCurrentSource(lane);
+    setSelectedMarker(undefined);
+  }, []);
+
+  useEffect(() => {
+    segmentationLanesRef.current = segmentationLanes;
+    currentSourceRef.current = currentSource;
+  }, [segmentationLanes, currentSource]);
 
   useEffect(() => {
     renumberSegmentationLanes(segmentationLanes);
   }, [segmentationLanes]);
 
   useEffect(() => {
-    // Deselect any lane-selected marker that no longer matches selectedMarker
+    // Mirror selectedMarker onto external player state. The wrapper handles
+    // user-driven clicks at the click site, but selections that originate
+    // outside the wrapper (e.g. the initial default marker created during
+    // timeline construction) need this fallback because the wrapper can't
+    // toggle the lane until segmentationLanes state reflects it.
     segmentationLanes.forEach((lane) => {
       const laneSelected = lane.getSelectedMarker();
       if (laneSelected && laneSelected.id !== selectedMarker?.id) {
@@ -64,7 +102,6 @@ const OmakaseTamsPlayer = () => {
       }
     });
 
-    // Select the right marker on its owning lane (if any)
     if (selectedMarker) {
       const owningLane = segmentationLanes.find((l) =>
         l.getMarker(selectedMarker.id),
@@ -77,40 +114,28 @@ const OmakaseTamsPlayer = () => {
       }
     }
 
-    // Sync the marker list (only highlights when selected marker is in currentSource)
     if (sourceMarkerList) {
-      const listMarkerIds = new Set(
-        sourceMarkerList.getMarkers().map((m) => m.id),
-      );
-      const listSelected = sourceMarkerList.getSelectedMarker();
       const wantId =
         selectedMarker && currentSource?.getMarker(selectedMarker.id)
           ? selectedMarker.id
           : undefined;
-
-      if (
-        listSelected &&
-        listSelected.id !== wantId &&
-        listMarkerIds.has(listSelected.id)
-      ) {
+      const listSelected = sourceMarkerList.getSelectedMarker();
+      if (listSelected && listSelected.id !== wantId) {
         sourceMarkerList.toggleMarker(listSelected.id);
-      }
-      if (
-        wantId &&
-        listMarkerIds.has(wantId) &&
-        sourceMarkerList.getSelectedMarker()?.id !== wantId
-      ) {
-        sourceMarkerList.toggleMarker(wantId);
       }
     }
   }, [selectedMarker, segmentationLanes, sourceMarkerList, currentSource]);
 
-  const paletteVars = {
-    "--omakase-background": THEME[mode].colors.background,
-    "--omakase-textFill": THEME[mode].text.fill,
-    "--omakase-laneBackground": THEME[mode].colors.laneBackground,
-    "--omakase-segmentationMarker": THEME[mode].colors.segmentationMarker,
-  } as React.CSSProperties;
+  useEffect(() => {
+    if (!sourceMarkerList) return;
+    const sub = sourceMarkerList.onMarkerClick$.subscribe({
+      next: (event) => {
+        const marker = currentSourceRef.current?.getMarker(event.marker.id);
+        if (marker) setSelectedMarkerWithSync(marker);
+      },
+    });
+    return () => sub.unsubscribe();
+  }, [sourceMarkerList, setSelectedMarkerWithSync]);
 
   const toolbarConstants = useMemo(
     () => ({
@@ -127,6 +152,13 @@ const OmakaseTamsPlayer = () => {
     }),
     [mode],
   );
+
+  const paletteVars = {
+    "--omakase-background": THEME[mode].colors.background,
+    "--omakase-textFill": THEME[mode].text.fill,
+    "--omakase-laneBackground": THEME[mode].colors.laneBackground,
+    "--omakase-segmentationMarker": THEME[mode].colors.segmentationMarker,
+  } as React.CSSProperties;
 
   const handleTimerangeChange = (
     currentTimerange: string | undefined,
@@ -156,7 +188,7 @@ const OmakaseTamsPlayer = () => {
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
-    onMarkerClick: setSelectedMarker,
+    onMarkerClick: setSelectedMarkerWithSync,
     onPlayerReady: setOmakasePlayer,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
@@ -200,7 +232,7 @@ const OmakaseTamsPlayer = () => {
                 segmentationLanes={segmentationLanes}
                 source={currentSource}
                 sourceMarkerList={sourceMarkerList}
-                onSegmentationClickCallback={setCurrentSource}
+                onSegmentationClickCallback={handleSegmentationTabClick}
                 sourceId={id || ""}
                 flows={flows}
                 markerOffset={mediaStartTime}
@@ -251,8 +283,8 @@ const OmakaseTamsPlayer = () => {
             omakasePlayer={omakasePlayer}
             markerListApi={sourceMarkerList}
             setSegmentationLanes={setSegmentationLanes}
-            setSelectedMarker={setSelectedMarker}
-            onMarkerClickCallback={setSelectedMarker}
+            setSelectedMarker={setSelectedMarkerWithSync}
+            onMarkerClickCallback={setSelectedMarkerWithSync}
             segmentationLanes={segmentationLanes}
             source={currentSource}
             setSource={setCurrentSource}
