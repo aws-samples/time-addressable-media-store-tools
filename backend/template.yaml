@@ -154,6 +154,9 @@ Resources:
       BuildMethod: python3.14
       BuildArchitecture: arm64
     Properties:
+      LayerName: !Sub
+        - ${AWS::StackName}-OpenIdAuthLayer-${id}
+        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
       RetentionPolicy: Delete
       ContentUri: layers/openid-auth
       CompatibleRuntimes:
@@ -484,6 +487,7 @@ Resources:
         SecretArn: !GetAtt TamsConnection.SecretArn
         SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
         SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        ParentStackName: !Ref AWS::StackName
     Condition: DeployIngestHls
 
   IngestFfmpegStack:

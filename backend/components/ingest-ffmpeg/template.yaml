@@ -361,6 +361,9 @@ Resources:
       BuildMethod: makefile
       BuildArchitecture: arm64
     Properties:
+      LayerName: !Sub
+        - ${ParentStackName}-FFmpegLayer-${id}
+        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
       RetentionPolicy: Delete
       ContentUri: layers/ffmpeg
       CompatibleRuntimes:

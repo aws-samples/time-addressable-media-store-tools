@@ -22,6 +22,9 @@ Parameters:
   SegmentIngestQueueArn:
     Type: String
 
+  ParentStackName:
+    Type: String
+
 Transform: AWS::Serverless-2016-10-31
 
 Globals:
@@ -216,6 +219,9 @@ Resources:
       BuildMethod: makefile
       BuildArchitecture: arm64
     Properties:
+      LayerName: !Sub
+        - ${ParentStackName}-FFprobeLayer-${id}
+        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
       RetentionPolicy: Delete
       ContentUri: layers/ffprobe
       CompatibleRuntimes:
