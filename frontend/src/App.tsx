@@ -7,6 +7,7 @@ import {
   IS_HLS_DEPLOYED,
   IS_HLS_INGEST_DEPLOYED,
   IS_FFMPEG_DEPLOYED,
+  SHOW_LEGACY_PLAYER,
 } from "@/constants";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import Diagram from "@/views/Diagram";
@@ -67,11 +68,13 @@ const App = () => {
                 <Route path=":webhookId" element={<Webhook />} />
               </Route>
               <Route path="diagram/:type/:id" element={<Diagram />} />
-              <Route path="player/:type/:id" element={<OmakaseHlsPlayer />} />
               <Route
-                path="player-tams/:type/:id"
+                path="player/:type/:id"
                 element={<OmakaseTamsPlayer />}
               />
+              {SHOW_LEGACY_PLAYER && (
+                <Route path="player-legacy/:type/:id" element={<OmakaseHlsPlayer />} />
+              )}
               {AWS_IDENTITY_POOL_ID && (
                 <>
                   {IS_HLS_DEPLOYED && (
