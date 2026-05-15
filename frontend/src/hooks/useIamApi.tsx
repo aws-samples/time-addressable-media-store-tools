@@ -30,6 +30,13 @@ export const useIamApi = (endpoint: string) => {
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || errorData.detail || `HTTP ${response.status}`,
+      );
+    }
+
     return response.json().catch(() => ({}));
   };
 
