@@ -68,12 +68,12 @@ const App = () => {
                 <Route path=":webhookId" element={<Webhook />} />
               </Route>
               <Route path="diagram/:type/:id" element={<Diagram />} />
-              <Route
-                path="player/:type/:id"
-                element={<OmakaseTamsPlayer />}
-              />
+              <Route path="player/:type/:id" element={<OmakaseTamsPlayer />} />
               {SHOW_LEGACY_PLAYER && (
-                <Route path="player-legacy/:type/:id" element={<OmakaseHlsPlayer />} />
+                <Route
+                  path="player-legacy/:type/:id"
+                  element={<OmakaseHlsPlayer />}
+                />
               )}
               {AWS_IDENTITY_POOL_ID && (
                 <>

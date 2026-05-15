@@ -87,7 +87,11 @@ const HlsIngestModal = ({
       setWarningCleared(true);
       setDeleteModalVisible(false);
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Failed to delete existing manifest.");
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete existing manifest.",
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -167,7 +171,9 @@ const HlsIngestModal = ({
             value={sourceId}
             onChange={setSourceId}
           />
-          <TextContent>Are you sure you wish to START an Ingestion?</TextContent>
+          <TextContent>
+            Are you sure you wish to START an Ingestion?
+          </TextContent>
         </SpaceBetween>
       </Modal>
       <Modal
@@ -188,9 +194,7 @@ const HlsIngestModal = ({
           <TextContent>
             Are you sure you wish to DELETE the existing manifest?
           </TextContent>
-          {deleteError && (
-            <Alert type="error">{deleteError}</Alert>
-          )}
+          {deleteError && <Alert type="error">{deleteError}</Alert>}
         </SpaceBetween>
       </Modal>
     </>

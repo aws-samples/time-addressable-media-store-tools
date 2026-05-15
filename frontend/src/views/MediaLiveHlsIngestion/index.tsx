@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS, AWS_HLS_INGEST_ENDPOINT } from "@/constants";
+import {
+  AWS_REGION,
+  PAGE_SIZE,
+  STATUS_MAPPINGS,
+  AWS_HLS_INGEST_ENDPOINT,
+} from "@/constants";
 import {
   Box,
   ButtonGroup,
@@ -18,7 +23,10 @@ import ConfirmationModal from "./components/ConfirmationModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useChannels } from "@/hooks/useChannels";
 import type { ChannelIngestion } from "@/types/ingestHls";
-import type { ButtonGroupProps, TableProps } from "@cloudscape-design/components";
+import type {
+  ButtonGroupProps,
+  TableProps,
+} from "@cloudscape-design/components";
 
 const MediaLiveHlsIngestion = () => {
   const { channels, isLoading, mutate } = useChannels();
