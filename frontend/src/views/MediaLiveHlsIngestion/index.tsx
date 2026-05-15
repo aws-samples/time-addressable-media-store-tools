@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS } from "@/constants";
+import { AWS_REGION, PAGE_SIZE, STATUS_MAPPINGS, AWS_HLS_INGEST_ENDPOINT } from "@/constants";
 import {
   Box,
   ButtonGroup,
@@ -12,21 +12,22 @@ import {
   TextContent,
   TextFilter,
 } from "@cloudscape-design/components";
+import useIamApi from "@/hooks/useIamApi";
 import HlsIngestModal from "@/components/HlsIngestModal";
 import ConfirmationModal from "./components/ConfirmationModal";
 import { useCollection } from "@cloudscape-design/collection-hooks";
 import { useChannels } from "@/hooks/useChannels";
 import type { ChannelIngestion } from "@/types/ingestHls";
-import type { ButtonGroupProps } from "@cloudscape-design/components";
-import type { TableProps } from "@cloudscape-design/components";
+import type { ButtonGroupProps, TableProps } from "@cloudscape-design/components";
 
 const MediaLiveHlsIngestion = () => {
-  const { channels, isLoading } = useChannels();
+  const { channels, isLoading, mutate } = useChannels();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<
     ChannelIngestion | undefined
   >(undefined);
   const [actionId, setActionId] = useState("");
+  const api = useIamApi(AWS_HLS_INGEST_ENDPOINT);
 
   const preferences = {
     pageSize: PAGE_SIZE,
@@ -144,6 +145,12 @@ const MediaLiveHlsIngestion = () => {
       selection: {},
     });
 
+  const handleDeleteManifest = async (manifestUri: string) => {
+    if (!manifestUri) return;
+    await api.del("/manifest", { body: { uri: manifestUri } });
+    await mutate();
+  };
+
   const handleClick = ({
     detail,
     item,
@@ -185,6 +192,9 @@ const MediaLiveHlsIngestion = () => {
                 selectedItem?.manifestExists
                   ? "Content already exists in this location.  Starting ingest now will ingest this into TAMS.  If you are setting up a new ingest process then you may wish to delete the existing content before starting the ingest process."
                   : undefined
+              }
+              onDeleteManifest={() =>
+                handleDeleteManifest(selectedItem?.manifestUri ?? "")
               }
               onDismiss={() => setSelectedItem(undefined)}
             />
