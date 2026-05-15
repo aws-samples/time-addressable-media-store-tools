@@ -137,6 +137,33 @@ const OmakaseTamsPlayer = () => {
     return () => sub.unsubscribe();
   }, [sourceMarkerList, setSelectedMarkerWithSync]);
 
+  useEffect(() => {
+    if (!omakasePlayer || !sourceMarkerList || !currentSource) return;
+
+    const labels = [
+      "Go to Marker Start ( [ )",
+      "Go to Marker End ( ] )",
+      "Set Marker Start to Playhead ( i )",
+      "Set Marker End to Playhead ( o )",
+      "Mark In / Out ( m )",
+      "Delete Marker ( n )",
+      "Split Marker ( . )",
+      "Loop Marker ( p )",
+      "Rewind 3s & Play ( Cmd/Win+← )",
+      "Play 3s & Rewind ( Cmd/Win+→ )",
+    ];
+
+    const panel = document.querySelector(
+      ".omakase-tams-player .control-panel-wrapper > .control-panel:first-child",
+    );
+    if (!panel) return;
+
+    const buttons = panel.querySelectorAll("button");
+    buttons.forEach((btn, i) => {
+      if (labels[i]) btn.title = labels[i];
+    });
+  }, [omakasePlayer, sourceMarkerList, currentSource]);
+
   const toolbarConstants = useMemo(
     () => ({
       PERIOD_MARKER_STYLE: {
