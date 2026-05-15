@@ -1,11 +1,13 @@
 import os
 import json
+from http import HTTPStatus
 from pathlib import Path
 from urllib.parse import urlparse
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, CORSConfig
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError, ServiceError
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
@@ -196,6 +198,34 @@ def get_workflows():
                 logger.error(ex)
                 continue
     return workflows
+
+
+@app.delete("/manifest")
+@tracer.capture_method(capture_response=False)
+def delete_manifest():
+    body = app.current_event.json_body
+    uri = body.get("uri")
+    if not uri:
+        raise BadRequestError("uri is required")
+    uri_parse = urlparse(uri)
+    if uri_parse.scheme != "s3" or not uri_parse.netloc or not uri_parse.path[1:]:
+        raise BadRequestError("uri must be a valid S3 URI (s3://bucket/key)")
+    try:
+        s3.head_object(Bucket=uri_parse.netloc, Key=uri_parse.path[1:])
+    except ClientError as ex:
+        if ex.response["Error"]["Code"] == "404":
+            raise BadRequestError("Object does not exist") from ex
+        logger.error(ex)
+        raise ServiceError(502, str(ex)) from ex
+    try:
+        s3.delete_object(
+            Bucket=uri_parse.netloc,
+            Key=uri_parse.path[1:],
+        )
+    except ClientError as ex:
+        logger.error(ex)
+        raise ServiceError(502, str(ex)) from ex
+    return None, HTTPStatus.NO_CONTENT.value
 
 
 @logger.inject_lambda_context(
