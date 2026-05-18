@@ -53,7 +53,6 @@ export const AWS_REPLICATION_DELETE_RULE_ARN = import.meta.env
   .VITE_APP_AWS_REPLICATION_DELETE_RULE_ARN;
 /************* END OF ENVIRONMENT VARIABLES **************/
 /************* FEATURE FLAGS **************/
-export const SHOW_LEGACY_PLAYER = true;
 export const IS_HLS_DEPLOYED = !!(AWS_IDENTITY_POOL_ID && AWS_HLS_FUNCTION_URL);
 export const IS_HLS_INGEST_DEPLOYED = !!(
   AWS_IDENTITY_POOL_ID &&

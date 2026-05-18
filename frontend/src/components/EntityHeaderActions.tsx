@@ -7,7 +7,6 @@ import {
 import {
   IS_HLS_DEPLOYED,
   AWS_HLS_FUNCTION_URL,
-  SHOW_LEGACY_PLAYER,
 } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
@@ -70,15 +69,6 @@ const EntityHeaderActions = ({ entityType, entity }: Props) => {
       >
         View Player
       </Button>
-      {SHOW_LEGACY_PLAYER && (
-        <Button
-          href={`/player-legacy/${entityType}/${entity.id}`}
-          variant="inline-link"
-          onFollow={followLink}
-        >
-          View Player (Legacy)
-        </Button>
-      )}
       <Button
         href={`/diagram/${entityType}/${entity.id}`}
         variant="inline-link"
