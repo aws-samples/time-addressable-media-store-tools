@@ -4,10 +4,7 @@ import {
   Popover,
   StatusIndicator,
 } from "@cloudscape-design/components";
-import {
-  IS_HLS_DEPLOYED,
-  AWS_HLS_FUNCTION_URL,
-} from "@/constants";
+import { IS_HLS_DEPLOYED, AWS_HLS_FUNCTION_URL } from "@/constants";
 import SourceActionsButton from "@/components/SourceActionsButton";
 import FlowActionsButton from "@/components/FlowActionsButton";
 import useAwsCredentials from "@/hooks/useAwsCredentials";
