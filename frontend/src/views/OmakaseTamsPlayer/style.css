@@ -27,39 +27,26 @@
 }
 
 /* Toolbar */
-.omakase-tams-player .control-panel {
-  background-color: var(--omakase-background) !important;
+.omakase-tams-player {
+  --omakase-toolbar-control-panel-background-color: var(--omakase-background);
+  --omakase-toolbar-icon-color: var(--omakase-textFill);
+  --omakase-time-range-selector-segment-marker-background-color: var(--omakase-background);
+  --omakase-time-range-selector-segment-marker-border-color: var(--omakase-laneBackground);
+  --omakase-time-range-selector-segment-label-font-color: var(--omakase-textFill);
+  --omakase-time-range-selector-range-selector-background-color: var(--omakase-scrollbarHandle);
+  --omakase-time-range-selector-range-selector-handle-background-color:
+var(--omakase-scrollbarHandle);
+  --omakase-time-range-selector-segment-tick-border-color: var(--omakase-scrollbarBorder);
+  --omakase-time-range-selector-range-selector-duration-font-color: var(--omakase-textFill);
 }
-.omakase-tams-player .control-panel button svg *,
+.omakase-tams-player .omakase-player-timeline-controls-toolbar-control-panel button:disabled svg *,
+.omakase-tams-player .segmentation-button-wrapper button:disabled svg * {
+  opacity: 0.2 !important;
+}
 .omakase-tams-player .segmentation-button-wrapper button svg * {
+  color: var(--omakase-background) !important;
   fill: var(--omakase-textFill) !important;
 }
 .omakase-tams-player .segmentation-button-wrapper button {
   color: var(--omakase-textFill) !important;
-}
-.omakase-tams-player .control-panel button:disabled svg *,
-.omakase-tams-player .segmentation-button-wrapper button:disabled svg * {
-  opacity: 0.2 !important;
-}
-
-/* Time range picker */
-.omakase-tams-player .omakase-time-range-selector-segment-marker {
-  background-color: var(--omakase-background) !important;
-  border-color: var(--omakase-laneBackground) !important;
-}
-.omakase-tams-player .omakase-time-range-selector-segment-label,
-.omakase-tams-player .omakase-time-range-selector-segment-first-label,
-.omakase-tams-player .omakase-time-range-selector-segment-second-label,
-.omakase-tams-player .omakase-time-range-selector-range-selector-duration {
-  color: var(--omakase-textFill) !important;
-}
-.omakase-tams-player .omakase-time-range-selector-range-selector {
-  background-color: var(--omakase-scrollbarHandle) !important;
-}
-.omakase-tams-player .omakase-time-range-selector-range-selector-handle {
-  background-color: var(--omakase-scrollbarHandle) !important;
-}
-.omakase-tams-player .omakase-time-range-selector-segment-marker,
-.omakase-tams-player .omakase-time-range-selector-segment-tick {
-  border-color: var(--omakase-scrollbarBorder) !important;
 }
