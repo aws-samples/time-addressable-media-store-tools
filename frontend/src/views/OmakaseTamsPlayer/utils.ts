@@ -116,6 +116,7 @@ const segmentToMarker = (
   });
 };
 
+const isMuxedFlow = (f: Flow) => f.format === "urn:x-nmos:format:multi"; // Multi flows are only muxed when they have segments (pre-filtered by flowsWithSegments)
 const isVideoFlow = (f: Flow) => f.format === "urn:x-nmos:format:video";
 const isAudioFlow = (f: Flow) => f.format === "urn:x-nmos:format:audio";
 const isSubtitleFlow = (f: Flow) =>
@@ -499,7 +500,8 @@ export const createTimelineWithLanes = ({
             if (
               !isVideoFlow(flow) &&
               !isAudioFlow(flow) &&
-              !isSubtitleFlow(flow)
+              !isSubtitleFlow(flow) &&
+              !isMuxedFlow(flow)
             ) {
               return;
             }
