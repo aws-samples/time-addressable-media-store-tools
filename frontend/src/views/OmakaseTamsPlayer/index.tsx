@@ -7,6 +7,7 @@ import { useAuth } from "react-oidc-context";
 import { Box, Grid } from "@cloudscape-design/components";
 import {
   OmakaseMarkerListComponent,
+  OmakasePlayerTimelineComponent,
   TimeRangeUtil,
   OmakasePlayerTimelineControlsToolbar,
   OmakaseTimeRangeSelectorComponent,
@@ -193,6 +194,14 @@ const OmakaseTamsPlayer = () => {
     [mode],
   );
 
+  const timelineConfig = useMemo(
+    () => ({
+      timelineHTMLElementId: "omakase-timeline",
+      style: THEME[mode].timelineStyle,
+    }),
+    [mode],
+  );
+
   const paletteVars = {
     "--omakase-background": THEME[mode].colors.background,
     "--omakase-textFill": THEME[mode].text.fill,
@@ -224,12 +233,11 @@ const OmakaseTamsPlayer = () => {
     });
   };
 
-  const { reloadWithTimerange } = useOmakasePlayer({
+  const { reloadWithTimerange, handleTimelineCreated } = useOmakasePlayer({
     type,
     id,
     accessToken: auth.user?.access_token,
     mode,
-    segmentationLanes,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
@@ -337,7 +345,14 @@ const OmakaseTamsPlayer = () => {
           />
         )}
       </Box>
-      <div id="omakase-timeline" />
+      {omakasePlayer && (
+        <OmakasePlayerTimelineComponent
+          omakasePlayer={omakasePlayer}
+          timelineConfig={timelineConfig}
+          onTimelineCreatedCallback={handleTimelineCreated}
+          enableHotKeys={true}
+        />
+      )}
     </div>
   );
 };

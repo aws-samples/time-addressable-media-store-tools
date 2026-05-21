@@ -7,27 +7,28 @@ import {
 import { Mode } from "@cloudscape-design/global-styles";
 import { AWS_TAMS_ENDPOINT } from "@/constants";
 import {
-  createTimelineWithLanes,
+  buildLanesOnTimeline,
+  updateTimelineStyles,
+  removeVisualizationLanes,
   calculateTimerangeFromVideo,
   createAuthenticationConfig,
-  snapshotSegmentationLanes,
 } from "../utils";
 import { Subject } from "rxjs";
 import type {
   OmakasePlayerApi,
   MarkerLane,
   Marker,
+  TimelineApi,
+  TextLabel,
 } from "@byomakase/omakase-player";
 import type { Video } from "@byomakase/omakase-player/dist/video/model";
 import type { Flow } from "@/types/tams";
-import type { SegmentationLaneSnapshot } from "../types";
 
 type UseOmakasePlayerParams = {
   type: string | undefined;
   id: string | undefined;
   accessToken: string | undefined;
   mode: Mode;
-  segmentationLanes: MarkerLane[];
   onError: (error: string | null) => void;
   onTimerangeChange: (
     timerange: string | undefined,
@@ -45,7 +46,6 @@ export const useOmakasePlayer = ({
   id,
   accessToken,
   mode,
-  segmentationLanes,
   onError,
   onTimerangeChange,
   onSegmentationLaneCreated,
@@ -56,7 +56,10 @@ export const useOmakasePlayer = ({
 }: UseOmakasePlayerParams) => {
   const playerRef = useRef<TamsPlayer | null>(null);
   const videoDataRef = useRef<TamsVideo | Video | null>(null);
-  const timelineDestroyRef = useRef<Subject<void> | null>(null);
+  const timelineRef = useRef<TimelineApi | null>(null);
+  const textLabelsRef = useRef<Map<string, TextLabel>>(new Map());
+  const lanesDestroyRef = useRef<Subject<void> | null>(null);
+
   const callbacks = {
     onError,
     onTimerangeChange,
@@ -68,25 +71,62 @@ export const useOmakasePlayer = ({
   };
   const callbacksRef = useRef(callbacks);
   const modeRef = useRef(mode);
-  const segmentationLanesRef = useRef(segmentationLanes);
   const accessTokenRef = useRef(accessToken);
   useEffect(() => {
     callbacksRef.current = callbacks;
     modeRef.current = mode;
-    segmentationLanesRef.current = segmentationLanes;
     accessTokenRef.current = accessToken;
   });
 
-  const swapTimelineDestroy = useCallback(() => {
-    timelineDestroyRef.current?.next();
-    timelineDestroyRef.current?.complete();
+  // Completes the previous Subject to unsubscribe lane-level RxJS subscriptions
+  // (audio switch buttons, subtitle toggle handlers) before rebuilding lanes.
+  const swapLanesDestroy = useCallback(() => {
+    lanesDestroyRef.current?.next();
+    lanesDestroyRef.current?.complete();
     const next$ = new Subject<void>();
-    timelineDestroyRef.current = next$;
+    lanesDestroyRef.current = next$;
     return next$;
   }, []);
 
-  const loadAndBuildTimeline = useCallback(
-    (tamsUrl: string, options: TamsVideoLoadOptions, segmentationSnapshot?: SegmentationLaneSnapshot[]) => {
+  const handleTimelineCreatedImpl = useCallback(
+    (timeline: TimelineApi) => {
+      const player = playerRef.current;
+      const video = videoDataRef.current;
+      if (!player || !video) return;
+
+      timelineRef.current = timeline;
+
+      const destroy$ = swapLanesDestroy();
+      removeVisualizationLanes(timeline);
+
+      const labels = buildLanesOnTimeline({
+        timeline,
+        video,
+        player,
+        mode: modeRef.current,
+        destroy$,
+        onSegmentationLaneCreated: callbacksRef.current.onSegmentationLaneCreated,
+        onMarkerClick: callbacksRef.current.onMarkerClick,
+      });
+      textLabelsRef.current = labels;
+    },
+    [swapLanesDestroy],
+  );
+
+  // OmakasePlayerTimelineComponent captures onTimelineCreatedCallback in a
+  // mount-time effect closure, so we must pass a ref-stable function that
+  // delegates to the latest implementation to avoid stale closures.
+  const handleTimelineCreatedImplRef = useRef(handleTimelineCreatedImpl);
+  useEffect(() => {
+    handleTimelineCreatedImplRef.current = handleTimelineCreatedImpl;
+  });
+
+  const handleTimelineCreated = useCallback((timeline: TimelineApi) => {
+    handleTimelineCreatedImplRef.current(timeline);
+  }, []);
+
+  const loadVideo = useCallback(
+    (tamsUrl: string, options: TamsVideoLoadOptions) => {
       const player = playerRef.current;
       if (!player) return;
 
@@ -111,18 +151,6 @@ export const useOmakasePlayer = ({
             cb.onFlowsCalculated?.(video.tamsMediaData.subflows);
           }
 
-          player.timeline?.destroy();
-          const destroy$ = swapTimelineDestroy();
-          createTimelineWithLanes({
-            video,
-            player,
-            mode: modeRef.current,
-            destroy$,
-            onSegmentationLaneCreated: cb.onSegmentationLaneCreated,
-            onMarkerClick: cb.onMarkerClick,
-            segmentationSnapshot,
-          });
-
           cb.onPlayerReady?.(player);
         },
         error: (err) => {
@@ -131,7 +159,7 @@ export const useOmakasePlayer = ({
         },
       });
     },
-    [swapTimelineDestroy],
+    [],
   );
 
   useEffect(() => {
@@ -146,58 +174,47 @@ export const useOmakasePlayer = ({
     player.setAuthentication(createAuthenticationConfig(accessTokenRef.current));
 
     const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
-    loadAndBuildTimeline(tamsUrl, {
+    loadVideo(tamsUrl, {
       returnTamsMediaData: true,
       duration: 300,
     });
 
     return () => {
-      timelineDestroyRef.current?.next();
-      timelineDestroyRef.current?.complete();
-      timelineDestroyRef.current = null;
+      lanesDestroyRef.current?.next();
+      lanesDestroyRef.current?.complete();
+      lanesDestroyRef.current = null;
+      timelineRef.current = null;
+      textLabelsRef.current = new Map();
       playerRef.current?.destroy();
       playerRef.current = null;
       videoDataRef.current = null;
     };
-  }, [type, id, loadAndBuildTimeline]);
+  }, [type, id, loadVideo]);
 
   useEffect(() => {
     if (!accessToken || !playerRef.current) return;
     playerRef.current.setAuthentication(createAuthenticationConfig(accessToken));
   }, [accessToken]);
 
+  // Theme changes update styles in-place rather than destroying/recreating the
+  // timeline, which preserves segmentation lane state and marker selections.
   useEffect(() => {
-    const player = playerRef.current;
-    const video = videoDataRef.current;
-    if (!player || !video) return;
-
-    const snapshot = snapshotSegmentationLanes(segmentationLanesRef.current);
-
-    player.timeline?.destroy();
-    const destroy$ = swapTimelineDestroy();
-    createTimelineWithLanes({
-      video,
-      player,
-      mode,
-      destroy$,
-      onSegmentationLaneCreated: callbacksRef.current.onSegmentationLaneCreated,
-      onMarkerClick: callbacksRef.current.onMarkerClick,
-      segmentationSnapshot: snapshot,
-    });
-  }, [mode, swapTimelineDestroy]);
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    updateTimelineStyles(timeline, mode, textLabelsRef.current);
+  }, [mode]);
 
   const reloadWithTimerange = useCallback(
     (timerange: string) => {
       if (!type || !id) return;
-      const snapshot = snapshotSegmentationLanes(segmentationLanesRef.current);
       const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
-      loadAndBuildTimeline(tamsUrl, {
+      loadVideo(tamsUrl, {
         returnTamsMediaData: true,
         timerange,
-      }, snapshot);
+      });
     },
-    [type, id, loadAndBuildTimeline],
+    [type, id, loadVideo],
   );
 
-  return { playerRef, reloadWithTimerange };
+  return { playerRef, reloadWithTimerange, handleTimelineCreated };
 };
