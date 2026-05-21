@@ -433,7 +433,7 @@ export const createTimelineWithLanes = ({
           const first = segmentationLane
             .getMarkers()
             .find((m): m is PeriodMarker => m instanceof PeriodMarker);
-          if (first) onMarkerClick?.(first);
+          if (first) setTimeout(() => onMarkerClick?.(first));
         } else {
           const defaultMarker = addSegMarker(
             segmentationLane,
@@ -441,7 +441,7 @@ export const createTimelineWithLanes = ({
             player.video.getDuration(),
             true,
           );
-          onMarkerClick?.(defaultMarker);
+          setTimeout(() => onMarkerClick?.(defaultMarker));
         }
 
         wireOverlapGuard(segmentationLane);
