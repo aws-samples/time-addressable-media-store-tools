@@ -450,10 +450,11 @@ export const createTimelineWithLanes = ({
           segmentationSnapshot?.filter((s) => s.id !== segmentationLaneId) ??
           [];
 
-        customSnaps.forEach((snap) => {
+        customSnaps.forEach((snap, index) => {
+          const description = segmentationNameFor(index + 1);
           const customLane = new MarkerLane({
             id: snap.id,
-            description: snap.description,
+            description,
             style: THEME[mode].timelineLaneStyle,
           });
           timelineApi.addTimelineLane(customLane);
