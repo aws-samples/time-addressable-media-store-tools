@@ -492,6 +492,18 @@ def get_segments_hls(flowId: str):
             flow_segment_duration_float > 0
         ):  # Zero value would be where Flow does not have segment_duration specified
             manifest.target_duration = flow_segment_duration_float
+        else:
+            # Derive from actual segment durations (HLS spec requires this tag)
+            max_duration = max(
+                (
+                    TimeRange.from_str(s["timerange"]).length.to_unix_float()
+                    for s in segments
+                ),
+                default=10,
+            )
+            manifest.target_duration = int(max_duration) + (
+                1 if max_duration % 1 else 0
+            )
         if segments:
             first_segment_timestamp = TimeRange.from_str(segments[0]["timerange"])
             if flow_ingesting and flow_segment_duration_float > 0:
