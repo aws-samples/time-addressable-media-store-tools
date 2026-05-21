@@ -9,7 +9,7 @@ import {
   OmakaseMarkerListComponent,
   TimeRangeUtil,
   OmakasePlayerTimelineControlsToolbar,
-  OmakaseTimeRangePicker,
+  OmakaseTimeRangeSelectorComponent,
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
@@ -167,7 +167,7 @@ const OmakaseTamsPlayer = () => {
     ];
 
     const panel = document.querySelector(
-      ".omakase-tams-player .control-panel-wrapper > .control-panel:first-child",
+      ".omakase-tams-player .omakase-player-timeline-controls-toolbar > .omakase-player-timeline-controls-toolbar-control-panel:first-child",
     );
     if (!panel) return;
 
@@ -312,7 +312,7 @@ const OmakaseTamsPlayer = () => {
         <Box>
           <div id="omakase-video-container" />
           {timerange && maxTimerange && (
-            <OmakaseTimeRangePicker
+            <OmakaseTimeRangeSelectorComponent
               {...TIME_RANGE_PICKER_CONFIG}
               timeRange={timerange}
               maxTimeRange={maxTimerange}
@@ -326,7 +326,6 @@ const OmakaseTamsPlayer = () => {
           <OmakasePlayerTimelineControlsToolbar
             selectedMarker={selectedMarker}
             omakasePlayer={omakasePlayer}
-            markerListApi={sourceMarkerList}
             setSegmentationLanes={setSegmentationLanes}
             setSelectedMarker={setSelectedMarkerWithSync}
             onMarkerClickCallback={setSelectedMarkerWithSync}
