@@ -20,6 +20,7 @@ import type {
 } from "@byomakase/omakase-player";
 import type { Video } from "@byomakase/omakase-player/dist/video/model";
 import type { Flow } from "@/types/tams";
+import type { SegmentationLaneSnapshot } from "../types";
 
 type UseOmakasePlayerParams = {
   type: string | undefined;
@@ -85,7 +86,7 @@ export const useOmakasePlayer = ({
   }, []);
 
   const loadAndBuildTimeline = useCallback(
-    (tamsUrl: string, options: TamsVideoLoadOptions) => {
+    (tamsUrl: string, options: TamsVideoLoadOptions, segmentationSnapshot?: SegmentationLaneSnapshot[]) => {
       const player = playerRef.current;
       if (!player) return;
 
@@ -119,6 +120,7 @@ export const useOmakasePlayer = ({
             destroy$,
             onSegmentationLaneCreated: cb.onSegmentationLaneCreated,
             onMarkerClick: cb.onMarkerClick,
+            segmentationSnapshot,
           });
 
           cb.onPlayerReady?.(player);
@@ -187,11 +189,12 @@ export const useOmakasePlayer = ({
   const reloadWithTimerange = useCallback(
     (timerange: string) => {
       if (!type || !id) return;
+      const snapshot = snapshotSegmentationLanes(segmentationLanesRef.current);
       const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
       loadAndBuildTimeline(tamsUrl, {
         returnTamsMediaData: true,
         timerange,
-      });
+      }, snapshot);
     },
     [type, id, loadAndBuildTimeline],
   );
