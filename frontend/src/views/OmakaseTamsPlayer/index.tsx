@@ -217,7 +217,11 @@ const OmakaseTamsPlayer = () => {
       next[idx] = lane;
       return next;
     });
-    setCurrentSource((prev) => (!prev || prev.id === lane.id ? lane : prev));
+    setCurrentSource((prev) => {
+      if (!prev || prev.id === lane.id) return lane;
+      if (lane.id === "segmentation") return lane;
+      return prev;
+    });
   };
 
   const { reloadWithTimerange } = useOmakasePlayer({
