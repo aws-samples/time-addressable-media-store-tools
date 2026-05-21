@@ -36,11 +36,13 @@ const SourceCreateExportModal = ({
   };
 
   const validateTimerange = (value: string) => {
-    const timerangeRegex =
-      /^[[(]\d+:\d{1,9}_\d+:\d{1,9}[\])](,[[(]\d+:\d{1,9}_\d+:\d{1,9}[\])])*$/;
     if (!value) return "Timerange is required";
-    if (!timerangeRegex.test(value))
-      return "Invalid timerange format, must match [[(]d+:d{1,9}_d+:d{1,9}[])]";
+    const timerangeRegex =
+      /^(\[|\()?(-?(0|[1-9][0-9]*):(0|[1-9][0-9]{0,8}))?(_(-?(0|[1-9][0-9]*):(0|[1-9][0-9]{0,8}))?)?(]|\))?$/;
+    const isValid = value
+      .split(",")
+      .every((part) => part && timerangeRegex.test(part));
+    if (!isValid) return "Invalid timerange format";
     return "";
   };
 
@@ -58,7 +60,10 @@ const SourceCreateExportModal = ({
           onSubmit={handleCreateJob}
           submitText="Create"
           submitDisabled={
-            isStarting || !timeranges || !validateJson(jobSpec).isValid
+            isStarting ||
+            !timeranges ||
+            !!validateTimerange(timeranges) ||
+            !validateJson(jobSpec).isValid
           }
           submitLoading={isStarting}
           cancelDisabled={isStarting}
