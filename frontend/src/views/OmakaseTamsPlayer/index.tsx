@@ -60,6 +60,19 @@ const OmakaseTamsPlayer = () => {
     // delete) skip the lane/source sync — clearing doesn't need a tab switch
     // and the dispatch path doesn't have the new marker to look up.
     if (typeof action !== "function" && action) {
+      // If clicking the already-selected marker, deselect it
+      if (segmentationLanesRef.current.some(
+        (l) => l.getSelectedMarker()?.id === action.id
+      )) {
+        const owning = segmentationLanesRef.current.find((l) =>
+          l.getMarker(action.id),
+        );
+        if (owning?.getSelectedMarker()?.id === action.id) {
+          owning.toggleMarker(action.id);
+        }
+        setSelectedMarker(undefined);
+        return;
+      }
       const owning = segmentationLanesRef.current.find((l) =>
         l.getMarker(action.id),
       );
