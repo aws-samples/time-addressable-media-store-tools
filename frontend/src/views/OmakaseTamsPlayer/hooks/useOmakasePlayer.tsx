@@ -68,10 +68,12 @@ export const useOmakasePlayer = ({
   const callbacksRef = useRef(callbacks);
   const modeRef = useRef(mode);
   const segmentationLanesRef = useRef(segmentationLanes);
+  const accessTokenRef = useRef(accessToken);
   useEffect(() => {
     callbacksRef.current = callbacks;
     modeRef.current = mode;
     segmentationLanesRef.current = segmentationLanes;
+    accessTokenRef.current = accessToken;
   });
 
   const swapTimelineDestroy = useCallback(() => {
@@ -131,7 +133,7 @@ export const useOmakasePlayer = ({
   );
 
   useEffect(() => {
-    if (!accessToken || !type || !id) return;
+    if (!accessTokenRef.current || !type || !id) return;
 
     const player = new TamsPlayer({
       playerHTMLElementId: "omakase-video-container",
@@ -139,7 +141,7 @@ export const useOmakasePlayer = ({
     playerRef.current = player;
 
     player.setTamsEndpoint(AWS_TAMS_ENDPOINT);
-    player.setAuthentication(createAuthenticationConfig(accessToken));
+    player.setAuthentication(createAuthenticationConfig(accessTokenRef.current));
 
     const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
     loadAndBuildTimeline(tamsUrl, {
@@ -155,7 +157,12 @@ export const useOmakasePlayer = ({
       playerRef.current = null;
       videoDataRef.current = null;
     };
-  }, [type, id, accessToken, loadAndBuildTimeline]);
+  }, [type, id, loadAndBuildTimeline]);
+
+  useEffect(() => {
+    if (!accessToken || !playerRef.current) return;
+    playerRef.current.setAuthentication(createAuthenticationConfig(accessToken));
+  }, [accessToken]);
 
   useEffect(() => {
     const player = playerRef.current;
