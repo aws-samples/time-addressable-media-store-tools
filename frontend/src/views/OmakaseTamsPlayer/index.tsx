@@ -14,6 +14,7 @@ import {
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
+import { usePlayerHotkeys } from "./hooks/usePlayerHotkeys";
 import MarkerListHeader from "./components/MarkerListHeader";
 import { renumberSegmentationLanes } from "./utils";
 import type {
@@ -248,6 +249,8 @@ const OmakaseTamsPlayer = () => {
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
+
+  usePlayerHotkeys(omakasePlayer);
 
   const handleTimeRangePickerChange = (start: number, end: number) => {
     const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
