@@ -62,9 +62,11 @@ const OmakaseTamsPlayer = () => {
     // and the dispatch path doesn't have the new marker to look up.
     if (typeof action !== "function" && action) {
       // If clicking the already-selected marker, deselect it
-      if (segmentationLanesRef.current.some(
-        (l) => l.getSelectedMarker()?.id === action.id
-      )) {
+      if (
+        segmentationLanesRef.current.some(
+          (l) => l.getSelectedMarker()?.id === action.id,
+        )
+      ) {
         const owning = segmentationLanesRef.current.find((l) =>
           l.getMarker(action.id),
         );
