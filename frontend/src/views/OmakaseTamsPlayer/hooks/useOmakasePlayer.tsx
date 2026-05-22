@@ -105,7 +105,8 @@ export const useOmakasePlayer = ({
         player,
         mode: modeRef.current,
         destroy$,
-        onSegmentationLaneCreated: callbacksRef.current.onSegmentationLaneCreated,
+        onSegmentationLaneCreated:
+          callbacksRef.current.onSegmentationLaneCreated,
         onMarkerClick: callbacksRef.current.onMarkerClick,
       });
       textLabelsRef.current = labels;
@@ -171,7 +172,9 @@ export const useOmakasePlayer = ({
     playerRef.current = player;
 
     player.setTamsEndpoint(AWS_TAMS_ENDPOINT);
-    player.setAuthentication(createAuthenticationConfig(accessTokenRef.current));
+    player.setAuthentication(
+      createAuthenticationConfig(accessTokenRef.current),
+    );
 
     const tamsUrl = `${AWS_TAMS_ENDPOINT}/${type}/${id}`;
     loadVideo(tamsUrl, {
@@ -193,7 +196,9 @@ export const useOmakasePlayer = ({
 
   useEffect(() => {
     if (!accessToken || !playerRef.current) return;
-    playerRef.current.setAuthentication(createAuthenticationConfig(accessToken));
+    playerRef.current.setAuthentication(
+      createAuthenticationConfig(accessToken),
+    );
   }, [accessToken]);
 
   // Theme changes update styles in-place rather than destroying/recreating the
