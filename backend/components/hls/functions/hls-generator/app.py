@@ -514,7 +514,8 @@ def get_segments_hls(flowId: str):
             else:
                 manifest.media_sequence = 1
             manifest.program_date_time = f'{datetime.fromtimestamp(first_segment_timestamp.start.to_float()).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}+00:00'
-        manifest.playlist_type = "EVENT" if flow_ingesting else "VOD"
+        if not flow_ingesting:
+            manifest.playlist_type = "VOD"
         prev_ts_offset = None
         for segment in segments:
             presigned_urls = [
