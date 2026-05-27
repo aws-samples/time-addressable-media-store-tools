@@ -15,6 +15,7 @@ export const useLambdaPresignedUrl = (type: string, id: Uuid) => {
         }
       : null,
     getLambdaPresignedUrl,
+    { revalidateOnFocus: false },
   );
 
   return {
