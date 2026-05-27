@@ -7,12 +7,14 @@ import { useAuth } from "react-oidc-context";
 import { Box, Grid } from "@cloudscape-design/components";
 import {
   OmakaseMarkerListComponent,
+  OmakasePlayerTimelineComponent,
   TimeRangeUtil,
   OmakasePlayerTimelineControlsToolbar,
-  OmakaseTimeRangePicker,
+  OmakaseTimeRangeSelectorComponent,
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
+import { usePlayerHotkeys } from "./hooks/usePlayerHotkeys";
 import MarkerListHeader from "./components/MarkerListHeader";
 import { renumberSegmentationLanes } from "./utils";
 import type {
@@ -60,6 +62,21 @@ const OmakaseTamsPlayer = () => {
     // delete) skip the lane/source sync — clearing doesn't need a tab switch
     // and the dispatch path doesn't have the new marker to look up.
     if (typeof action !== "function" && action) {
+      // If clicking the already-selected marker, deselect it
+      if (
+        segmentationLanesRef.current.some(
+          (l) => l.getSelectedMarker()?.id === action.id,
+        )
+      ) {
+        const owning = segmentationLanesRef.current.find((l) =>
+          l.getMarker(action.id),
+        );
+        if (owning?.getSelectedMarker()?.id === action.id) {
+          owning.toggleMarker(action.id);
+        }
+        setSelectedMarker(undefined);
+        return;
+      }
       const owning = segmentationLanesRef.current.find((l) =>
         l.getMarker(action.id),
       );
@@ -154,7 +171,7 @@ const OmakaseTamsPlayer = () => {
     ];
 
     const panel = document.querySelector(
-      ".omakase-tams-player .control-panel-wrapper > .control-panel:first-child",
+      ".omakase-tams-player .omakase-player-timeline-controls-toolbar > .omakase-player-timeline-controls-toolbar-control-panel:first-child",
     );
     if (!panel) return;
 
@@ -176,6 +193,14 @@ const OmakaseTamsPlayer = () => {
       },
       TIMELINE_LANE_STYLE: THEME[mode].timelineLaneStyle,
       MARKER_LANE_TEXT_LABEL_STYLE: THEME[mode].markerLaneTextLabelStyle,
+    }),
+    [mode],
+  );
+
+  const timelineConfig = useMemo(
+    () => ({
+      timelineHTMLElementId: "omakase-timeline",
+      style: THEME[mode].timelineStyle,
     }),
     [mode],
   );
@@ -204,15 +229,18 @@ const OmakaseTamsPlayer = () => {
       next[idx] = lane;
       return next;
     });
-    setCurrentSource((prev) => (!prev || prev.id === lane.id ? lane : prev));
+    setCurrentSource((prev) => {
+      if (!prev || prev.id === lane.id) return lane;
+      if (lane.id === "segmentation") return lane;
+      return prev;
+    });
   };
 
-  const { reloadWithTimerange } = useOmakasePlayer({
+  const { reloadWithTimerange, handleTimelineCreated } = useOmakasePlayer({
     type,
     id,
     accessToken: auth.user?.access_token,
     mode,
-    segmentationLanes,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
@@ -221,6 +249,8 @@ const OmakaseTamsPlayer = () => {
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
+
+  usePlayerHotkeys(omakasePlayer);
 
   const handleTimeRangePickerChange = (start: number, end: number) => {
     const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
@@ -295,7 +325,7 @@ const OmakaseTamsPlayer = () => {
         <Box>
           <div id="omakase-video-container" />
           {timerange && maxTimerange && (
-            <OmakaseTimeRangePicker
+            <OmakaseTimeRangeSelectorComponent
               {...TIME_RANGE_PICKER_CONFIG}
               timeRange={timerange}
               maxTimeRange={maxTimerange}
@@ -309,7 +339,6 @@ const OmakaseTamsPlayer = () => {
           <OmakasePlayerTimelineControlsToolbar
             selectedMarker={selectedMarker}
             omakasePlayer={omakasePlayer}
-            markerListApi={sourceMarkerList}
             setSegmentationLanes={setSegmentationLanes}
             setSelectedMarker={setSelectedMarkerWithSync}
             onMarkerClickCallback={setSelectedMarkerWithSync}
@@ -321,7 +350,14 @@ const OmakaseTamsPlayer = () => {
           />
         )}
       </Box>
-      <div id="omakase-timeline" />
+      {omakasePlayer && (
+        <OmakasePlayerTimelineComponent
+          omakasePlayer={omakasePlayer}
+          timelineConfig={timelineConfig}
+          onTimelineCreatedCallback={handleTimelineCreated}
+          enableHotKeys={true}
+        />
+      )}
     </div>
   );
 };

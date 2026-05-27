@@ -34,14 +34,18 @@ import {
   TextLabel,
 } from "@byomakase/omakase-player";
 import { Mode } from "@cloudscape-design/global-styles";
+import { mergeVttManifest } from "./vtt-util";
+import type {
+  PeriodMarkerStyle,
+  TimelineApi,
+  TimelineStyle,
+} from "@byomakase/omakase-player";
 import { type Observable, takeUntil } from "rxjs";
 import type { OmakaseTamsPlayer as TamsPlayer } from "@byomakase/omakase-tams-player";
 import type { TamsVideo } from "@byomakase/omakase-tams-player";
 import type { Video } from "@byomakase/omakase-player/dist/video/model";
-import type { SegmentationLaneSnapshot } from "./types";
-import { mergeVttManifest } from "./vtt-util";
 
-const makeColorCycler = (colors: string[]) => {
+export const makeColorCycler = (colors: string[]) => {
   let i = 0;
   return () => colors[i++ % colors.length];
 };
@@ -116,6 +120,7 @@ const segmentToMarker = (
   });
 };
 
+const isMuxedFlow = (f: Flow) => f.format === "urn:x-nmos:format:multi"; // Multi flows are only muxed when they have segments (pre-filtered by flowsWithSegments)
 const isVideoFlow = (f: Flow) => f.format === "urn:x-nmos:format:video";
 const isAudioFlow = (f: Flow) => f.format === "urn:x-nmos:format:audio";
 const isSubtitleFlow = (f: Flow) =>
@@ -264,7 +269,7 @@ const addLaneLabel = (
   lane: MarkerLane | SubtitlesLane,
   text: string,
   mode: Mode,
-) => {
+): TextLabel => {
   const label = new TextLabel({
     text,
     style: THEME[mode].markerLaneTextLabelStyle,
@@ -274,6 +279,7 @@ const addLaneLabel = (
     justify: "end",
     ...LANE_LABEL_CONFIG,
   });
+  return label;
 };
 
 const computeMaxTimerangeFromFlows = (flows: Flow[]): string | null => {
@@ -311,268 +317,250 @@ export const renumberSegmentationLanes = (lanes: MarkerLane[]) => {
   });
 };
 
-export const snapshotSegmentationLanes = (
-  lanes: MarkerLane[],
-): SegmentationLaneSnapshot[] =>
-  lanes.map((lane) => ({
-    id: lane.id,
-    description: lane.description,
-    markers: lane
-      .getMarkers()
-      .filter((m): m is PeriodMarker => m instanceof PeriodMarker)
-      .filter(
-        (m) => m.timeObservation.start != null && m.timeObservation.end != null,
-      )
-      .map((m) => ({
-        start: m.timeObservation.start as number,
-        end: m.timeObservation.end as number,
-        editable: m.editable,
-      })),
-  }));
+// Removes segment visualization lanes but preserves segmentation lanes,
+// which hold user-created markers that must persist across timerange reloads.
+export const removeVisualizationLanes = (timeline: TimelineApi) => {
+  const ids = timeline
+    .getTimelineLanes()
+    .filter(
+      (lane) =>
+        lane.id.startsWith("marker-lane-") ||
+        lane.id.startsWith("subtitles-lane-") ||
+        lane.id === "thumbnail-lane",
+    )
+    .map((lane) => lane.id);
+  if (ids.length) timeline.removeTimelineLanes(ids);
+};
 
-export const createTimelineWithLanes = ({
+export const buildLanesOnTimeline = ({
+  timeline,
   video,
   player,
   mode,
   destroy$,
-  segmentationSnapshot,
   onSegmentationLaneCreated,
   onMarkerClick,
 }: {
+  timeline: TimelineApi;
   video: TamsVideo | Video;
   player: TamsPlayer;
   mode: Mode;
   destroy$: Observable<void>;
-  segmentationSnapshot?: SegmentationLaneSnapshot[];
   onSegmentationLaneCreated?: (lane: MarkerLane) => void;
   onMarkerClick?: (marker: Marker) => void;
-}) => {
-  player
-    .createTimeline({
-      timelineHTMLElementId: "omakase-timeline",
-      style: THEME[mode].timelineStyle,
-    })
-    .subscribe({
-      next: (timelineApi) => {
-        timelineApi.getScrubberLane().style = THEME[mode].scrubberLaneStyle;
+}): Map<string, TextLabel> => {
+  const textLabels = new Map<string, TextLabel>();
 
-        // Create segmentation marker lane
-        const segmentationLaneId = "segmentation";
-        const segmentationLane = new MarkerLane({
-          id: segmentationLaneId,
-          description: segmentationNameFor(0),
-          style: THEME[mode].timelineLaneStyle,
-        });
-        timelineApi.addTimelineLane(segmentationLane);
+  timeline.getScrubberLane().style = THEME[mode].scrubberLaneStyle;
 
-        // Helper function to check if marker overlaps with other markers
-        const checkMarkerOverlap = (
-          lane: MarkerLane,
-          checkedMarker: PeriodMarker,
-        ): boolean =>
-          lane.getMarkers().some((m) => {
-            if (m.id === checkedMarker.id) return false;
-            if (!(m instanceof PeriodMarker)) return false;
-            const aS = m.timeObservation.start;
-            const aE = m.timeObservation.end;
-            const bS = checkedMarker.timeObservation.start;
-            const bE = checkedMarker.timeObservation.end;
-            if (aS == null || aE == null || bS == null || bE == null) {
-              return false;
-            }
-            return bS < aE && bE > aS;
-          });
+  // Create segmentation marker lane (only on first call — if it already exists, skip)
+  const segmentationLaneId = "segmentation";
+  let segmentationLane =
+    timeline.getTimelineLane<MarkerLane>(segmentationLaneId);
+  const isFirstBuild = !segmentationLane;
 
-        const segMarkerColor = THEME[mode].colors.segmentationMarker;
+  if (isFirstBuild) {
+    segmentationLane = new MarkerLane({
+      id: segmentationLaneId,
+      description: segmentationNameFor(0),
+      style: THEME[mode].timelineLaneStyle,
+    });
+    timeline.addTimelineLane(segmentationLane);
 
-        const addSegMarker = (
-          lane: MarkerLane,
-          start: number,
-          end: number,
-          editable: boolean,
-        ) => {
-          const marker = new PeriodMarker({
-            timeObservation: { start, end },
-            editable,
-            style: {
-              ...SEGMENTATION_PERIOD_MARKER_STYLE,
-              color: segMarkerColor,
-            },
-          });
-          marker.onClick$
-            .pipe(takeUntil(destroy$))
-            .subscribe({ next: () => onMarkerClick?.(marker) });
-          lane.addMarker(marker);
-          return marker;
-        };
-
-        const wireOverlapGuard = (lane: MarkerLane) => {
-          lane.onMarkerUpdate$.pipe(takeUntil(destroy$)).subscribe({
-            next: (markerUpdateEvent) => {
-              if (
-                checkMarkerOverlap(
-                  lane,
-                  markerUpdateEvent.marker as PeriodMarker,
-                )
-              ) {
-                markerUpdateEvent.marker.timeObservation =
-                  markerUpdateEvent.oldValue.timeObservation;
-              }
-            },
-          });
-        };
-
-        const defaultSnap = segmentationSnapshot?.find(
-          (s) => s.id === segmentationLaneId,
-        );
-
-        if (defaultSnap && defaultSnap.markers.length > 0) {
-          defaultSnap.markers.forEach((m) => {
-            addSegMarker(segmentationLane, m.start, m.end, m.editable);
-          });
-          const first = segmentationLane
-            .getMarkers()
-            .find((m): m is PeriodMarker => m instanceof PeriodMarker);
-          if (first) onMarkerClick?.(first);
-        } else {
-          const defaultMarker = addSegMarker(
-            segmentationLane,
-            0,
-            player.video.getDuration(),
-            true,
-          );
-          onMarkerClick?.(defaultMarker);
+    const checkMarkerOverlap = (
+      lane: MarkerLane,
+      checkedMarker: PeriodMarker,
+    ): boolean =>
+      lane.getMarkers().some((m) => {
+        if (m.id === checkedMarker.id) return false;
+        if (!(m instanceof PeriodMarker)) return false;
+        const aS = m.timeObservation.start;
+        const aE = m.timeObservation.end;
+        const bS = checkedMarker.timeObservation.start;
+        const bE = checkedMarker.timeObservation.end;
+        if (aS == null || aE == null || bS == null || bE == null) {
+          return false;
         }
+        return bS < aE && bE > aS;
+      });
 
-        wireOverlapGuard(segmentationLane);
+    const segMarkerColor = THEME[mode].colors.segmentationMarker;
 
-        const customSnaps =
-          segmentationSnapshot?.filter((s) => s.id !== segmentationLaneId) ??
-          [];
-
-        customSnaps.forEach((snap) => {
-          const customLane = new MarkerLane({
-            id: snap.id,
-            description: snap.description,
-            style: THEME[mode].timelineLaneStyle,
-          });
-          timelineApi.addTimelineLane(customLane);
-          wireOverlapGuard(customLane);
-          snap.markers.forEach((m) => {
-            addSegMarker(customLane, m.start, m.end, m.editable);
-          });
-          onSegmentationLaneCreated?.(customLane);
-        });
-
-        // Add thumbnail lane if available (only on TamsVideo)
-        if ("thumbnailVttTrackUrl" in video && video.thumbnailVttTrackUrl) {
-          const thumbnailLane = new ThumbnailLane({
-            description: "Thumbnails",
-            vttUrl: video.thumbnailVttTrackUrl,
-            style: THEME[mode].thumbnailLaneStyle,
-          });
-          timelineApi.addTimelineLane(thumbnailLane);
-
-          // Load thumbnail VTT file for marker list
-          player.timeline!.loadThumbnailVttFileFromUrl(
-            video.thumbnailVttTrackUrl,
-          );
-        }
-
-        // Add segment visualization lanes for any flow that has segments
-        if ("tamsMediaData" in video && video.tamsMediaData?.flowsSegments) {
-          const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
-          const primaryFlow = video.tamsMediaData.flow;
-          const subflows = [...(video.tamsMediaData.subflows ?? [])]
-            .sort((a, b) => (a.avg_bit_rate || 0) - (b.avg_bit_rate || 0))
-            .reverse();
-          const flowsWithSegments = [primaryFlow, ...subflows].filter(
-            (f) => !!f && !!flowsSegmentsMap.get(f.id)?.length,
-          );
-
-          const sortedFlows = [...flowsWithSegments].sort(flowFormatSorting);
-          const mediaStartTime = video.mediaStartTime;
-          const videoDuration = player.video.getDuration();
-
-          sortedFlows.forEach((flow: Flow) => {
-            if (
-              !isVideoFlow(flow) &&
-              !isAudioFlow(flow) &&
-              !isSubtitleFlow(flow)
-            ) {
-              return;
-            }
-
-            const segments = flowsSegmentsMap.get(flow.id)!;
-            const label = flow.description || flow.label || `Flow ${flow.id}`;
-            const textUrl =
-              isSubtitleFlow(flow) && "textUrls" in video
-                ? video.textUrls?.get(flow.id)
-                : undefined;
-
-            if (textUrl) {
-              const subtitlesLaneId = `subtitles-lane-${flow.id}`;
-              const subtitlesLane = new SubtitlesLane({
-                id: subtitlesLaneId,
-                style: THEME[mode].subtitlesLaneStyle,
-              });
-              timelineApi.addTimelineLane(subtitlesLane);
-              addLaneLabel(subtitlesLane, label, mode);
-
-              const markerLane = new MarkerLane({
-                id: `marker-lane-${flow.id}`,
-                style: THEME[mode].timelineLaneStyle,
-                minimized: true,
-              });
-              timelineApi.addTimelineLane(markerLane);
-
-              addSegmentMarkersToLane(
-                markerLane,
-                segments,
-                mediaStartTime,
-                videoDuration,
-                mode,
-              );
-              loadAndRegisterSubtitles(subtitlesLane, player, textUrl);
-              addSubtitleLaneControls(
-                subtitlesLane,
-                markerLane,
-                player,
-                flow,
-                destroy$,
-              );
-              return;
-            }
-
-            const markerLane = new MarkerLane({
-              id: `marker-lane-${flow.id}`,
-              style: THEME[mode].timelineLaneStyle,
-            });
-            timelineApi.addTimelineLane(markerLane);
-            addLaneLabel(markerLane, label, mode);
-
-            addSegmentMarkersToLane(
-              markerLane,
-              segments,
-              mediaStartTime,
-              videoDuration,
-              mode,
-            );
-            if (isAudioFlow(flow)) {
-              addAudioLaneControls(markerLane, flow, player, destroy$);
-            }
-          });
-        }
-
-        // Notify callback of segmentation lane creation
-        if (onSegmentationLaneCreated) {
-          onSegmentationLaneCreated(segmentationLane);
-        }
-      },
-      error: (err) => {
-        console.error("Error creating timeline:", err);
+    const defaultMarker = new PeriodMarker({
+      timeObservation: { start: 0, end: player.video.getDuration() },
+      editable: true,
+      style: {
+        ...SEGMENTATION_PERIOD_MARKER_STYLE,
+        color: segMarkerColor,
       },
     });
+    defaultMarker.onClick$
+      .pipe(takeUntil(destroy$))
+      .subscribe({ next: () => onMarkerClick?.(defaultMarker) });
+    segmentationLane.addMarker(defaultMarker);
+
+    // Revert marker edits that would overlap another marker — the library
+    // doesn't enforce non-overlap constraints natively.
+    segmentationLane.onMarkerUpdate$.pipe(takeUntil(destroy$)).subscribe({
+      next: (markerUpdateEvent) => {
+        if (
+          checkMarkerOverlap(
+            segmentationLane!,
+            markerUpdateEvent.marker as PeriodMarker,
+          )
+        ) {
+          markerUpdateEvent.marker.timeObservation =
+            markerUpdateEvent.oldValue.timeObservation;
+        }
+      },
+    });
+
+    setTimeout(() => onMarkerClick?.(defaultMarker));
+    onSegmentationLaneCreated?.(segmentationLane);
+  }
+
+  // Add thumbnail lane if available (only on TamsVideo)
+  if ("thumbnailVttTrackUrl" in video && video.thumbnailVttTrackUrl) {
+    const thumbnailLane = new ThumbnailLane({
+      id: "thumbnail-lane",
+      description: "Thumbnails",
+      vttUrl: video.thumbnailVttTrackUrl,
+      style: THEME[mode].thumbnailLaneStyle,
+    });
+    timeline.addTimelineLane(thumbnailLane);
+    timeline.loadThumbnailVttFileFromUrl(video.thumbnailVttTrackUrl);
+  }
+
+  // Add segment visualization lanes for any flow that has segments
+  if ("tamsMediaData" in video && video.tamsMediaData?.flowsSegments) {
+    const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
+    const primaryFlow = video.tamsMediaData.flow;
+    const subflows = [...(video.tamsMediaData.subflows ?? [])]
+      .sort((a, b) => (a.avg_bit_rate || 0) - (b.avg_bit_rate || 0))
+      .reverse();
+    const flowsWithSegments = [primaryFlow, ...subflows].filter(
+      (f) => !!f && !!flowsSegmentsMap.get(f.id)?.length,
+    );
+
+    const sortedFlows = [...flowsWithSegments].sort(flowFormatSorting);
+    const mediaStartTime = video.mediaStartTime;
+    const videoDuration = player.video.getDuration();
+
+    sortedFlows.forEach((flow: Flow) => {
+      if (
+        !isVideoFlow(flow) &&
+        !isAudioFlow(flow) &&
+        !isSubtitleFlow(flow) &&
+        !isMuxedFlow(flow)
+      ) {
+        return;
+      }
+
+      const segments = flowsSegmentsMap.get(flow.id)!;
+      const label = flow.description || flow.label || `Flow ${flow.id}`;
+      const textUrl =
+        isSubtitleFlow(flow) && "textUrls" in video
+          ? video.textUrls?.get(flow.id)
+          : undefined;
+
+      if (textUrl) {
+        const subtitlesLaneId = `subtitles-lane-${flow.id}`;
+        const subtitlesLane = new SubtitlesLane({
+          id: subtitlesLaneId,
+          style: THEME[mode].subtitlesLaneStyle,
+        });
+        timeline.addTimelineLane(subtitlesLane);
+        const laneLabel = addLaneLabel(subtitlesLane, label, mode);
+        textLabels.set(subtitlesLaneId, laneLabel);
+
+        const markerLane = new MarkerLane({
+          id: `marker-lane-${flow.id}`,
+          style: THEME[mode].timelineLaneStyle,
+          minimized: true,
+        });
+        timeline.addTimelineLane(markerLane);
+
+        addSegmentMarkersToLane(
+          markerLane,
+          segments,
+          mediaStartTime,
+          videoDuration,
+          mode,
+        );
+        loadAndRegisterSubtitles(subtitlesLane, player, textUrl);
+        addSubtitleLaneControls(
+          subtitlesLane,
+          markerLane,
+          player,
+          flow,
+          destroy$,
+        );
+        return;
+      }
+
+      const markerLane = new MarkerLane({
+        id: `marker-lane-${flow.id}`,
+        style: THEME[mode].timelineLaneStyle,
+      });
+      timeline.addTimelineLane(markerLane);
+      const laneLabel = addLaneLabel(markerLane, label, mode);
+      textLabels.set(markerLane.id, laneLabel);
+
+      addSegmentMarkersToLane(
+        markerLane,
+        segments,
+        mediaStartTime,
+        videoDuration,
+        mode,
+      );
+      if (isAudioFlow(flow)) {
+        addAudioLaneControls(markerLane, flow, player, destroy$);
+      }
+    });
+  }
+
+  return textLabels;
+};
+
+export const updateTimelineStyles = (
+  timeline: TimelineApi,
+  mode: Mode,
+  textLabels: Map<string, TextLabel>,
+) => {
+  timeline.style = THEME[mode].timelineStyle as TimelineStyle;
+  timeline.getScrubberLane().style = THEME[mode].scrubberLaneStyle;
+
+  for (const lane of timeline.getTimelineLanes()) {
+    if (lane instanceof ThumbnailLane) {
+      lane.style = THEME[mode].thumbnailLaneStyle;
+    } else if (lane instanceof SubtitlesLane) {
+      lane.style = THEME[mode].subtitlesLaneStyle;
+    } else if (lane instanceof MarkerLane) {
+      lane.style = THEME[mode].timelineLaneStyle;
+
+      if (lane.id === "segmentation" || !lane.id.startsWith("marker-lane-")) {
+        const segColor = THEME[mode].colors.segmentationMarker;
+        for (const marker of lane.getMarkers()) {
+          marker.style = {
+            ...SEGMENTATION_PERIOD_MARKER_STYLE,
+            color: segColor,
+          } as PeriodMarkerStyle;
+        }
+      } else {
+        const nextColor = makeColorCycler(THEME[mode].markerColors);
+        for (const marker of lane.getMarkers()) {
+          marker.style = {
+            ...SEGMENT_PERIOD_MARKER_STYLE,
+            color: nextColor(),
+          } as PeriodMarkerStyle;
+        }
+      }
+    }
+  }
+
+  for (const label of textLabels.values()) {
+    label.style = THEME[mode].markerLaneTextLabelStyle;
+  }
 };
 
 export const calculateTimerangeFromVideo = (
