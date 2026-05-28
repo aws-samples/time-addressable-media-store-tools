@@ -3,6 +3,7 @@ import { Box, Alert } from "@cloudscape-design/components";
 import VideoJS from "./components/VideoJS";
 import { useParams } from "react-router-dom";
 import { useLambdaPresignedUrl } from "@/hooks/useLambdaPresignedUrl";
+import "./hlsjsSourceHandler";
 import type videojs from "video.js";
 import type { Uuid } from "@/types/tams";
 
@@ -19,11 +20,7 @@ export const HlsPlayer = () => {
       controls: true,
       responsive: true,
       fluid: true,
-      html5: {
-        vhs: {
-          overrideNative: true,
-        },
-      },
+      bigPlayButton: false,
       sources: [
         {
           src: url!,
