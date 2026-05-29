@@ -53,17 +53,29 @@ flowchart LR
 - Interactive and non-interactive (scripted) modes
 - Immediate playback availability during upload (flow visible with "ingesting" status)
 
+## Supported Platforms
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **macOS** (Intel/Apple Silicon) | Fully supported | Primary development platform |
+| **Linux** (Ubuntu, Amazon Linux, RHEL) | Fully supported | All dependencies available via package managers |
+| **Windows + WSL2** | Supported | Run inside WSL2 with Ubuntu; native Windows (cmd/PowerShell) is not supported |
+| **Windows** (native) | Not supported | Bash script requires a Unix shell environment |
+
+> **Note:** The script requires a POSIX-compatible shell (bash 3.2+) and a terminal that supports ANSI escape codes and UTF-8 for the progress bar and spinner display.
+
 ## Prerequisites
 
 The following tools must be installed and available on your PATH:
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| `ffmpeg` | 4.x+ | Media segmentation (HLS muxer) |
-| `ffprobe` | 4.x+ | Media analysis |
-| `aws` | 2.x | AWS CLI for CloudFormation queries and Cognito auth |
-| `curl` | 7.x+ | HTTP requests to TAMS API and S3 |
-| `python3` | 3.8+ | UUID generation and JSON parsing |
+| Tool | Version | Purpose | Install |
+|------|---------|---------|---------|
+| `bash` | 3.2+ | Shell runtime | Pre-installed on macOS/Linux |
+| `ffmpeg` | 4.x+ | Media segmentation (HLS muxer) | `brew install ffmpeg` / `apt install ffmpeg` |
+| `ffprobe` | 4.x+ | Media analysis | Included with ffmpeg |
+| `aws` | 2.x | AWS CLI for CloudFormation queries and Cognito auth | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
+| `curl` | 7.x+ | HTTP requests to TAMS API and S3 | Pre-installed on macOS/Linux |
+| `python3` | 3.8+ | UUID generation and JSON parsing | Pre-installed on macOS/Linux |
 
 ### AWS Requirements
 
@@ -84,12 +96,27 @@ The following tools must be installed and available on your PATH:
 
 ## Configuration
 
-The tool reads configuration from environment variables with sensible defaults:
+### Automatic discovery via CloudFormation
+
+The tool requires a deployed [TAMS API](https://github.com/awslabs/time-addressable-media-store) stack as a dependency. At runtime, it automatically discovers all connection parameters by querying the stack's CloudFormation outputs — no manual endpoint configuration is needed.
+
+The following values are retrieved automatically from the TAMS API stack outputs:
+
+| CloudFormation Output | Used For |
+|-----------------------|----------|
+| `ApiEndpoint` | TAMS API base URL for all REST calls |
+| `UserPoolId` | Cognito User Pool for client secret lookup |
+| `UserPoolClientId` | Cognito app client ID for authentication |
+| `TokenUrl` | Cognito token endpoint for client credentials grant |
+
+The tool then fetches the `ClientSecret` from Cognito using `describe-user-pool-client` and exchanges it for a short-lived Bearer token. This means the only configuration required from the operator is the stack name and region:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TAMS_REGION` | `ap-southeast-2` | AWS region where TAMS is deployed |
-| `TAMS_STACK_NAME` | `tams-api` | CloudFormation stack name for the TAMS API |
+| `TAMS_REGION` | `ap-southeast-2` | AWS region where the TAMS API stack is deployed |
+| `TAMS_STACK_NAME` | `tams-api` | CloudFormation stack name used when deploying the [TAMS API](https://github.com/awslabs/time-addressable-media-store) |
+
+> **Dependency:** The TAMS API must be deployed before using this tool. Follow the deployment instructions at https://github.com/awslabs/time-addressable-media-store to set up the API stack.
 
 ## Usage
 
