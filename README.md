@@ -214,6 +214,21 @@ This will deploy the Loop Recorder functionality to the solution. The Loop Recor
 
 - `VITE_APP_AWS_LOOP_RECORDER_ARN` = **TAMS Tools stack** output `LoopRecorderArn`
 
+#### Uploader (CLI Tool)
+
+A standalone command-line tool for uploading local media files (MP4, MOV) to TAMS. It segments media using ffmpeg, uploads each segment to S3, and registers them with the TAMS API. Large files can begin playback and clipping within seconds as segments are uploaded progressively.
+
+This component does not require SAM deployment — it runs locally and authenticates directly with the TAMS API stack.
+
+**Prerequisites:** `ffmpeg`, `ffprobe`, `aws` CLI, `curl`, `python3`
+
+```bash
+cd backend/components/uploader
+./tams-upload.sh /path/to/media-file.mp4
+```
+
+See [backend/components/uploader/README.md](backend/components/uploader/README.md) for full usage documentation.
+
 ## SSM Parameters Configuration
 
 TAMS Tools uses AWS Systems Manager (SSM) parameters for runtime configuration that can be modified post-deployment without requiring CloudFormation updates. These parameters allow you to customize the behavior and capabilities of different components.
