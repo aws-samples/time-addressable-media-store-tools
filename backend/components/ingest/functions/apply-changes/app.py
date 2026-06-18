@@ -30,6 +30,7 @@ def apply_changes(flow: dict, changes: dict, source_id: str) -> dict:
                 current[path_parts[-1]] = value
             else:
                 new_flow[key] = value
+    new_flow["generation"] = new_flow.get("generation", 0) + 1
     return new_flow
 
 
