@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Table } from "@cloudscape-design/components";
 import { useCollection } from "@cloudscape-design/collection-hooks";
-import type { FlowCollection, CollectionItem } from "@/types/tams";
+import type { FlowCollection } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
 };
 
 const Collection = ({ entityType, collection }: Props) => {
-  const columnDefinitions: TableProps.ColumnDefinition<CollectionItem>[] = [
+  const columnDefinitions: TableProps.ColumnDefinition<FlowCollection[number]>[] = [
     {
       id: "id",
       header: "Id",
@@ -25,6 +25,15 @@ const Collection = ({ entityType, collection }: Props) => {
       sortingField: "role",
     },
   ];
+
+  if (entityType === "flows") {
+    columnDefinitions.push({
+      id: "container_mapping",
+      header: "Container mapping",
+      cell: (item) =>
+        item.container_mapping ? JSON.stringify(item.container_mapping) : "",
+    });
+  }
 
   const { items, collectionProps } = useCollection(collection ?? [], {
     sorting: {},
