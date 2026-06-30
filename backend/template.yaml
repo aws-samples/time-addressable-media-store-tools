@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 AWSTemplateFormatVersion: "2010-09-09"
 
 Metadata:
@@ -646,3 +647,661 @@ Outputs:
 
   SolutionVersion:
     Value: !FindInMap [Solution, Constants, Version]
+=======
+AWSTemplateFormatVersion: "2010-09-09"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Components
+        Parameters:
+          - DeployHlsApi
+          - DeployIngestHls
+          - DeployIngestFfmpeg
+          - DeployReplication
+          - DeployLoopRecorder
+      - Label:
+          default: Configuration
+        Parameters:
+          - ApiStackName
+      - Label:
+          default: "[Optional] OIDC Details"
+        Parameters:
+          - OidcUrl
+          - OidcClientId
+      - Label:
+          default: "[Optional] OAuth Details"
+        Parameters:
+          - OAuthClientId
+          - OAuthClientSecret
+          - OAuthAuthorizationEndpoint
+    ParameterLabels:
+      ApiStackName:
+        default: The name of the CloudFormation stack that Deployed the TAMS API
+      DeployHlsApi:
+        default: Deploy HLS Endpoint?
+      DeployIngestHls:
+        default: Deploy HLS ingest?
+      DeployIngestFfmpeg:
+        default: Deploy Ffmpeg ingest?
+      DeployReplication:
+        default: Deploy Replication?
+      DeployLoopRecorder:
+        default: Deploy Loop Recorder?
+      OidcUrl:
+        default: "The OIDC Provider Url. Leave blank if using Cognito"
+      OidcClientId:
+        default: "The OIDC Provider Client Id. Leave blank if using Cognito"
+      OAuthClientId:
+        default: "The OAuth Provider Client Id. Leave blank if using Cognito"
+      OAuthClientSecret:
+        default: "The OAuth Provider Client Secret. Leave blank if using Cognito"
+      OAuthAuthorizationEndpoint:
+        default: "The OAuth Provider Token Url. Leave blank if using Cognito"
+
+Parameters:
+  ApiStackName:
+    Type: String
+
+  OidcUrl:
+    Type: String
+    Default: ""
+
+  OidcClientId:
+    Type: String
+    Default: ""
+
+  OAuthClientId:
+    Type: String
+    Default: ""
+
+  OAuthClientSecret:
+    Type: String
+    Default: "-"
+    NoEcho: True
+
+  OAuthAuthorizationEndpoint:
+    Type: String
+    Default: ""
+
+  DeployHlsApi:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  DeployIngestHls:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  DeployIngestFfmpeg:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  DeployReplication:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  DeployLoopRecorder:
+    Type: String
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+Mappings:
+  Solution:
+    Constants:
+      Version: "4.2.1"
+
+Conditions:
+  UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, "-"], !Equals [!Ref OAuthAuthorizationEndpoint, ""] ]
+
+  DeployHlsApi: !Equals [!Ref DeployHlsApi, "Yes"]
+
+  DeployIngestHls: !Equals [!Ref DeployIngestHls, "Yes"]
+
+  DeployIngestFfmpeg: !Equals [!Ref DeployIngestFfmpeg, "Yes"]
+
+  DeployReplication: !Equals [!Ref DeployReplication, "Yes"]
+
+  DeployLoopRecorder: !Equals [!Ref DeployLoopRecorder, "Yes"]
+
+  DeployHls: !Or [!Condition DeployHlsApi, !Condition DeployIngestHls]
+
+  DeployIngest: !Or [!Condition DeployIngestHls, !Condition DeployIngestFfmpeg, !Condition DeployReplication]
+
+Transform:
+  - AWS::LanguageExtensions
+
+  - AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 30
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.14
+    Architectures:
+      - arm64
+
+Resources:
+  OpenIdAuthLayer:
+    Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: python3.14
+      BuildArchitecture: arm64
+    Properties:
+      LayerName: !Sub
+        - ${AWS::StackName}-OpenIdAuthLayer-${id}
+        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
+      RetentionPolicy: Delete
+      ContentUri: layers/openid-auth
+      CompatibleRuntimes:
+        - python3.14
+      CompatibleArchitectures:
+        - arm64
+
+  CustomResourceFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 30
+      MemorySize: 128
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      CodeUri: functions/custom_resource/
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:DescribeUserPoolClient
+              Resource:
+                - !Sub
+                  - arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}
+                  - UserPoolId: !ImportValue
+                      Fn::Sub: ${ApiStackName}-UserPoolId
+    Condition: UsingCognito
+
+  GetClientSecret:
+    Type: Custom::ClientSecret
+    Properties:
+      ServiceToken: !GetAtt CustomResourceFunction.Arn
+      ServiceTimeout: 30
+      UserPoolId: !ImportValue
+        Fn::Sub: ${ApiStackName}-UserPoolId
+      ClientId: !ImportValue
+        Fn::Sub: ${ApiStackName}-UserPoolClientId
+    Condition: UsingCognito
+
+  TamsConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      AuthorizationType: OAUTH_CLIENT_CREDENTIALS
+      AuthParameters:
+        OAuthParameters:
+          AuthorizationEndpoint: !If
+            - UsingCognito
+            - !ImportValue
+                Fn::Sub: ${ApiStackName}-TokenUrl
+            - !Ref OAuthAuthorizationEndpoint
+          ClientParameters:
+            ClientID: !If
+              - UsingCognito
+              - !ImportValue
+                  Fn::Sub: ${ApiStackName}-UserPoolClientId
+              - !Ref OAuthClientId
+            ClientSecret: !If
+              - UsingCognito
+              - !GetAtt GetClientSecret.ClientSecret
+              - !Ref OAuthClientSecret
+          HttpMethod: POST
+          OAuthHttpParameters:
+            BodyParameters:
+              - Key: scope
+                Value: tams-api/read tams-api/write tams-api/delete
+                IsValueSecret: False
+              - Key: grant_type
+                Value: client_credentials
+                IsValueSecret: False
+
+  CodecsParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-codecs
+      Type: String
+      DataType: text
+      Description: Codec mappings for HLS
+      Value: |
+        [
+          {
+            "tams": "audio/aac",
+            "hls": "mp4a",
+            "ffprobe": "aac"
+          },
+          {
+            "tams": "audio/ac3",
+            "hls": "ac-3",
+            "ffprobe": "ac3"
+          },
+          {
+            "tams": "audio/eac3",
+            "hls": "ec-3",
+            "ffprobe": "eac3"
+          },
+          {
+            "tams": "video/h264",
+            "hls": "avc1",
+            "ffprobe": "h264"
+          },
+          {
+            "tams": "text/vtt",
+            "hls": "webvtt",
+            "ffprobe": "webvtt"
+          }
+        ]
+    Condition: DeployHls
+
+  OmakaseExportEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub
+        - omakase-tams-${id}
+        - id:
+            !Select [
+              4,
+              !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]],
+            ]
+
+  MediaConvertBucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: Access logging not required
+          - id: W41
+            reason: Encryption not required
+          - id: W51
+            reason: Bucket policy not required
+
+  MediaConvertRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: Resource level permissions not possible
+          - id: F3
+            reason: Full access to this S3 bucket required
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - mediaconvert.amazonaws.com
+                - mediaconvert.aws.internal
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MediaConvertAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - mediaconvert:CreateJob
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - events:RetrieveConnectionCredentials
+                Resource:
+                  - !GetAtt TamsConnection.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource:
+                  - !GetAtt TamsConnection.SecretArn
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub ${MediaConvertBucket.Arn}/*
+
+  OmakaseExportEventParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-export-events
+      Type: String
+      DataType: text
+      Description: Omakase Export Modal Options
+      Value:
+        Fn::ToJsonString:
+          Fn::Transform:
+            Name: AWS::Include
+            Parameters:
+              Location: export-events.json
+
+  AuthRolePolicyTools:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+      PolicyName: !Ref AWS::StackName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - events:PutEvents
+            Resource:
+              - !GetAtt OmakaseExportEventBus.Arn
+          - Effect: Allow
+            Action:
+              - mediaconvert:ListJobs
+              - mediaconvert:CreateJob
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+              - !GetAtt MediaConvertRole.Arn
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+            Resource:
+              - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${OmakaseExportEventParameter}
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub ${MediaConvertBucket.Arn}/*
+
+  EditByReferenceFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: Resource level permissions not possible
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 900
+      MemorySize: 1024
+      CodeUri: functions/edit-by-reference/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Ref OpenIdAuthLayer
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
+          TAMS_ENDPOINT: !ImportValue
+            Fn::Sub: ${ApiStackName}-ApiEndpoint
+          SECRET_ARN: !GetAtt TamsConnection.SecretArn
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !GetAtt TamsConnection.SecretArn
+      Events:
+        EBRule:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref OmakaseExportEventBus
+            Pattern:
+              source:
+                - TAMS_UX
+              detail-type:
+                - TAMS_PROCESSING_REQUEST
+              detail:
+                operation:
+                  - FLOW_CREATION
+
+  LoopRecorderStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/loop-recorder/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        ApiStackName: !Ref ApiStackName
+    Condition: DeployLoopRecorder
+
+  HlsApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/hls/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+        OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
+        SecretArn: !GetAtt TamsConnection.SecretArn
+        CodecsParameterName: !Ref CodecsParameter
+        ApiStackName: !Ref ApiStackName
+        ParentStackName: !Ref AWS::StackName
+    Condition: DeployHlsApi
+
+  IngestStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/ingest/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+        OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        SecretArn: !GetAtt TamsConnection.SecretArn
+        ParentStackName: !Ref AWS::StackName
+    Condition: DeployIngest
+
+  IngestHlsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/ingest-hls/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+        CodecsParameterName: !Ref CodecsParameter
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        SecretArn: !GetAtt TamsConnection.SecretArn
+        SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
+        SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        ParentStackName: !Ref AWS::StackName
+    Condition: DeployIngestHls
+
+  IngestFfmpegStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/ingest-ffmpeg/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        SecretArn: !GetAtt TamsConnection.SecretArn
+        SqsSegmentIngestionFunctionRoleName: !GetAtt IngestStack.Outputs.SqsSegmentIngestionFunctionRoleName
+        SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
+        SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        EventBusName: !Ref ApiStackName
+        TamsMediaBucket: !ImportValue
+          Fn::Sub: ${ApiStackName}-MediaStorageBucket
+        ParentStackName: !Ref AWS::StackName
+    Condition: DeployIngestFfmpeg
+
+  ReplicationStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: components/replication/template.yaml
+      Parameters:
+        ApiEndpoint: !ImportValue
+          Fn::Sub: ${ApiStackName}-ApiEndpoint
+        AuthRoleName: !GetAtt CognitoStack.Outputs.AuthRoleName
+        OpenIdAuthLayerArn: !Ref OpenIdAuthLayer
+        TamsConnectionArn: !GetAtt TamsConnection.Arn
+        SecretArn: !GetAtt TamsConnection.SecretArn
+        SegmentIngestQueueUrl: !GetAtt IngestStack.Outputs.SegmentIngestQueueUrl
+        SegmentIngestQueueArn: !GetAtt IngestStack.Outputs.SegmentIngestQueueArn
+        ParentStackName: !Ref AWS::StackName
+        ApiStackName: !Ref ApiStackName
+    Condition: DeployReplication
+
+  CognitoStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/cognito.yaml
+      Parameters:
+        UserPoolId: !ImportValue
+          Fn::Sub: ${ApiStackName}-UserPoolId
+        OidcUrl: !Ref OidcUrl
+        OidcClientId: !Ref OidcClientId
+
+Outputs:
+
+  OidcAuthority:
+    Value: !GetAtt CognitoStack.Outputs.OidcAuthority
+
+  OidcClientId:
+    Value: !GetAtt CognitoStack.Outputs.OidcClientId
+
+  IdentityPoolId:
+    Value: !GetAtt CognitoStack.Outputs.IdentityPoolId
+
+  AuthRoleName:
+    Value: !GetAtt CognitoStack.Outputs.AuthRoleName
+
+  OmakaseExportEventBus:
+    Value: !Ref OmakaseExportEventBus
+
+  TamsAuthConnectionArn:
+    Value: !GetAtt TamsConnection.Arn
+
+  MediaConvertRoleArn:
+    Value: !GetAtt MediaConvertRole.Arn
+
+  MediaConvertBucket:
+    Value: !Ref MediaConvertBucket
+
+  OmakaseExportEventParameter:
+    Value: !Ref OmakaseExportEventParameter
+
+  LoopRecorderArn:
+    Value: !If
+      - DeployLoopRecorder
+      - !GetAtt LoopRecorderStack.Outputs.LoopRecorderArn
+      - ""
+
+  HlsCodecsParameter:
+    Value: !If
+      - DeployHls
+      - !Ref CodecsParameter
+      - ""
+
+  HlsFunctionUrl:
+    Value: !If
+      - DeployHlsApi
+      - !GetAtt HlsApiStack.Outputs.HlsFunctionUrl
+      - ""
+
+  IngestCreateNewFlowArn:
+    Value: !If
+      - DeployIngest
+      - !GetAtt IngestStack.Outputs.IngestCreateNewFlowArn
+      - ""
+
+  HlsIngestEndpoint:
+    Value: !If
+      - DeployIngestHls
+      - !GetAtt IngestHlsStack.Outputs.ApiEndpoint
+      - ""
+
+  HlsIngestArn:
+    Value: !If
+      - DeployIngestHls
+      - !GetAtt IngestHlsStack.Outputs.IngestHlsArn
+      - ""
+
+  FfmpegEndpoint:
+    Value: !If
+      - DeployIngestFfmpeg
+      - !GetAtt IngestFfmpegStack.Outputs.ApiEndpoint
+      - ""
+
+  FfmpegCommandsParameter:
+    Value: !If
+      - DeployIngestFfmpeg
+      - !GetAtt IngestFfmpegStack.Outputs.ParameterName
+      - ""
+
+  FfmpegBatchArn:
+    Value: !If
+      - DeployIngestFfmpeg
+      - !GetAtt IngestFfmpegStack.Outputs.FfmpegBatchArn
+      - ""
+
+  FfmpegExportArn:
+    Value: !If
+      - DeployIngestFfmpeg
+      - !GetAtt IngestFfmpegStack.Outputs.FfmpegExportArn
+      - ""
+
+  ReplicationConnectionsParameter:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ParameterName
+      - ""
+
+  ReplicationBatchArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationBatchArn
+      - ""
+
+  ReplicationCreateRuleArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationCreateRuleArn
+      - ""
+
+  ReplicationDeleteRuleArn:
+    Value: !If
+      - DeployReplication
+      - !GetAtt ReplicationStack.Outputs.ReplicationDeleteRuleArn
+      - ""
+
+  SolutionVersion:
+    Value: !FindInMap [Solution, Constants, Version]
+
+  S3ContentBucket:
+    Value: !GetAtt IngestHlsStack.Outputs.ContentIngestBucketName
+>>>>>>> 2cab9531 (Adding functionality to load local files for ingest.)

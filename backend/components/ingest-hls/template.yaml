@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
@@ -406,3 +407,450 @@ Outputs:
 
   IngestHlsArn:
     Value: !Ref IngestHls
+=======
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ApiEndpoint:
+    Type: String
+
+  AuthRoleName:
+    Type: String
+
+  CodecsParameterName:
+    Type: String
+
+  TamsConnectionArn:
+    Type: String
+
+  SecretArn:
+    Type: String
+
+  SegmentIngestQueueUrl:
+    Type: String
+
+  SegmentIngestQueueArn:
+    Type: String
+
+  ParentStackName:
+    Type: String
+
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 30
+    MemorySize: 128
+    Handler: app.lambda_handler
+    Runtime: python3.14
+    Architectures:
+      - arm64
+
+  HttpApi:
+    AccessLogSettings:
+      DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiLogGroup}
+      Format: $context.identity.sourceIp - - [$context.requestTime] "$context.httpMethod $context.routeKey $context.protocol" $context.status $context.responseLength $context.requestId $context.extendedRequestId
+    Auth:
+      DefaultAuthorizer: AWS_IAM
+      EnableIamAuthorizer: True
+
+Resources:
+  AuthRolePolicyHls:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref AuthRoleName
+      PolicyName: !Ref AWS::StackName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - execute-api:Invoke
+            Resource:
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/job-ingestion
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/channel-ingestion
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/GET/workflows
+              - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/${Api.Stage}/DELETE/manifest
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !GetAtt ApiHlsIngestFunction.Arn
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${IngestHls.Name}
+          - Effect: Allow
+            Action:
+              - medialive:StartChannel
+              - medialive:StopChannel
+            Resource: '*'
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: Encryption not required
+    Properties:
+      LogGroupName: !Sub /aws/vendedlogs/api/${AWS::StackName}
+      RetentionInDays: 30
+
+  Api:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - '*'
+
+  ApiHlsIngestFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      CodeUri: functions/api-hls-ingestion/
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
+          STATE_MACHINE_ARN: !Ref IngestHls
+          TAMS_ENDPOINT: !Ref ApiEndpoint
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - mediaconvert:ListJobs
+              Resource:
+                - !Sub arn:${AWS::Partition}:mediaconvert:${AWS::Region}:${AWS::AccountId}:*
+            - Effect: Allow
+              Action:
+                - medialive:ListChannels
+                - medialive:DescribeChannel
+              Resource:
+                - !Sub arn:${AWS::Partition}:medialive:${AWS::Region}:${AWS::AccountId}:channel:*
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+            - Effect: Allow
+              Action:
+                - states:ListExecutions
+              Resource:
+                - !Ref IngestHls
+            - Effect: Allow
+              Action:
+                - states:DescribeExecution
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${IngestHls.Name}:*
+      Events:
+        getJobIngestions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /job-ingestion
+            Method: get
+        getChannelIngestions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /channel-ingestion
+            Method: get
+        getWorkflows:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /workflows
+            Method: get
+        deleteManifest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Path: /manifest
+            Method: delete
+
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W74
+            reason: Encyption not required
+          - id: W78
+            reason: Backup not required
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiration
+        Enabled: True
+      BillingMode: PAY_PER_REQUEST
+
+  ContainersParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub ${AWS::StackName}-containers
+      Type: String
+      DataType: text
+      Description: Container mappings for HLS
+      Value: |
+        {
+          "aac": "audio/aac",
+          "ac3": "audio/ac3",
+          "eac3": "audio/eac3",
+          "mpegts": "video/mp2t",
+          "mov,mp4,m4a,3gp,3g2,mj2": "video/mp4",
+          "webvtt": "text/vtt"
+        }
+
+  FFprobeLayer:
+    Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+    Properties:
+      LayerName: !Sub
+        - ${ParentStackName}-FFprobeLayer-${id}
+        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
+      RetentionPolicy: Delete
+      ContentUri: layers/ffprobe
+      CompatibleRuntimes:
+        - python3.14
+      CompatibleArchitectures:
+        - arm64
+
+  SfnVariantFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 300
+      MemorySize: 1024
+      CodeUri: functions/sfn-variant-manifest
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Ref FFprobeLayer
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
+          CODEC_PARAMETER: !Ref CodecsParameterName
+          CONTAINERS_PARAMETER: !Ref ContainersParameter
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource:
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${CodecsParameterName}
+                - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ContainersParameter}
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+
+  SqsMediaFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC not required
+          - id: W92
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      Timeout: 300
+      MemorySize: 1024
+      CodeUri: functions/sqs-media-manifest
+      RecursiveLoop: Allow
+      Layers:
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Ref FFprobeLayer
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: tams-tools
+          POWERTOOLS_METRICS_NAMESPACE: TAMS-Tools
+          MANIFEST_QUEUE_URL: !Ref MediaManifestQueue
+          INGEST_QUEUE_URL: !Ref SegmentIngestQueueUrl
+          IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetObject
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::*
+              Condition:
+                StringEquals:
+                  s3:ResourceAccount: !Ref AWS::AccountId
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                - !Ref SegmentIngestQueueArn
+                - !GetAtt MediaManifestQueue.Arn
+            - Effect: Allow
+              Action:
+                - states:SendTaskSuccess
+                - states:SendTaskFailure
+                - states:SendTaskHeartbeat
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${IngestHls.Name}
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource: !GetAtt IdempotencyTable.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MediaManifestQueue.Arn
+            Enabled: True
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  IngestHls:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachines/ingest-hls.yaml
+      DefinitionSubstitutions:
+        VariantFunctionArn: !GetAtt SfnVariantFunction.Arn
+        ConnectionArn: !Ref TamsConnectionArn
+        TamsEndpoint: !Ref ApiEndpoint
+        MediaManifestQueueUrl: !Ref MediaManifestQueue
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - events:RetrieveConnectionCredentials
+              Resource:
+                - !Ref TamsConnectionArn
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource:
+                - !Ref SecretArn
+            - Effect: Allow
+              Action:
+                - states:InvokeHTTPEndpoint
+              Resource:
+                - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*
+              Condition:
+                StringEquals:
+                  states:HTTPMethod:
+                    - PUT
+                StringLike:
+                  states:HTTPEndpoint:
+                    - !Sub ${ApiEndpoint}/flows/*
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource:
+                - !GetAtt SfnVariantFunction.Arn
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                - !GetAtt MediaManifestQueue.Arn
+
+  MediaManifestQueue:
+    Type: AWS::SQS::Queue
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W48
+            reason: Encryption not required
+    Properties:
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400
+
+# Bucket to hold uploaded content to support local uploads.
+  ContentIngestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: 'ExpireRule'
+            Status: 'Enabled'
+            ExpirationInDays: 2
+             
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - HEAD
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+
+
+Outputs:
+  ApiEndpoint:
+    Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com
+
+  IngestHlsArn:
+    Value: !Ref IngestHls
+  
+  ContentIngestBucketName:
+    Value: !Ref ContentIngestBucket
+    Description: Name of the S3 bucket for content ingestion  
+>>>>>>> 2cab9531 (Adding functionality to load local files for ingest.)
