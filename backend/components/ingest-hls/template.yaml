@@ -400,9 +400,46 @@ Resources:
       VisibilityTimeout: 300
       MessageRetentionPeriod: 86400
 
+# Bucket to hold uploaded content to support local uploads.
+  ContentIngestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: 'ExpireRule'
+            Status: 'Enabled'
+            ExpirationInDays: 2
+             
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - HEAD
+            AllowedHeaders:
+              - "*"
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+
+
 Outputs:
   ApiEndpoint:
     Value: !Sub https://${Api}.execute-api.${AWS::Region}.amazonaws.com
 
   IngestHlsArn:
     Value: !Ref IngestHls
+  
+  ContentIngestBucketName:
+    Value: !Ref ContentIngestBucket
+    Description: Name of the S3 bucket for content ingestion  

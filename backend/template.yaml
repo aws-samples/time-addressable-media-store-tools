@@ -651,3 +651,6 @@ Outputs:
 
   SolutionVersion:
     Value: !FindInMap [Solution, Constants, Version]
+
+  S3ContentBucket:
+    Value: !GetAtt IngestHlsStack.Outputs.ContentIngestBucketName
