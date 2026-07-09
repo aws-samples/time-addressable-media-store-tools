@@ -66,11 +66,16 @@ export class Segment {
 
 // Structure to pass data between modals
 export type LocalIngestResult = {
-  masterManifest: string;
   manifestList: ManifestList,
   uploadedFiles:  Map<string, Segment>;
   packageType: PackageType;
   };
+
+// This is what needs to get passeed back to HlsIngestModal when the user is done with the local ingest modal.
+export type ManifestResult = {
+  masterManifest?: string;
+  packageType: PackageType;
+};
 
 // Manage the different manifests as a list
 export type ManifestList = {
@@ -101,6 +106,26 @@ export const PackageTypeOptions = [
                                   }),
   },
 ];
+
+const VIDEO_TYPES = new Set([
+  0x1B,
+  0x24,
+  0x33,
+]);
+
+const AUDIO_TYPES = new Set([
+  0x03,
+  0x04,
+  0x0F,
+  0x11,
+  0x81,
+  0x87,
+]);
+
+export interface streamContent {
+  hasAudio: boolean;
+  hasVideo: boolean;
+};
 
 export const validateManifestFile = async (file) => {
   const fileExtension = file.name.split(".").pop().toLowerCase();
@@ -136,11 +161,34 @@ const audioFileOptions = [
   { ext: "ts", type: "TS Audio", magic: [0x47] },
 ];
 
+export function streamType(stream: Uint8Array): streamContent {
+  // First get the PID for the PMT from the PAT.
+  const findPMT = (stream: Uint8Array): number | null => {
+    // read the stream and look for the Table 
+  };
+
+  const pmtPID  = findPMT(stream);
+  if (!pmtPID) {
+    console.warn("No PAT found in the stream.");
+    return { hasAudio: false, hasVideo: false };
+  }
+
+  // We have the PMT PID from above.
+
+};
+
 export async function detectTsType(
   file: File
 ): Promise<"video" | "audio" | "both" | "unknown"> {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
+
+  const getPAT = (bytes: Uint8Array): mp2t.PAT | null => {
+
+
+  // Find the PAT first.
+  const pat = getPAT(bytes);
+
 
   return new Promise((resolve) => {
     let hasVideo = false;
@@ -164,30 +212,20 @@ export async function detectTsType(
       if (packet.type !== "pmt") {
         return;
       }
-      console.dir(packet);
 
-      const pmt = packet.programMapTable;
+      console.log("PMT:  ", packet.programMapTable);
 
-      Object.entries(pmt).forEach(
-        (pid, streamType) => {
-          switch (streamType) {
-              // Have we found video?
-              case 0x1b: //H264
-              case 0x24: // HEVC
-              case 0x02: //MPEG2
-                hasVideo = true;
-                break;
+      console.dir(packet.programMapTable);
 
-              // Audio?
-              case 0x0f: //AAC
-              case 0x03: //MPEG1 audio
-              case 0x04: // MPEG2 audio
-              case 0x81: // AC3
-                hasAudio = true;
-                break;
-            }              
-        }
-      );
+      //const pmt = packet.programMapTable;
+
+      if (packet.programMapTable.video !== null) {
+        hasVideo = true;
+      }
+
+      if (packet.programMapTable.audio !== null) {
+        hasAudio = true;
+      }
     });
 
     transport.on("done", () => {
@@ -259,7 +297,7 @@ export const validateAudioFile = async (file) => {
         console.debug("Audio file validation result:", isValid);
         return isValid;    
     }
-    //return isValid;
+    return false;
   }
 
   console.warn("No matching audio file option found for extension:", fileExtension);
@@ -346,9 +384,19 @@ export const findMaster = async (manifestList) => {
   return masterManifests;
 }
 
-export const createMaster = (videoManifests, audioManifest) => {
+export const createMaster = (videoManifests:Manifest[], audioManifest:Manifest[]) => {
   // create a master manifest using the provided list
-  console.debug('Manifests: ', audioManifest[0].file.webkitRelativePath, videoManifests[0].file.webkitRelativePath);
+  if (videoManifests.length !== 0) {
+    console.debug('Manifests: ', videoManifests[0]);    
+  } else {
+    console.debug('No video manifests provided.');
+  }
+
+  if (audioManifest.length !== 0) {
+    console.debug('Manifests: ', audioManifest[0]);
+  } else {
+    console.debug('No audio manifests provided.');
+  }
 
   const lines = [
     "#EXTM3U",
@@ -360,10 +408,11 @@ export const createMaster = (videoManifests, audioManifest) => {
       '#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1920x1280,CODECS="mp4a.40.2,avc1.100.40",FRAME-RATE=24',
       video.file.webkitRelativePath
     );
-    lines.push(
-      '#EXT-X-STREAM-INF:BANDWIDTH=68000,CODECS="mp4a.40.2"',
-      audioManifest[0].file.webkitRelativePath
-    );
+    for (const audio of audioManifest) {
+      lines.push(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Audio",DEFAULT=YES,AUTOSELECT=YES,URI="' + audio.file.webkitRelativePath + '"'
+      );
+    }
   }
 
   return lines.join("\n");

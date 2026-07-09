@@ -272,8 +272,16 @@ Resources:
               Action:
                 - s3:ListBucket
                 - s3:GetObject
+                - s3:ListObjects
               Resource:
                 - !Sub arn:${AWS::Partition}:s3:::*
+            - Effect: Allow
+              Action:
+                - s3:GetObject 
+                - s3:ListBucket
+                - s3:ListObjects             
+              Resource:
+                - !GetAtt ContentIngestBucket.Arn
               Condition:
                 StringEquals:
                   s3:ResourceAccount: !Ref AWS::AccountId
@@ -343,6 +351,26 @@ Resources:
             FunctionResponseTypes:
               - ReportBatchItemFailures
 
+  MediaUploadRole:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      RoleName: !Ref AuthRoleName
+      PolicyName: !Sub ${AWS::StackName}-MediaUpload
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:AbortMultipartUpload
+              - s3:ListBucketMultipartUploads
+              - s3:ListMultipartUploadParts
+              - s3:ListBucket
+            Resource:
+              - !Sub arn:${AWS::Partition}:s3:::${ContentIngestBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${ContentIngestBucket}/*
+
   IngestHls:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -399,6 +427,21 @@ Resources:
     Properties:
       VisibilityTimeout: 300
       MessageRetentionPeriod: 86400
+      
+  MediaManifestQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref MediaManifestQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt MediaManifestQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt ContentIngestBucket.Arn  
 
 # Bucket to hold uploaded content to support local uploads.
   ContentIngestBucket:
