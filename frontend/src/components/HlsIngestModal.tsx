@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Alert,
   Button,
@@ -30,12 +30,9 @@ type Props = {
   onDismiss?: () => void;
 };
 
-type LocalIngestResult = {
-  file: File;
-  fileType: string;
-  manifest: string;
-};
-
+import {
+  ManifestResult,
+} from "@/utils/manifest";
 
 const HlsIngestModal = ({
   modalVisible,
@@ -65,6 +62,7 @@ const HlsIngestModal = ({
 
   const performAction = async () => {
     try {
+      console.debug(`Starting ingestion with manifestUri: ${manifestUri}, label: ${label}, sourceId: ${sourceId}`);
       const id = `${idPrefix}-${Date.now()}`;
       await execute({
         stateMachineArn: AWS_HLS_INGEST_ARN,
@@ -157,9 +155,9 @@ const HlsIngestModal = ({
           {mode === "on" && (
             <LocalIngestHandler
                   localModalVisible={mode === "on"}
-                  onComplete = {(result) => {
+                  onComplete = {(result:ManifestResult) => {
                     setMode("off");
-                    setInternalManifestUri(result.masterManifest)
+                    setInternalManifestUri(String(result.masterManifest))
                   }}
                   onCancel={() => {
                     setMode("off");

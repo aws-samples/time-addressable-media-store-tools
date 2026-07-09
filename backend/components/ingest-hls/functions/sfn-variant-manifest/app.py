@@ -2,6 +2,7 @@ import json
 import os
 import time
 import uuid
+
 from fractions import Fraction
 from functools import lru_cache
 from urllib.parse import urlparse
@@ -139,6 +140,7 @@ def get_mp4a_essence_parameters(codec_string: str) -> dict:
 @tracer.capture_method(capture_response=False)
 def get_manifest(source: str) -> m3u8.M3U8:
     """Parses an m3u8 manifest from the supplied source uri"""
+    logger.debug(f"Retrieving manifest from '{source}'")
     file_content = get_file(source)
     if not file_content:
         raise ValueError(f"Unable to retrieve manifest from '{source}'")
@@ -167,9 +169,11 @@ def get_file(source: str, byterange: str | None = None) -> bytes:
                 "Bucket": source_parse.netloc,
                 "Key": source_parse.path[1:],
             }
+            logger.debug(f"Retrieving S3 object from bucket '{params['Bucket']}' with key '{params['Key']}' and range '{range_header}'")
             if range_header:
                 params["Range"] = range_header
             response = s3.get_object(**params)
+            logger.debug(f"Retrieved S3 object with status code {response['ResponseMetadata']['HTTPStatusCode']}")
             return response["Body"].read()
         case "https" | "http":
             headers = {"Range": range_header} if range_header else None
@@ -199,6 +203,8 @@ def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
     """Probes the first segment of the manifest supplied. Returns (probe_result, target_duration)."""
     manifest_path = os.path.dirname(source)
     manifest = get_manifest(source)
+    logger.debug(f"Retrieved manifest '{source}' with {manifest}")
+    logger.debug(f"Manifest path: {manifest_path}")
     if manifest.segment_map:
         raise ValueError(
             f"Media manifest '{source}' uses #EXT-X-MAP (init segments / fragmented MP4) which is not supported by this HLS ingester"
@@ -215,6 +221,7 @@ def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
         first_segment = manifest.segments[0]
         segment_uri = resolve_child_uri(manifest_path, first_segment.uri)
         probe_result = ffprobe_link(segment_uri, byterange=first_segment.byterange)
+        logger.debug(f"Probed first segment '{segment_uri}' with result: {json.dumps(probe_result, indent=2)}")
     return probe_result, manifest.target_duration
 
 
@@ -314,7 +321,11 @@ def is_muxed_variant(
     route audio through a separate #EXT-X-MEDIA rendition)."""
     if audio_group_id or len(tams_codecs) < 2:
         return False
+    logger.info(f"Probing variant with CODECS {','.join(c[0] for c in tams_codecs)} - audio_group_id={audio_group_id}")
+    logger.debug(f"Probe result: {json.dumps(probe, indent=2)}")
     stream_types = {stream.get("codec_type") for stream in probe.get("streams", [])}
+    logger.info(f"Probe result stream types: {stream_types}")
+    
     return "video" in stream_types and "audio" in stream_types
 
 
@@ -436,6 +447,7 @@ def process_playlists(
     for playlist in manifest.playlists:
         playlist_manifest_url = resolve_child_uri(manifest_path, playlist.uri)
         probe, target_duration = get_manifest_segment_probe(playlist_manifest_url)
+        logger.debug(f"Processing playlist '{playlist.uri}' with target_duration {target_duration} and probe result: {json.dumps(probe, indent=2)}")
         audio_group_id = next(
             (media.group_id for media in playlist.media if media.type == "AUDIO"),
             None,
@@ -456,6 +468,10 @@ def process_playlists(
         # because HLS manifests are free to list CODECS in any order.
         video_codec = next((c for c in tams_codecs if c[0].startswith("video/")), None)
         audio_codec = next((c for c in tams_codecs if c[0].startswith("audio/")), None)
+        
+        logger.debug(f"Processing playlist '{playlist.uri}' with CODECS {playlist.stream_info.codecs} - audio_group_id={audio_group_id} - video_codec={video_codec} - audio_codec={audio_codec}")
+        logger.debug(f"Playlists {[p.uri for p in manifest.playlists]}")
+        
         if is_muxed_variant(probe, tams_codecs, audio_group_id):
             if not video_codec or not audio_codec:
                 raise ValueError(
@@ -581,6 +597,7 @@ def process_media(
         flow_manifests[flow_id] = resolve_child_uri(manifest_path, media.uri)
         probe, target_duration = get_manifest_segment_probe(flow_manifests[flow_id])
         segment_durations[flow_id] = target_duration
+        logger.debug(f"Processing media '{media.uri}' with target_duration {target_duration} and probe result: {json.dumps(probe, indent=2)}")
         tags = {
             f"hls_{attr}": getattr(media, attr)
             for attr in ["language", "name", "autoselect", "default", "forced"]
@@ -650,11 +667,18 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     manifest_location = event["manifestLocation"]
     manifest_path = os.path.dirname(manifest_location)
     manifest = get_manifest(manifest_location)
+    logger.info(f"Retrieved manifest '{manifest_location}' with {manifest}")
     if not manifest.is_variant:
         raise ValueError(
             f"Manifest '{manifest_location}' is a media manifest. This workflow requires a variant/master manifest."
         )
     multi_source_id = event.get("sourceId") or str(uuid.uuid4())
+    
+    logger.debug(f"Processing variant manifest '{manifest_location}' with label '{label}' and multi source_id '{multi_source_id}'")
+    logger.debug(f"Variant manifest playlists: {[p.uri for p in manifest.playlists]}")
+    logger.debug(f"Variant manifest media: {[m.uri for m in manifest.media]}")
+    logger.debug(f"manifest_path: {manifest_path}")
+    
     (
         playlist_flows,
         variant_multi_flows,
