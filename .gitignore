@@ -27,5 +27,12 @@ dist-ssr
 samconfig.toml
 amplify-config.json
 .venv
+.env
 .env.*
 !.env.template
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
