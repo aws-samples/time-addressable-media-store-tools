@@ -116,7 +116,7 @@ Resources:
     Properties:
       CodeUri: functions/api-hls-ingestion/
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: tams-tools
@@ -251,7 +251,7 @@ Resources:
       MemorySize: 1024
       CodeUri: functions/sfn-variant-manifest
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
         - !Ref FFprobeLayer
       Environment:
         Variables:
@@ -293,7 +293,7 @@ Resources:
       CodeUri: functions/sqs-media-manifest
       RecursiveLoop: Allow
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
         - !Ref FFprobeLayer
       Environment:
         Variables:
