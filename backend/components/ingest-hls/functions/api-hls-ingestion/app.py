@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from http import HTTPStatus
 from pathlib import Path
 from urllib.parse import urlparse
@@ -114,7 +114,7 @@ def get_job_ingestions():
                         find_key_with_s3_value(job, "Destination")
                     )
                     input_file = os.path.basename(first_input)
-                    manifest_uri = f'{destination_location}{Path(input_file).stem if destination_location.endswith("/") else ""}.m3u8'
+                    manifest_uri = f"{destination_location}{Path(input_file).stem if destination_location.endswith('/') else ''}.m3u8"
                     jobs.append(
                         JobIngestion(
                             id=job["Id"],

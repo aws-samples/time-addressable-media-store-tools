@@ -59,7 +59,7 @@ The root JSON object contains operation definitions as key-value pairs:
 ```json
 "field_name": {
   "type": "number",
-  "title": "Field Label", 
+  "title": "Field Label",
   "default": 0,
   "description": "Numeric input field",
   "placeholder": "Enter number..."
@@ -71,7 +71,7 @@ The root JSON object contains operation definitions as key-value pairs:
 ```json
 "field_name": {
   "type": "integer",
-  "title": "Field Label", 
+  "title": "Field Label",
   "default": 0,
   "description": "Integer input field"
 }

@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timedelta
-import requests
+
 import boto3
+import requests
 from botocore.exceptions import BotoCoreError, ClientError
 
 

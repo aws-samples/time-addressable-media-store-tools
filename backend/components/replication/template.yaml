@@ -153,7 +153,7 @@ Resources:
       Type: String
       DataType: text
       Description: TAMS Replication connections
-      Value: "{}"
+      Value: '{}'
 
   ReplicationFlowLogGroup:
     Type: AWS::Logs::LogGroup
@@ -195,7 +195,7 @@ Resources:
                 - logs:DescribeResourcePolicies
                 - logs:GetLogDelivery
                 - logs:ListLogDeliveries
-              Resource: "*"
+              Resource: '*'
             - Effect: Allow
               Action:
                 - logs:CreateLogStream
@@ -296,7 +296,7 @@ Resources:
                     - GET
                 StringLike:
                   states:HTTPEndpoint:
-                    - "*/flows/*/segments"
+                    - '*/flows/*/segments'
             - Effect: Allow
               Action:
                 - sqs:SendMessage
@@ -366,7 +366,7 @@ Resources:
                     - POST
                 StringLike:
                   states:HTTPEndpoint:
-                    - "*/service/webhooks"
+                    - '*/service/webhooks'
 
   ReplicationDeleteRule:
     Type: AWS::Serverless::StateMachine
@@ -404,7 +404,7 @@ Resources:
                     - POST
                 StringLike:
                   states:HTTPEndpoint:
-                    - "*/service/webhooks"
+                    - '*/service/webhooks'
 
 Outputs:
   ParameterName:

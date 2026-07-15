@@ -1,18 +1,17 @@
-import os
 import json
+import os
 import uuid
 from collections import defaultdict
 from collections.abc import Generator
 from typing import Any
-import requests
 
+import requests
 from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.data_classes.event_bridge_event import (
     EventBridgeEvent,
 )
-from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
-
 from mediatimestamp.immutable import TimeRange, Timestamp
 from openid_auth import Credentials
 
@@ -62,7 +61,7 @@ def put_flow(flow: dict[str, Any]) -> None:
         flow: The flow data to update or create
     """
     put = requests.put(
-        f'{endpoint}/flows/{flow["id"]}',
+        f"{endpoint}/flows/{flow['id']}",
         headers={
             "Authorization": f"Bearer {creds.token()}",
             "Content-Type": "application/json",

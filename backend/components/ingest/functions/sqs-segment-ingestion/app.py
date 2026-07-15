@@ -7,13 +7,13 @@ import boto3
 import requests
 from aws_lambda_powertools import Logger, Metrics, Tracer, single_metric
 from aws_lambda_powertools.metrics import MetricUnit
-from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent, SQSRecord
-from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.utilities.batch import (
     BatchProcessor,
     EventType,
     process_partial_response,
 )
+from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent, SQSRecord
+from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
 from openid_auth import Credentials
 
@@ -183,13 +183,13 @@ def record_handler(record: SQSRecord) -> None:
     flow_id = message["flowId"]
     file_data = get_file(message["uri"], message.get("byterange"))
     if not file_data:
-        raise ValueError(f'Unable to read source file {message["uri"]}')
+        raise ValueError(f"Unable to read source file {message['uri']}")
     media_object = upload_file(flow_id, file_data, message.get("object_id"))
     if media_object is None:
         raise ValueError(f"Unable to upload file to flow {flow_id}")
     flow_format = get_flow_format(flow_id)
     if flow_format == IMAGE_FORMAT and "_" in message["timerange"]:
-        message["timerange"] = f'{message["timerange"].split("_")[0]}]'
+        message["timerange"] = f"{message['timerange'].split('_')[0]}]"
     # Update object_id in message to use the actual uploaded object_id
     message["object_id"] = media_object["object_id"]
     post_result = post_segment(flow_id, message)

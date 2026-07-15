@@ -1,11 +1,10 @@
 import json
 from typing import Any
-import requests
-import boto3
 
+import boto3
+import requests
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.utilities.typing import LambdaContext
-
 from openid_auth import Credentials
 
 tracer = Tracer()

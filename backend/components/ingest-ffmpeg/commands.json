@@ -1,65 +1,65 @@
 {
-    "Thumbnail size image": {
-        "command": {
-            "-frames:v": "1",
-            "-vf": "scale=320:180",
-            "-qscale:v": "2",
-            "-f": "image2"
-        },
-        "tams": {
-            "description": "FFmpeg (Thumbnail)",
-            "codec": "image/jpeg",
-            "container": "image/jpeg",
-            "avg_bit_rate": null,
-            "max_bit_rate": null,
-            "segment_duration": null,
-            "format": "urn:x-tam:format:image",
-            "essence_parameters": {
-                "frame_width": 320,
-                "frame_height": 180
-            }
-        }
+  "Thumbnail size image": {
+    "command": {
+      "-frames:v": "1",
+      "-vf": "scale=320:180",
+      "-qscale:v": "2",
+      "-f": "image2"
     },
-    "Proxy Video (1080)": {
-        "command": {
-            "-c:v": "libx264",
-            "-vf": "scale=1920:1080",
-            "-b:v": "5000k",
-            "-f": "mpegts"
-        },
-        "tams": {
-            "description": "FFmpeg (1080 Proxy Video)",
-            "avg_bit_rate": 5000000,
-            "max_bit_rate": 5000000,
-            "essence_parameters.frame_width": 1920,
-            "essence_parameters.frame_height": 1080
-        }
-    },
-    "Proxy Video (720)": {
-        "command": {
-            "-c:v": "libx264",
-            "-vf": "scale=1280:720",
-            "-b:v": "2500k",
-            "-f": "mpegts"
-        },
-        "tams": {
-            "description": "FFmpeg (720 Proxy Video)",
-            "avg_bit_rate": 2500000,
-            "max_bit_rate": 2500000,
-            "essence_parameters.frame_width": 1280,
-            "essence_parameters.frame_height": 720
-        }
-    },
-    "MP4 Export": {
-        "command": {
-            "-c": "copy",
-            "-f": "mp4"
-        }
-    },
-    "TS Export": {
-        "command": {
-            "-c": "copy",
-            "-f": "mpegts"
-        }
+    "tams": {
+      "description": "FFmpeg (Thumbnail)",
+      "codec": "image/jpeg",
+      "container": "image/jpeg",
+      "avg_bit_rate": null,
+      "max_bit_rate": null,
+      "segment_duration": null,
+      "format": "urn:x-tam:format:image",
+      "essence_parameters": {
+        "frame_width": 320,
+        "frame_height": 180
+      }
     }
+  },
+  "Proxy Video (1080)": {
+    "command": {
+      "-c:v": "libx264",
+      "-vf": "scale=1920:1080",
+      "-b:v": "5000k",
+      "-f": "mpegts"
+    },
+    "tams": {
+      "description": "FFmpeg (1080 Proxy Video)",
+      "avg_bit_rate": 5000000,
+      "max_bit_rate": 5000000,
+      "essence_parameters.frame_width": 1920,
+      "essence_parameters.frame_height": 1080
+    }
+  },
+  "Proxy Video (720)": {
+    "command": {
+      "-c:v": "libx264",
+      "-vf": "scale=1280:720",
+      "-b:v": "2500k",
+      "-f": "mpegts"
+    },
+    "tams": {
+      "description": "FFmpeg (720 Proxy Video)",
+      "avg_bit_rate": 2500000,
+      "max_bit_rate": 2500000,
+      "essence_parameters.frame_width": 1280,
+      "essence_parameters.frame_height": 720
+    }
+  },
+  "MP4 Export": {
+    "command": {
+      "-c": "copy",
+      "-f": "mp4"
+    }
+  },
+  "TS Export": {
+    "command": {
+      "-c": "copy",
+      "-f": "mpegts"
+    }
+  }
 }

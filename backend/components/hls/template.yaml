@@ -78,11 +78,11 @@ Resources:
         AuthType: AWS_IAM
         Cors:
           AllowOrigins:
-            - "*"
+            - '*'
           AllowMethods:
             - GET
           AllowHeaders:
-            - "*"
+            - '*'
       Layers:
         - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
         - !Ref OpenIdAuthLayerArn

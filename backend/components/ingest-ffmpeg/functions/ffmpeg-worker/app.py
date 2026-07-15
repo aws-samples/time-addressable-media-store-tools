@@ -14,9 +14,9 @@ from aws_lambda_powertools.utilities.batch import (
 )
 from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSRecord
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from mediatimestamp.immutable import TimeRange, Timestamp
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()
 logger = Logger()
@@ -194,7 +194,7 @@ def execute_ffmpeg_file(input_list, ffmpeg_command, output_path):
 def download_object(obj):
     bucket = obj["bucket"]
     key = obj["key"]
-    download_path = f'/tmp/{key.rsplit("/", 1)[-1]}'  # nosec B108 - /tmp folder used for ephemeral storage
+    download_path = f"/tmp/{key.rsplit('/', 1)[-1]}"  # nosec B108 - /tmp folder used for ephemeral storage
     logger.info(f"Downloading s3://{bucket}/{key}...")
     with open(download_path, "wb") as data:
         s3.download_fileobj(bucket, key, data)
@@ -213,7 +213,7 @@ def download_objects_parallel(s3_objects):
 @tracer.capture_method(capture_response=False)
 def process_message(message):
     for segment in message.get("segments", []):
-        logger.info(f'Processing Object Id: {segment["object_id"]}...')
+        logger.info(f"Processing Object Id: {segment['object_id']}...")
         timing_args = calculate_ffmpeg_timing(segment)
         get_segment = s3.get_object(Bucket=TAMS_MEDIA_BUCKET, Key=segment["object_id"])
         output = execute_ffmpeg_memory(
@@ -224,14 +224,14 @@ def process_message(message):
         logger.info("Uploading output to S3...")
         key = s3_upload(output, message["outputBucket"], message["outputPrefix"])
         logger.info(
-            f'Processing complete, Timerange: {segment["timerange"]}, FlowId: {message["outputFlow"]}...'
+            f"Processing complete, Timerange: {segment['timerange']}, FlowId: {message['outputFlow']}..."
         )
         logger.info(f"Sending SQS message to {INGEST_QUEUE_URL}...")
         send_ingest_message(
             {
                 "flowId": message["outputFlow"],
                 "timerange": segment["timerange"],
-                "uri": f's3://{message["outputBucket"]}/{key}',
+                "uri": f"s3://{message['outputBucket']}/{key}",
                 "deleteSource": True,
             }
         )
@@ -243,7 +243,7 @@ def ffmpeg_concat(message):
     download_paths = download_objects_parallel(message["s3Objects"])
     logger.info("Executing FFmpeg concat...")
     execute_ffmpeg_file(
-        ["-i", f'concat:{"|".join(download_paths)}'],
+        ["-i", f"concat:{'|'.join(download_paths)}"],
         message["ffmpeg"]["command"],
         "/tmp/ffmpegOutput",  # nosec B108 - /tmp folder used for ephemeral storage
     )
@@ -252,18 +252,12 @@ def ffmpeg_concat(message):
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
     logger.info("Uploading output to S3...")
-    with open(
-        "/tmp/ffmpegOutput", mode="rb"
-    ) as file:  # nosec B108 - /tmp folder used for ephemeral storage
+    with open("/tmp/ffmpegOutput", mode="rb") as file:  # nosec B108 - /tmp folder used for ephemeral storage
         fileContent = file.read()
     output_key = s3_upload(fileContent, message["outputBucket"], "concat/")
     logger.info("Deleting ffmpeg output...")
-    if os.path.exists(
-        "/tmp/ffmpegOutput"
-    ):  # nosec B108 - /tmp folder used for ephemeral storage
-        os.remove(
-            "/tmp/ffmpegOutput"
-        )  # nosec B108 - /tmp folder used for ephemeral storage
+    if os.path.exists("/tmp/ffmpegOutput"):  # nosec B108 - /tmp folder used for ephemeral storage
+        os.remove("/tmp/ffmpegOutput")  # nosec B108 - /tmp folder used for ephemeral storage
     return {"s3Object": {"bucket": message["outputBucket"], "key": output_key}}
 
 
@@ -439,18 +433,12 @@ def merge_action(message):
         },
     )
     logger.info("Uploading output to S3...")
-    with open(
-        "/tmp/ffmpegOutput", mode="rb"
-    ) as file:  # nosec B108 - /tmp folder used for ephemeral storage
+    with open("/tmp/ffmpegOutput", mode="rb") as file:  # nosec B108 - /tmp folder used for ephemeral storage
         fileContent = file.read()
     output_key = s3_upload(fileContent, message["outputBucket"], "export/")
     logger.info("Deleting ffmpeg output...")
-    if os.path.exists(
-        "/tmp/ffmpegOutput"
-    ):  # nosec B108 - /tmp folder used for ephemeral storage
-        os.remove(
-            "/tmp/ffmpegOutput"
-        )  # nosec B108 - /tmp folder used for ephemeral storage
+    if os.path.exists("/tmp/ffmpegOutput"):  # nosec B108 - /tmp folder used for ephemeral storage
+        os.remove("/tmp/ffmpegOutput")  # nosec B108 - /tmp folder used for ephemeral storage
     return {"s3Object": {"bucket": message["outputBucket"], "key": output_key}}
 
 

@@ -2,7 +2,7 @@
 
 ## HLS Codec Mappings Parameter
 
-**CloudFormation Output:** `HlsCodecsParameter`  
+**CloudFormation Output:** `HlsCodecsParameter`
 **Component:** HLS API (deployed when `DeployHlsApi` = "Yes")
 
 This parameter defines bidirectional codec mappings between TAMS format identifiers and HLS codec strings, used for both HLS manifest generation and HLS content ingestion.

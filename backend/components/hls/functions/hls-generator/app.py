@@ -4,16 +4,16 @@ from collections import defaultdict, deque
 from datetime import datetime
 from functools import lru_cache
 from http import HTTPStatus
-from urllib.parse import urlparse, quote
+from urllib.parse import quote, urlparse
 
 import boto3
 import m3u8
 import requests
-from botocore.auth import SigV4QueryAuth
-from botocore.awsrequest import AWSRequest
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import LambdaFunctionUrlResolver, Response
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from botocore.auth import SigV4QueryAuth
+from botocore.awsrequest import AWSRequest
 from mediatimestamp.immutable import TimeRange
 from openid_auth import Credentials
 
@@ -123,9 +123,9 @@ def get_avc1_codec_string(essence_parameters):
         logger.warning(
             f"avc1 essence parameters missing {missing}; using defaults (profile=100, flags=0, level=31)"
         )
-    profile = f'{avc_parameters.get("profile", 100):02x}'
-    flags = f'{avc_parameters.get("flags", 0):02x}'
-    level = f'{avc_parameters.get("level", 31):02x}'
+    profile = f"{avc_parameters.get('profile', 100):02x}"
+    flags = f"{avc_parameters.get('flags', 0):02x}"
+    level = f"{avc_parameters.get('level', 31):02x}"
     return f"avc1.{profile}{flags}{level}"
 
 
@@ -278,7 +278,7 @@ def get_collection_hls(
                 **get_hls_props(flow, i),
                 type="SUBTITLES",
                 group_id="subs",
-                uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+                uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
             )
             if i == 0:
                 first_subtitle = media
@@ -295,7 +295,7 @@ def get_collection_hls(
             manifest.add_playlist(
                 m3u8.Playlist(
                     stream_info=stream_info,
-                    uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+                    uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
                     media=m3u8.MediaList(
                         [media for media in [first_subtitle] if media]
                     ),
@@ -310,7 +310,7 @@ def get_collection_hls(
             **get_hls_props(flow, i),
             type="SUBTITLES",
             group_id="subs",
-            uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+            uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
         )
         if i == 0:
             first_subtitle = media
@@ -324,7 +324,7 @@ def get_collection_hls(
                 type="AUDIO",
                 group_id="audio",
                 channels=flow["essence_parameters"]["channels"],
-                uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+                uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
                 codecs=map_codec(flow),
             )
             if i == 0:
@@ -338,7 +338,7 @@ def get_collection_hls(
         ]["frame_rate"].get("denominator", 1)
         codecs = map_codec(flow)
         if first_audio:
-            codecs += f",{first_audio.extras["codecs"]}"
+            codecs += f",{first_audio.extras['codecs']}"
         # TAMS spec: max_bit_rate/avg_bit_rate are optional, default to 0
         stream_info = {
             "bandwidth": flow.get("max_bit_rate", 0),
@@ -354,7 +354,7 @@ def get_collection_hls(
         manifest.add_playlist(
             m3u8.Playlist(
                 stream_info=stream_info,
-                uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+                uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
                 media=m3u8.MediaList(
                     [media for media in [first_audio, first_subtitle] if media]
                 ),
@@ -399,7 +399,7 @@ def get_collection_hls(
         manifest.add_playlist(
             m3u8.Playlist(
                 stream_info=stream_info,
-                uri=get_signed_url(f'flows/{flow["id"]}/segments/manifest.m3u8'),
+                uri=get_signed_url(f"flows/{flow['id']}/segments/manifest.m3u8"),
                 media=m3u8.MediaList([media for media in [first_subtitle] if media]),
                 base_uri=None,
             )
@@ -513,7 +513,7 @@ def get_segments_hls(flowId: str):
                 )
             else:
                 manifest.media_sequence = 1
-            manifest.program_date_time = f'{datetime.fromtimestamp(first_segment_timestamp.start.to_float()).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]}+00:00'
+            manifest.program_date_time = f"{datetime.fromtimestamp(first_segment_timestamp.start.to_float()).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]}+00:00"
         if not flow_ingesting:
             manifest.playlist_type = "VOD"
         prev_ts_offset = None
