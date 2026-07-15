@@ -133,7 +133,7 @@ States:
         changes: >-
           {% $changes %}
         newSourceId: >-
-          {% 
+          {%
             (
               $matchedId := $distinct($map($states.input, function($v) {$v.matchedSourceId}))[0];
               $boolean($matchedId) ? $matchedId : $uuid()

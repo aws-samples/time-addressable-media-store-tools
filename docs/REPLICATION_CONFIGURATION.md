@@ -2,7 +2,7 @@
 
 ## Replication Connections Parameter
 
-**CloudFormation Output:** `ReplicationConnectionsParameter`  
+**CloudFormation Output:** `ReplicationConnectionsParameter`
 **Component:** Replication (deployed when `DeployReplication` = "Yes")
 
 This parameter defines available TAMS store connections for replication operations, enabling content replication between different TAMS instances.
@@ -54,7 +54,7 @@ First, create an EventBridge connection to the target TAMS store:
     "connectionArn": "arn:aws:events:us-east-1:123456789012:connection/prod-tams-connection"
   },
   "Staging TAMS": {
-    "endpoint": "https://api.staging-tams.example.com", 
+    "endpoint": "https://api.staging-tams.example.com",
     "connectionArn": "arn:aws:events:us-east-1:123456789012:connection/staging-tams-connection"
   },
   "Archive TAMS": {
@@ -80,7 +80,7 @@ Once connections are configured, the following operations are available:
 - Automatically replicates new content as it's ingested
 - Creates webhook endpoints for real-time synchronization
 
-### Delete Live Replication  
+### Delete Live Replication
 
 - Removes existing replication rules
 - Stops ongoing replication for specified flows/sources

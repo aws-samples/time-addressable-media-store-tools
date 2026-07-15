@@ -1,8 +1,8 @@
 import json
 import os
 import time
-from urllib.parse import urlparse
 from fractions import Fraction
+from urllib.parse import urlparse
 
 import boto3
 import m3u8
@@ -20,12 +20,12 @@ from aws_lambda_powertools.utilities.idempotency import (
     IdempotencyConfig,
     idempotent_function,
 )
-from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
     DataRecord,
 )
-from mediatimestamp.immutable import TimeRange, Timestamp
+from aws_lambda_powertools.utilities.typing import LambdaContext
 from ffprobe import ffprobe_link
+from mediatimestamp.immutable import TimeRange, Timestamp
 
 tracer = Tracer()
 logger = Logger()

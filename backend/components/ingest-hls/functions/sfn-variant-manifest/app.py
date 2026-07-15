@@ -1,7 +1,7 @@
 import json
 import os
-import uuid
 import time
+import uuid
 from fractions import Fraction
 from functools import lru_cache
 from urllib.parse import urlparse
@@ -249,7 +249,7 @@ def build_video_flow(
     return {
         "id": flow_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": f"HLS Import ({os.path.basename(playlist.uri.split('?')[0])})",
         "codec": codec[0],
         "format": "urn:x-nmos:format:video",
         "essence_parameters": {
@@ -292,7 +292,7 @@ def build_audio_flow(
     return {
         "id": flow_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": f"HLS Import ({os.path.basename(playlist.uri.split('?')[0])})",
         "codec": codec[0],
         "format": "urn:x-nmos:format:audio",
         "essence_parameters": {
@@ -332,7 +332,7 @@ def build_variant_multi_flow(
         "id": flow_id,
         "source_id": source_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": f"HLS Import ({os.path.basename(playlist.uri.split('?')[0])})",
         "format": "urn:x-nmos:format:multi",
         "container": map_container(probe),
         "flow_collection": [
@@ -687,7 +687,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     if not variant_multi_flows_with_duration:
         # No muxed variants — single asset multi flow collects every per-essence flow.
         asset_description = (
-            f'HLS Import ({os.path.basename(manifest_location).split("?")[0]})'
+            f"HLS Import ({os.path.basename(manifest_location).split('?')[0]})"
         )
         multi_flows = [
             build_asset_multi_flow(label, asset_description, multi_source_id, flows)

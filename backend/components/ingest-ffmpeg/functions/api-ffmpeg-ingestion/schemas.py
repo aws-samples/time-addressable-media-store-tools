@@ -7,15 +7,13 @@ Keep these in sync manually.
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FfmpegConfig(BaseModel):
     """FFmpeg command configuration."""
 
-    command: dict[str, Optional[str]] = Field(
-        description="FFmpeg command parameters"
-    )
+    command: dict[str, Optional[str]] = Field(description="FFmpeg command parameters")
     tams: Optional[dict[str, Any]] = Field(
         default=None, description="TAMS-specific configuration"
     )

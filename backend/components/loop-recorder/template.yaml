@@ -1,16 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Transform: AWS::Serverless-2016-10-31
-
 Parameters:
   ApiEndpoint:
     Type: String
-  
+
   TamsConnectionArn:
     Type: String
 
   ApiStackName:
     Type: String
+
+Transform: AWS::Serverless-2016-10-31
 
 Resources:
   LoopRecorder:

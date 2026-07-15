@@ -10,7 +10,9 @@ type Props = {
 };
 
 const Collection = ({ entityType, collection }: Props) => {
-  const columnDefinitions: TableProps.ColumnDefinition<FlowCollection[number]>[] = [
+  const columnDefinitions: TableProps.ColumnDefinition<
+    FlowCollection[number]
+  >[] = [
     {
       id: "id",
       header: "Id",

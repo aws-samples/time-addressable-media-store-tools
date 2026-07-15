@@ -363,7 +363,7 @@ Resources:
     Properties:
       LayerName: !Sub
         - ${ParentStackName}-FFmpegLayer-${id}
-        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
+        - id: !Select [4, !Split ['-', !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
       RetentionPolicy: Delete
       ContentUri: layers/ffmpeg
       CompatibleRuntimes:

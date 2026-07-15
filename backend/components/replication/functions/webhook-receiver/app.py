@@ -1,11 +1,11 @@
-import os
 import json
+import os
 from datetime import datetime
-import boto3
 
+import boto3
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import APIGatewayRestResolver
-from aws_lambda_powertools.event_handler.openapi.params import Path, Body
+from aws_lambda_powertools.event_handler.openapi.params import Body, Path
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from typing_extensions import Annotated
@@ -38,11 +38,13 @@ def segments_added(event):
         # Copy all segment fields except get_urls (which is source-store specific)
         message_body = {k: v for k, v in segment.items() if k != "get_urls"}
         # Add/override operational fields
-        message_body.update({
-            "flowId": event["flow_id"],
-            "uri": urls[0],
-            "deleteSource": False,
-        })
+        message_body.update(
+            {
+                "flowId": event["flow_id"],
+                "uri": urls[0],
+                "deleteSource": False,
+            }
+        )
         entries.append(
             {"Id": message_body["objectId"], "MessageBody": json.dumps(message_body)}
         )

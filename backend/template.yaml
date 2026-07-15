@@ -16,12 +16,12 @@ Metadata:
         Parameters:
           - ApiStackName
       - Label:
-          default: "[Optional] OIDC Details"
+          default: '[Optional] OIDC Details'
         Parameters:
           - OidcUrl
           - OidcClientId
       - Label:
-          default: "[Optional] OAuth Details"
+          default: '[Optional] OAuth Details'
         Parameters:
           - OAuthClientId
           - OAuthClientSecret
@@ -40,15 +40,15 @@ Metadata:
       DeployLoopRecorder:
         default: Deploy Loop Recorder?
       OidcUrl:
-        default: "The OIDC Provider Url. Leave blank if using Cognito"
+        default: The OIDC Provider Url. Leave blank if using Cognito
       OidcClientId:
-        default: "The OIDC Provider Client Id. Leave blank if using Cognito"
+        default: The OIDC Provider Client Id. Leave blank if using Cognito
       OAuthClientId:
-        default: "The OAuth Provider Client Id. Leave blank if using Cognito"
+        default: The OAuth Provider Client Id. Leave blank if using Cognito
       OAuthClientSecret:
-        default: "The OAuth Provider Client Secret. Leave blank if using Cognito"
+        default: The OAuth Provider Client Secret. Leave blank if using Cognito
       OAuthAuthorizationEndpoint:
-        default: "The OAuth Provider Token Url. Leave blank if using Cognito"
+        default: The OAuth Provider Token Url. Leave blank if using Cognito
 
 Parameters:
   ApiStackName:
@@ -68,7 +68,7 @@ Parameters:
 
   OAuthClientSecret:
     Type: String
-    Default: "-"
+    Default: '-'
     NoEcho: True
 
   OAuthAuthorizationEndpoint:
@@ -113,10 +113,10 @@ Parameters:
 Mappings:
   Solution:
     Constants:
-      Version: "4.2.1"
+      Version: 4.2.1
 
 Conditions:
-  UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, "-"], !Equals [!Ref OAuthAuthorizationEndpoint, ""] ]
+  UsingCognito: !Or [!Equals [!Ref OAuthClientId, ""], !Equals [!Ref OAuthClientSecret, '-'], !Equals [!Ref OAuthAuthorizationEndpoint, ""]]
 
   DeployHlsApi: !Equals [!Ref DeployHlsApi, "Yes"]
 
@@ -156,7 +156,7 @@ Resources:
     Properties:
       LayerName: !Sub
         - ${AWS::StackName}-OpenIdAuthLayer-${id}
-        - id: !Select [4, !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
+        - id: !Select [4, !Split ['-', !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
       RetentionPolicy: Delete
       ContentUri: layers/openid-auth
       CompatibleRuntimes:
@@ -212,13 +212,13 @@ Resources:
           AuthorizationEndpoint: !If
             - UsingCognito
             - !ImportValue
-                Fn::Sub: ${ApiStackName}-TokenUrl
+              Fn::Sub: ${ApiStackName}-TokenUrl
             - !Ref OAuthAuthorizationEndpoint
           ClientParameters:
             ClientID: !If
               - UsingCognito
               - !ImportValue
-                  Fn::Sub: ${ApiStackName}-UserPoolClientId
+                Fn::Sub: ${ApiStackName}-UserPoolClientId
               - !Ref OAuthClientId
             ClientSecret: !If
               - UsingCognito
@@ -276,11 +276,7 @@ Resources:
     Properties:
       Name: !Sub
         - omakase-tams-${id}
-        - id:
-            !Select [
-              4,
-              !Split ["-", !Select [2, !Split [/, !Ref "AWS::StackId"]]],
-            ]
+        - id: !Select [4, !Split ['-', !Select [2, !Split [/, !Ref "AWS::StackId"]]]]
 
   MediaConvertBucket:
     Type: AWS::S3::Bucket
@@ -537,7 +533,6 @@ Resources:
         OidcClientId: !Ref OidcClientId
 
 Outputs:
-
   OidcAuthority:
     Value: !GetAtt CognitoStack.Outputs.OidcAuthority
 

@@ -2,7 +2,7 @@
 
 ## FFmpeg Commands Parameter
 
-**CloudFormation Output:** `FfmpegCommandsParameter`  
+**CloudFormation Output:** `FfmpegCommandsParameter`
 **Component:** FFmpeg Ingest (deployed when `DeployIngestFfmpeg` = "Yes")
 
 This parameter defines available FFmpeg commands and their TAMS metadata for the Web UI, enabling custom transcoding and export operations.
@@ -39,7 +39,7 @@ This parameter defines available FFmpeg commands and their TAMS metadata for the
 The `tams` object follows the TAMS flow schema and allows you to:
 
 - **Change a value**: Provide the property name and new value
-- **Delete a property**: Provide the property name with `null` value  
+- **Delete a property**: Provide the property name with `null` value
 - **Leave unchanged**: Omit the property entirely
 
 ## Default Commands
@@ -52,7 +52,7 @@ The parameter includes these default FFmpeg commands:
 "Thumbnail size image": {
   "command": {
     "-ss": "00:00:00",
-    "-frames:v": "1", 
+    "-frames:v": "1",
     "-vf": "scale=320:180",
     "-qscale:v": "2",
     "-f": "image2"
@@ -77,7 +77,7 @@ The parameter includes these default FFmpeg commands:
   "command": {
     "-c:v": "libx264",
     "-copyts": null,
-    "-vf": "scale=1920:1080", 
+    "-vf": "scale=1920:1080",
     "-b:v": "5000k",
     "-f": "mpegts"
   },

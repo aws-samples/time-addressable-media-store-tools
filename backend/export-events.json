@@ -1,17 +1,15 @@
 {
-    "BASIC_EVENT": {
-        "title": "Basic Event"
-    },
-    "FLOW_CREATION": {
-        "title": "Flow Creation",
-        "required": [
-            "label"
-        ],
-        "properties": {
-            "label": {
-                "type": "string",
-                "title": "Label"
-            }
-        }
+  "BASIC_EVENT": {
+    "title": "Basic Event"
+  },
+  "FLOW_CREATION": {
+    "title": "Flow Creation",
+    "required": ["label"],
+    "properties": {
+      "label": {
+        "type": "string",
+        "title": "Label"
+      }
     }
+  }
 }
