@@ -139,7 +139,7 @@ Resources:
     Properties:
       CodeUri: functions/api-ffmpeg-ingestion/
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: tams-tools
@@ -226,7 +226,7 @@ Resources:
     Properties:
       CodeUri: functions/rule-cleanup/
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
       Environment:
         Variables:
           POWERTOOLS_SERVICE_NAME: tams-tools
@@ -387,7 +387,7 @@ Resources:
         Size: 10240
       CodeUri: functions/ffmpeg-worker/
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
         - !Ref FFmpegLayer
       Environment:
         Variables:

@@ -399,7 +399,7 @@ Resources:
       MemorySize: 1024
       CodeUri: functions/edit-by-reference/
       Layers:
-        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:30
+        - !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-arm64:36
         - !Ref OpenIdAuthLayer
       Environment:
         Variables:
