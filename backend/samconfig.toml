@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "BCI-TAM-TOOLS"
+resolve_s3 = true
+s3_prefix = "BCI-TAM-TOOLS"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = "ApiStackName=\"BCI-TAM-API\" OidcUrl=\"\" OidcClientId=\"\" OAuthClientId=\"\" OAuthAuthorizationEndpoint=\"\" DeployHlsApi=\"Yes\" DeployIngestHls=\"Yes\" DeployIngestFfmpeg=\"Yes\" DeployReplication=\"Yes\" DeployLoopRecorder=\"Yes\" DeployContentIngest=\"Yes\""
+image_repositories = []
+
+[default.global.parameters]
+region = "eu-west-1"
