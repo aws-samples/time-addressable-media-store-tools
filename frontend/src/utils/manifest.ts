@@ -1,5 +1,4 @@
 import * as HLS from  "hls-parser"
-import { mp2t } from "mux.js";
 
 // Manifest Object to handle the manifest file.
 export class Manifest {
@@ -107,6 +106,7 @@ export const PackageTypeOptions = [
   },
 ];
 
+// These are the types we'd expect to see in an ES header.
 const VIDEO_TYPES = new Set([
   0x1B,
   0x24,
@@ -122,10 +122,7 @@ const AUDIO_TYPES = new Set([
   0x87,
 ]);
 
-export interface streamContent {
-  hasAudio: boolean;
-  hasVideo: boolean;
-};
+
 
 export const validateManifestFile = async (file) => {
   const fileExtension = file.name.split(".").pop().toLowerCase();
@@ -144,7 +141,13 @@ export const validateManifestFile = async (file) => {
 };
 
 // Allowed Video file types and their magic numbers for validation.
-const videoFileOptions = [
+export interface FileTypeOption {
+  ext: string;
+  type: string;
+  magic: number[];
+};
+
+const videoFileOptions: FileTypeOption[] = [
   { ext: "ts", type: "Transport Stream", magic: [0x47] },
   { ext: "mp4", type: "MP4 Video", magic: [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70] },
   { ext: "mpeg", type: "MPEG Video", magic: [0x00, 0x00, 0x01, 0xBA] },
@@ -153,7 +156,7 @@ const videoFileOptions = [
 ]; 
 
 // Allowed Audio file types and their magic numbers for validation.
-const audioFileOptions = [
+const audioFileOptions: FileTypeOption[] = [
   { ext: "mp3", type: "MP3 Audio", magic: [0xFF, 0xF3] },
   { ext: "aac", type: "AAC Audio", magic: [0xFF, 0xF1] },
   { ext: "wav", type: "WAV Audio", magic: [0x52, 0x49, 0x46, 0x46] },
@@ -161,91 +164,204 @@ const audioFileOptions = [
   { ext: "ts", type: "TS Audio", magic: [0x47] },
 ];
 
-export function streamType(stream: Uint8Array): streamContent {
-  // First get the PID for the PMT from the PAT.
-  const findPMT = (stream: Uint8Array): number | null => {
-    // read the stream and look for the Table 
-  };
+// Find the payload in a stream.
+function getPayload(packet: Uint8Array): Uint8Array {
 
-  const pmtPID  = findPMT(stream);
-  if (!pmtPID) {
-    console.warn("No PAT found in the stream.");
-    return { hasAudio: false, hasVideo: false };
+    const afc = (packet[3] >> 4) & 0x03;
+    let offset = 4;
+
+    if (afc === 2) {
+        throw new Error("No payload");
+    }
+
+    if (afc === 3) {
+        offset += packet[4] + 1;
+    }
+
+    return packet.subarray(offset);
+}
+
+// Interface for the function to detect stream type
+export interface StreamType {
+  hasAudio: boolean;
+  hasVideo: boolean;
+};
+
+//##############################################################################################################//
+
+export async function detectTsType(stream: Uint8Array): Promise<StreamType> {
+
+  // Loop over packets looking for the PAT...
+  function forEachPacket(
+    data: Uint8Array,
+    callback: (packet: Uint8Array) => boolean | void
+    ) {
+    for (let offset = 0; offset + 188 <= data.length; offset += 188) {
+        const packet = data.subarray(offset, offset + 188);
+        if (packet[0] !== 0x47) {
+            throw new Error(`Sync lost at ${offset}`);
+        }
+        if (callback(packet) === true) {
+            return;
+        }
+    }
+  }
+  
+  // Look in the PAT to find the PMT PID.
+  function findPMTPid(data: Uint8Array): number | null {
+    let pmtPid: number | null = null;
+
+    forEachPacket(data, packet => {
+        const pid = ((packet[1] & 0x1f) << 8) | packet[2];
+        if (pid !== 0) {
+            return;
+        }
+        pmtPid = parsePAT(packet);
+        return true;
+    });
+    return pmtPid;
   }
 
-  // We have the PMT PID from above.
+  // Find the PMT using the PID.
+  function findPMT(data: Uint8Array, pmtPid: number): Uint8Array | null {
 
-};
+      let result: Uint8Array | null = null;
 
-export async function detectTsType(
-  file: File
-): Promise<"video" | "audio" | "both" | "unknown"> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
+      forEachPacket(data, packet => {
+          const pid = ((packet[1] & 0x1f) << 8) | packet[2];
+          if (pid !== pmtPid) {
+              return;
+          }
+          result = packet;
+          return true;
+      });
 
-  const getPAT = (bytes: Uint8Array): mp2t.PAT | null => {
+      // Return the actual PACKET for the PMT
+      return result;
+  }
+
+  // Parse the PAT to find the PMT PID.
+  function parsePAT(packet: Uint8Array):number|null {
+
+      const payload = getPayload(packet);
+      const pointer = payload[0];
+
+      console.log(
+          Array.from(payload.slice(0, 32))
+              .map(b => b.toString(16).padStart(2, "0"))
+              .join(" ")
+      );
+
+      let tableStart = 1 + pointer;
+      const sectionLength = ((payload[tableStart + 1] & 0x0f) << 8) | payload[tableStart + 2];
 
 
-  // Find the PAT first.
-  const pat = getPAT(bytes);
+      // Now set the end of the section....
+      const sectionEnd = tableStart + 3 + sectionLength;
+      // Need to remove the CRC part.
+      const endOfPrograms = sectionEnd - 4;
+      console.log(`Section length: ${sectionLength} starting at ${tableStart} ending at ${sectionEnd} with end of programs at ${endOfPrograms}`);      
 
-
-  return new Promise((resolve) => {
-    let hasVideo = false;
-    let hasAudio = false;
-    
-    // Get a stream of TS packets
-    const transport = new mp2t.TransportPacketStream();
-
-    // Parse each packet to find out what it is.
-    const parseStream = new mp2t.TransportParseStream();
-
-    // actually process the TS packets using the parser above.
-    transport.pipe(parseStream);
-
-    console.log("PACKET:  ", transport);
-
-    parseStream.on("data", (packet: any) => {
-
-      console.debug("Stream Type:  ", packet.type);
-      // Is this the PMT?
-      if (packet.type !== "pmt") {
-        return;
+      console.log("PAT: ", payload[tableStart]);
+      // table_id
+      if (payload[tableStart] !== 0x00) {
+          throw new Error("Not a PAT");
       }
 
-      console.log("PMT:  ", packet.programMapTable);
+      // Declare the index we need
+      let index = tableStart + 8;
 
-      console.dir(packet.programMapTable);
+      // We need to work our way through the (possible) list of PMTs
+      while (index + 4 <= endOfPrograms) {
+        const programNumber = (payload[index] << 8) | payload[index + 1];
+        const pmtPid = ((payload[index + 2] & 0x1f) << 8) | payload[index + 3];
 
-      //const pmt = packet.programMapTable;
+        console.log(`Program ${programNumber} -> PID ${pmtPid}`);
 
-      if (packet.programMapTable.video !== null) {
-        hasVideo = true;
+        if (programNumber !== 0) {
+          return pmtPid;
+        }
+        index += 4;
       }
 
-      if (packet.programMapTable.audio !== null) {
-        hasAudio = true;
+      return null;
+  }
+
+  // Look to see what streams a PMT points to.
+  function parsePMT(packet: Uint8Array): StreamType {
+      let hasAudio = false;
+      let hasVideo = false;
+
+      const payload = getPayload(packet);
+      // pointer to table should be firt byte...
+      // Calculate start of the section
+      const sectionStart = 1 + payload[0];
+
+      // We now should have the PMT
+      const tableID = payload[sectionStart];
+
+      console.log("PMT Table ID: ", tableID);
+      
+      if (tableID != 0x2) {
+        throw new Error("Expected PMT");
       }
-    });
 
-    transport.on("done", () => {
-      if (hasVideo && hasAudio) {
-        resolve("both");
-      } else if (hasVideo) {
-        resolve("video");
-      } else if(hasAudio) {
-        resolve("audio");
-      } else {
-        resolve("unknown");
-      }      
-    });
+      const sectionLength = ((payload[sectionStart] & 0x0f) << 8) | payload[sectionStart + 1];
+      const programInfoLength = ((payload[sectionStart + 10] & 0x0f) << 8) | payload[sectionStart + 11];
 
-    transport.push(bytes);
-    transport.flush();
-  });
-};
+      // Start of the ES data.
+      let pos = sectionStart + 12 + programInfoLength;
 
-export const validateVideoFile = async (file) => {
+      // find end of the section
+      const sectionEnd = sectionStart + 3 + sectionLength;
+
+      // Work through the ES list checking types. Account for the CRC being part of the length stored.
+
+      while (pos + 5 <= (sectionEnd - 4)) {
+          const streamType = payload[pos];
+          const esInfoLength = ((payload[pos + 3] & 0x0f) << 8) | payload[pos + 4];
+          // Get PID for debug print
+          const elemPid = ((payload[pos + 1] & 0x1f) << 8) | payload[pos + 2];
+
+          console.log(`ES Type=ox${streamType.toString(16)}, PID=${elemPid}`);
+
+          if (VIDEO_TYPES.has(streamType)) {
+              hasVideo = true;
+          }
+
+          if (AUDIO_TYPES.has(streamType)) {
+              hasAudio = true;
+          }
+
+          pos += 5 + esInfoLength;
+      }
+
+      return {
+          hasAudio,
+          hasVideo
+      };
+  }
+
+  // Main processing
+  const pmtPid = findPMTPid(stream);
+
+  if (pmtPid === null) {
+      throw new Error("No PAT found");
+  }
+
+  // Get the actual PMT....
+  const pmt = findPMT(stream, pmtPid);
+
+  if (!pmt) {
+      throw new Error("No PMT found");
+  }
+
+  return parsePMT(pmt);
+}
+
+//##############################################################################################################//
+
+export const validateVideoFile = async (file:File):Promise<boolean> => {
   const fileExtension = file.name.split(".").pop().toLowerCase();
   console.debug("Validating video file with extension:", fileExtension);
 
@@ -256,48 +372,50 @@ export const validateVideoFile = async (file) => {
   if (videoOption) {
 
     if (fileExtension == "ts") {
-      const type = await detectTsType(file);
+      console.log(`About to process ${file}`);
+      const {hasVideo, hasAudio} = await detectTsType(await fileToBuffer(file));
 
-      console.log("TYPE: ", type);
+      console.log("Video: ", hasVideo);
+      console.log("Audio: ", hasAudio);
 
-      return (
-         type === "video" || type === "both"
-      );
+      return ( hasVideo);
     } else {
         // If this is not a ts file then check if it might be a video file in some other format.
-        const isValid = videoOption.magic ? await verifyMagicNumber(file, videoOption.magic) : true;
+        const isValid = await verifyMagicNumber(file, videoOption.magic);
         console.debug("Video file validation result:", isValid);
         return isValid;   
     }
+
+    return false;
   }
-  return false;
 
   console.warn("No matching video file option found for extension:", fileExtension);
   return false;
 };
 
-export const validateAudioFile = async (file) => {
+export const validateAudioFile = async (file:File):Promise<boolean> => {
   const fileExtension = file.name.split(".").pop().toLowerCase();
   console.debug("Validating audio file with extension:", fileExtension);
 
   const audioOption = audioFileOptions.find((option) => option.ext === fileExtension);
   console.debug("Audio option found for validation:", audioOption);
+  let isValid = false;
+
   if (audioOption) {
 
     if (fileExtension == "ts") {
-        const type = await detectTsType(file);
+        const {hasVideo, hasAudio} = await detectTsType(await fileToBuffer(file));
 
-        console.log("TYPE:  ", type);
-        return (
-          type === "audio" || type === "both"
-        );
+        console.log("Video: ", hasVideo);
+        console.log("Audio: ", hasAudio);
+
+        return (hasAudio);
     } else {
         // If this is not a ts file then check to see if it is some other sort of audio file.
-        const isValid = audioOption.magic ? await verifyMagicNumber(file, audioOption.magic) : true;
-        console.debug("Audio file validation result:", isValid);
-        return isValid;    
+        isValid = await verifyMagicNumber(file, audioOption.magic);
+        console.debug("Audio file validation result:", isValid);   
     }
-    return false;
+    return isValid;
   }
 
   console.warn("No matching audio file option found for extension:", fileExtension);
@@ -305,18 +423,21 @@ export const validateAudioFile = async (file) => {
 };
 
 // Utility function to verify the magic number of a file against an expected magic number.
-export const verifyMagicNumber = (file, expectedMagic) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const fileHeader = new Uint8Array(ev.target.result).subarray(0, expectedMagic.length);
-      const isValid = expectedMagic.every((byte, index) => fileHeader[index] === byte);
-      resolve(isValid);
-    };
-    reader.onerror = () => resolve(false);
-    reader.readAsArrayBuffer(file.slice(0, expectedMagic.length));
-  });
+export const verifyMagicNumber = async (
+    file: File,
+    expectedMagic: number[]
+): Promise<boolean> => {
+    const data = await fileToBuffer(file);
+    return expectedMagic.every(
+        (byte, index) => data[index] === byte
+    );
 };
+
+// We need to read the file into a buffer
+export async function fileToBuffer(file: File, length?: number): Promise<Uint8Array> {
+  const buffer = length ? file.slice(0, length) : file;
+  return new Uint8Array(await buffer.arrayBuffer());
+}
 
 const videoCodecList = [
   { id: "ts", codec: "video/ts", container: "video/mp2t", format: "urn:x-nmos:format:video" },
