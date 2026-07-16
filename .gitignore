@@ -32,6 +32,7 @@ backend/.aws-sam/*
 # Exclude logo
 frontend/bci-logo.jpg
 frontend/.env.local
+frontend/node_modules/*
 
 ### VisualStudioCode ###
 .vscode/*
