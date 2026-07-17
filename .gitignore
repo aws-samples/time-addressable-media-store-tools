@@ -33,6 +33,7 @@ backend/.aws-sam/*
 frontend/bci-logo.jpg
 frontend/.env.local
 frontend/node_modules/*
+frontend/node_modules/.*
 frontend/node_modules/.bin/*
 frontend/node_modules/.vite/deps/*
 
