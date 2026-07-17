@@ -69,6 +69,7 @@ const HlsIngestModal = ({
         name: id,
         input: stringify({
           label,
+          description,
           manifestLocation: manifestUri,
           ...(sourceId ? { sourceId } : {}),
         }),

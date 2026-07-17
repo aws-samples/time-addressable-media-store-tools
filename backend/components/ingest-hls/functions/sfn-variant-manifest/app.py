@@ -228,6 +228,7 @@ def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
 def build_video_flow(
     flow_id: str,
     label: str,
+    description: str,
     playlist,
     probe: dict,
     codec: tuple,
@@ -252,10 +253,11 @@ def build_video_flow(
                 f"Video stream '{playlist.uri}' - unable to determine frame rate from media segments or #EXT-X-STREAM-INF"
             )
         frame_rate_fract = Fraction(probe_frame_rate).limit_denominator()
+        
     return {
         "id": flow_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": description if description else f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
         "codec": codec[0],
         "format": "urn:x-nmos:format:video",
         "essence_parameters": {
@@ -274,6 +276,7 @@ def build_video_flow(
 def build_audio_flow(
     flow_id: str,
     label: str,
+    description: str,
     playlist,
     probe: dict,
     codec: tuple,
@@ -298,7 +301,7 @@ def build_audio_flow(
     return {
         "id": flow_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": description if description else f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
         "codec": codec[0],
         "format": "urn:x-nmos:format:audio",
         "essence_parameters": {
@@ -333,6 +336,7 @@ def build_variant_multi_flow(
     flow_id: str,
     source_id: str,
     label: str,
+    description: str,
     playlist,
     probe: dict,
     per_essence_flows: list,
@@ -342,7 +346,7 @@ def build_variant_multi_flow(
         "id": flow_id,
         "source_id": source_id,
         "label": label,
-        "description": f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
+        "description": description if description else f'HLS Import ({os.path.basename(playlist.uri.split("?")[0])})',
         "format": "urn:x-nmos:format:multi",
         "container": map_container(probe),
         "flow_collection": [
@@ -368,6 +372,7 @@ def apply_bitrate(
 def build_audio_media_flow(
     flow_id: str,
     label: str,
+    description: str,
     media,
     probe: dict,
     codec: tuple,
@@ -390,7 +395,7 @@ def build_audio_media_flow(
     flow = {
         "id": flow_id,
         "label": label,
-        "description": f"HLS Import ({os.path.basename(media.uri.split('?')[0])})",
+        "description": description if description else f"HLS Import ({os.path.basename(media.uri.split('?')[0])})",
         "codec": codec[0],
         "container": map_container(probe),
         "format": "urn:x-nmos:format:audio",
@@ -411,6 +416,7 @@ def build_audio_media_flow(
 def build_subtitle_flow(
     flow_id: str,
     label: str,
+    description: str,
     media,
     probe: dict,
     codec: tuple,
@@ -420,7 +426,7 @@ def build_subtitle_flow(
     return {
         "id": flow_id,
         "label": label,
-        "description": f"HLS Import ({os.path.basename(media.uri.split('?')[0])})",
+        "description": description if description else f"HLS Import ({os.path.basename(media.uri.split('?')[0])})",
         "codec": codec[0],
         "container": map_container(probe),
         "format": "urn:x-nmos:format:data",
@@ -434,7 +440,7 @@ def build_subtitle_flow(
 
 @tracer.capture_method(capture_response=False)
 def process_playlists(
-    manifest: m3u8.M3U8, manifest_path: str, label: str, multi_source_id: str
+    manifest: m3u8.M3U8, manifest_path: str, label: str, description: str, multi_source_id: str
 ) -> tuple[list, list, dict, dict, dict, list]:
     """Parses the supplied manifest playlists to determine TAMS Flows and associated required metadata"""
     flows = []
@@ -478,10 +484,10 @@ def process_playlists(
                 )
             # Muxed variant: build two metadata-only per-essence flows and a per-variant multi
             video_flow = build_video_flow(
-                str(uuid.uuid4()), label, playlist, probe, video_codec
+                str(uuid.uuid4()), label, description, playlist, probe, video_codec
             )
             audio_flow = build_audio_flow(
-                str(uuid.uuid4()), label, playlist, probe, audio_codec
+                str(uuid.uuid4()), label, description, playlist, probe, audio_codec
             )
             flows.append(video_flow)
             flows.append(audio_flow)
@@ -492,6 +498,7 @@ def process_playlists(
                 multi_flow_id,
                 multi_source_id,
                 label,
+                description,
                 playlist,
                 probe,
                 [video_flow, audio_flow],
@@ -514,9 +521,9 @@ def process_playlists(
         segment_durations[flow_id] = target_duration
         # Assume Video Stream if resolution is specified, Audio Stream otherwise
         if playlist.stream_info.resolution:
-            flow = build_video_flow(flow_id, label, playlist, probe, video_codec)
+            flow = build_video_flow(flow_id, label, description, playlist, probe, video_codec)
         else:
-            flow = build_audio_flow(flow_id, label, playlist, probe, audio_codec)
+            flow = build_audio_flow(flow_id, label, description, playlist, probe, audio_codec)
         flow["container"] = map_container(probe)
         apply_bitrate(flow, playlist)
         flows.append(flow)
@@ -580,7 +587,7 @@ def resolve_audio_channels(media, probe_audio_stream: dict) -> int:
 
 @tracer.capture_method(capture_response=False)
 def process_media(
-    manifest: m3u8.M3U8, manifest_path: str, label: str, audio_codecs: dict
+    manifest: m3u8.M3U8, manifest_path: str, label: str, description: str, audio_codecs: dict
 ) -> tuple[list, dict, dict, list]:
     """Parses the supplied manifest media to determine TAMS Flows and associated required metadata"""
     flows = []
@@ -612,7 +619,7 @@ def process_media(
                 channels = resolve_audio_channels(media, audio_stream)
                 flows.append(
                     build_audio_media_flow(
-                        flow_id, label, media, probe, codec, channels, tags
+                        flow_id, label, description, media, probe, codec, channels, tags
                     )
                 )
             case "SUBTITLES":
@@ -626,7 +633,7 @@ def process_media(
                 )
                 codec = resolve_subtitle_codec(media, subtitle_stream)
                 flows.append(
-                    build_subtitle_flow(flow_id, label, media, probe, codec, tags)
+                    build_subtitle_flow(flow_id, label, description, media, probe, codec, tags)
                 )
     return flows, flow_manifests, segment_durations, warnings
 
@@ -663,6 +670,7 @@ def build_asset_multi_flow(
 # pylint: disable=unused-argument
 def lambda_handler(event: dict, context: LambdaContext) -> dict:
     label = event["label"]
+    description = event["description"]
     manifest_location = event["manifestLocation"]
     manifest_path = os.path.dirname(manifest_location)
     manifest = get_manifest(manifest_location)
@@ -685,13 +693,13 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         playlist_segment_durations,
         audio_codecs,
         playlist_warnings,
-    ) = process_playlists(manifest, manifest_path, label, multi_source_id)
+    ) = process_playlists(manifest, manifest_path, label, description, multi_source_id)
     (
         media_flows,
         media_flow_manifests,
         media_segment_durations,
         media_warnings,
-    ) = process_media(manifest, manifest_path, label, audio_codecs)
+    ) = process_media(manifest, manifest_path, label, description, audio_codecs)
     flow_manifests = {**playlist_flow_manifests, **media_flow_manifests}
     flow_segment_durations = {**playlist_segment_durations, **media_segment_durations}
     flows = [
