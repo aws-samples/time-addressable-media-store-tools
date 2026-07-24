@@ -1,5 +1,5 @@
-import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
 import { AWS_REGION, AWS_IDENTITY_POOL_ID, OIDC_AUTHORITY } from "@/constants";
+import { fromCognitoIdentityPool } from "@aws-sdk/credential-provider-cognito-identity";
 
 export const getAwsCredentials = (idToken: string) => {
   return fromCognitoIdentityPool({

@@ -51,6 +51,8 @@ export const AWS_REPLICATION_CREATE_RULE_ARN = import.meta.env
   .VITE_APP_AWS_REPLICATION_CREATE_RULE_ARN;
 export const AWS_REPLICATION_DELETE_RULE_ARN = import.meta.env
   .VITE_APP_AWS_REPLICATION_DELETE_RULE_ARN;
+export const AWS_S3_CONTENT_BUCKET = import.meta.env
+  .VITE_APP_AWS_S3_CONTENT_BUCKET
 /************* END OF ENVIRONMENT VARIABLES **************/
 /************* FEATURE FLAGS **************/
 export const IS_HLS_DEPLOYED = !!(AWS_IDENTITY_POOL_ID && AWS_HLS_FUNCTION_URL);

@@ -11,7 +11,24 @@ export default defineConfig({
   define: {
     global: "globalThis", //<-- AWS SDK
   },
-  optimizeDeps: {},
+  optimizeDeps: {
+    exclude: [
+      "@aws-sdk/credential-providers",
+      "@aws-sdk/credential-provider-web-identity",
+      "@aws-sdk/credential-provider-ini",
+      "@aws-sdk/credential-provider-node",
+    ],    
+  },
+  ssr: {
+    noExternal: [
+      "@aws-sdk/client-s3",
+      "@aws-sdk/credential-providers",
+      "@aws-sdk/credential-provider-web-identity",
+      "@aws-sdk/credential-provider-node",
+      "@aws-sdk/credential-provider-ini",
+    ],
+  },
+    
   plugins: [react()],
   resolve: {
     alias: [
