@@ -48,14 +48,7 @@ def ffprobe_link(source, byterange=None):
                 "json",
             ]
         )
-        
-        
-        print(f"Running ffprobe with args: {args}")
-        print("Executing:", " ".join(args[:-1]))
-        print("Target:", args[-2])
-        print(f"Running ffprobe on source: {source}")
-        print(f"Probe URL: {url.split('?')[0]}")
-        
+              
         ffprobe = subprocess.run(
             args,
             check=True,

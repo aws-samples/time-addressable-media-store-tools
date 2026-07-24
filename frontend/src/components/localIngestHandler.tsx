@@ -377,9 +377,9 @@ const LocalIngestHandler = ({
     setPackageType(packageType);
   };
 
-  console.log("End Manifest list is: ", manifestList);
-  console.log("End File list is: ", fileList);
-  console.log("End Package type is: ", packageType);
+  console.debug("End Manifest list is: ", manifestList);
+  console.debug("End File list is: ", fileList);
+  console.debug("End Package type is: ", packageType);
 
   return (
     <>

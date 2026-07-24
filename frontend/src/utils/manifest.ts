@@ -260,9 +260,9 @@ export async function detectTsType(stream: Uint8Array): Promise<StreamType> {
       const sectionEnd = tableStart + 3 + sectionLength;
       // Need to remove the CRC part.
       const endOfPrograms = sectionEnd - 4;
-      console.log(`Section length: ${sectionLength} starting at ${tableStart} ending at ${sectionEnd} with end of programs at ${endOfPrograms}`);      
+      console.debug(`Section length: ${sectionLength} starting at ${tableStart} ending at ${sectionEnd} with end of programs at ${endOfPrograms}`);      
 
-      console.log("PAT: ", payload[tableStart]);
+      console.debug("PAT: ", payload[tableStart]);
       // table_id
       if (payload[tableStart] !== 0x00) {
           throw new Error("Not a PAT");
@@ -300,7 +300,7 @@ export async function detectTsType(stream: Uint8Array): Promise<StreamType> {
       // We now should have the PMT
       const tableID = payload[sectionStart];
 
-      console.log("PMT Table ID: ", tableID);
+      console.debug("PMT Table ID: ", tableID);
       
       if (tableID != 0x2) {
         throw new Error("Expected PMT");
@@ -323,7 +323,7 @@ export async function detectTsType(stream: Uint8Array): Promise<StreamType> {
           // Get PID for debug print
           const elemPid = ((payload[pos + 1] & 0x1f) << 8) | payload[pos + 2];
 
-          console.log(`ES Type=ox${streamType.toString(16)}, PID=${elemPid}`);
+          console.debug(`ES Type=ox${streamType.toString(16)}, PID=${elemPid}`);
 
           if (VIDEO_TYPES.has(streamType)) {
               hasVideo = true;
@@ -375,8 +375,8 @@ export const validateVideoFile = async (file:File):Promise<boolean> => {
       console.log(`About to process ${file}`);
       const {hasVideo, hasAudio} = await detectTsType(await fileToBuffer(file));
 
-      console.log("Video: ", hasVideo);
-      console.log("Audio: ", hasAudio);
+      console.debug("Video: ", hasVideo);
+      console.debug("Audio: ", hasAudio);
 
       return ( hasVideo);
     } else {
@@ -406,8 +406,8 @@ export const validateAudioFile = async (file:File):Promise<boolean> => {
     if (fileExtension == "ts") {
         const {hasVideo, hasAudio} = await detectTsType(await fileToBuffer(file));
 
-        console.log("Video: ", hasVideo);
-        console.log("Audio: ", hasAudio);
+        console.debug("Video: ", hasVideo);
+        console.debug("Audio: ", hasAudio);
 
         return (hasAudio);
     } else {
