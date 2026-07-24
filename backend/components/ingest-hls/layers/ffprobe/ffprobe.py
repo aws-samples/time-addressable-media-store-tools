@@ -56,7 +56,7 @@ def ffprobe_link(source, byterange=None):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        print(f"ffprobe stdout: {ffprobe.stdout.decode('utf-8')}")
+
         if ffprobe.returncode == 0:
             return json.loads(ffprobe.stdout.decode("utf-8"))
     except subprocess.CalledProcessError as ex:
