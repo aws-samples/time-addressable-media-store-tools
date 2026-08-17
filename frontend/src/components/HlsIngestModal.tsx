@@ -5,10 +5,12 @@ import {
   FormField,
   Input,
   Modal,
+  Checkbox,
   SpaceBetween,
   Textarea,
   TextContent,
 } from "@cloudscape-design/components";
+
 import CancelModalFooter from "@/components/CancelModalFooter";
 import UuidInput from "@/components/UuidInput";
 import { AWS_HLS_INGEST_ARN } from "@/constants";
@@ -16,6 +18,7 @@ import { useStateMachine } from "@/hooks/useStateMachine";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { isValidUuid } from "@/utils/validateUuid";
 import stringify from "json-stable-stringify";
+import LocalIngestHandler from "@/components/localIngestHandler";
 
 type Props = {
   modalVisible: boolean;
@@ -27,6 +30,10 @@ type Props = {
   onDismiss?: () => void;
 };
 
+import {
+  ManifestResult,
+} from "@/utils/manifest";
+
 const HlsIngestModal = ({
   modalVisible,
   setModalVisible,
@@ -37,6 +44,8 @@ const HlsIngestModal = ({
   onDismiss,
 }: Props) => {
   const [label, setLabel] = useState("");
+  const [description, setDescription] = useState("");
+
   const [internalManifestUri, setInternalManifestUri] = useState("");
   const [sourceId, setSourceId] = useState<string>(crypto.randomUUID());
   const { execute, isExecuting } = useStateMachine();
@@ -46,12 +55,14 @@ const HlsIngestModal = ({
   const [deleteError, setDeleteError] = useState("");
   const addAlertItem = useAlertsStore((state) => state.addAlertItem);
   const delAlertItem = useAlertsStore((state) => state.delAlertItem);
+  const [mode, setMode] = useState("off");
 
   const isReadOnly = externalManifestUri !== undefined;
   const manifestUri = isReadOnly ? externalManifestUri : internalManifestUri;
 
   const performAction = async () => {
     try {
+      console.debug(`Starting ingestion with manifestUri: ${manifestUri}, label: ${label}, sourceId: ${sourceId}`);
       const id = `${idPrefix}-${Date.now()}`;
       await execute({
         stateMachineArn: AWS_HLS_INGEST_ARN,
@@ -105,6 +116,7 @@ const HlsIngestModal = ({
   const handleDismiss = () => {
     setModalVisible(false);
     setLabel("");
+    setDescription("");
     setInternalManifestUri("");
     setSourceId(crypto.randomUUID());
     setWarningCleared(false);
@@ -131,6 +143,27 @@ const HlsIngestModal = ({
         header="Confirmation"
       >
         <SpaceBetween size="xs">
+          <Checkbox
+            checked={mode === "on"}
+            onChange={({ detail }) => {
+              setMode(detail.checked ? "on" : "off");
+            }}
+          >
+            Upload content from local disk
+          </Checkbox>
+
+          {mode === "on" && (
+            <LocalIngestHandler
+                  localModalVisible={mode === "on"}
+                  onComplete = {(result:ManifestResult) => {
+                    setMode("off");
+                    setInternalManifestUri(String(result.masterManifest))
+                  }}
+                  onCancel={() => {
+                    setMode("off");
+                  }}
+            />
+          )}
           <FormField
             description="The following manifest will be processed and ingested."
             label="Manifest URI"
@@ -146,6 +179,7 @@ const HlsIngestModal = ({
               />
             )}
           </FormField>
+
           {manifestWarningText && onDeleteManifest && !warningCleared && (
             <Button
               variant="normal"
@@ -155,7 +189,7 @@ const HlsIngestModal = ({
             </Button>
           )}
           <FormField
-            description="Provide a value for the label to use in TAMS."
+            description="Provide a value for the label to use in TAMS. (Optional)"
             label="Label"
           >
             <Input
@@ -165,6 +199,18 @@ const HlsIngestModal = ({
               }}
             />
           </FormField>
+          <FormField
+            description="Provide a description to be used for the loaded asset. (Optional)"
+            label="Description"
+          >
+            <Input
+              value={description}
+              onChange={({ detail}) => {
+                setDescription(detail.value);
+            }}
+            />
+          </FormField>
+
           <UuidInput
             label="Source Id"
             description="A new Source Id has been generated. Change this if desired."
@@ -176,6 +222,7 @@ const HlsIngestModal = ({
           </TextContent>
         </SpaceBetween>
       </Modal>
+
       <Modal
         onDismiss={handleDeleteDismiss}
         visible={deleteModalVisible}
