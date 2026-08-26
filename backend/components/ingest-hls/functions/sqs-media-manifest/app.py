@@ -26,6 +26,7 @@ from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from ffprobe import ffprobe_link
 from mediatimestamp.immutable import TimeRange, Timestamp
+from pts import is_mpeg_ts_pts_wrap, resolve_segment_start
 
 tracer = Tracer()
 logger = Logger()
@@ -53,18 +54,37 @@ sfn = boto3.client("stepfunctions")
 sqs = boto3.client("sqs")
 manifest_queue_url = os.environ["MANIFEST_QUEUE_URL"]
 ingest_queue_url = os.environ["INGEST_QUEUE_URL"]
+MAX_BATCH_SEND_ATTEMPTS = 3
+
+
+def next_poll_event_timestamp(previous_timestamp: int) -> int:
+    """Return a unique attempt timestamp for a worker-created poll."""
+    return max(int(time.time() * 1000), int(previous_timestamp) + 1)
 
 
 @tracer.capture_method(capture_response=False)
 def send_message_batch(messages: list) -> None:
-    """Sends a batch of messages to the SQS queue"""
+    """Send every segment message, retrying partial SQS batch failures."""
     if not messages:
         return
-    entries = [
+    pending = [
         {"Id": str(i), "MessageBody": json.dumps(message)}
         for i, message in enumerate(messages)
     ]
-    sqs.send_message_batch(QueueUrl=ingest_queue_url, Entries=entries)
+    for attempt in range(MAX_BATCH_SEND_ATTEMPTS):
+        response = sqs.send_message_batch(QueueUrl=ingest_queue_url, Entries=pending)
+        failed = response.get("Failed") or []
+        if not failed:
+            return
+        if any(item.get("SenderFault") for item in failed):
+            raise RuntimeError("SQS rejected one or more segment messages")
+        failed_ids = {str(item.get("Id")) for item in failed}
+        pending = [entry for entry in pending if entry["Id"] in failed_ids]
+        if not pending:
+            raise RuntimeError("SQS returned malformed batch failure details")
+        if attempt + 1 < MAX_BATCH_SEND_ATTEMPTS:
+            time.sleep(0.1 * (2**attempt))
+    raise RuntimeError("SQS segment message retries exhausted")
 
 
 @tracer.capture_method(capture_response=False)
@@ -157,7 +177,7 @@ def probe_segment(
     except (KeyError, ValueError, TypeError) as ex:
         logger.warning(
             "Segment probe incomplete, falling back to #EXTINF",
-            segment_uri=segment_uri,
+            segment_scheme=urlparse(segment_uri).scheme or "unknown",
             error=str(ex),
         )
         return None, Timestamp.from_nanosec(int(extinf_duration * 1_000_000_000))
@@ -171,7 +191,7 @@ def process_segment(
     manifest_path: str,
     segments: list,
 ) -> None:
-    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end) is mutated in place to carry the contiguous-region anchor, with ts_offset recomputed only on a new region (first segment or segment.discontinuity)."""
+    """Process one HLS segment and append its TAMS record to `segments`."""
     segment_uri = f"{manifest_path}/{segment.uri}"
     if segment.uri.startswith("http"):
         segment_uri = segment.uri
@@ -181,17 +201,37 @@ def process_segment(
     start_pts, duration = probe_segment(
         segment_uri, segment.byterange, segment.duration
     )
-    # Treat start_pts of None OR 0 identically — both mean "no meaningful position
-    # on a continuous media clock" (raw AC-3 / raw AAC / WebVTT all report 0 or nothing).
-    has_pts = start_pts is not None and start_pts != Timestamp()
-    is_new_region = state["ts_offset"] is None or segment.discontinuity
-    if is_new_region:
-        file_time_at_region_start = start_pts if has_pts else Timestamp()
-        state["ts_offset"] = state["last_end"] - file_time_at_region_start
-    if has_pts:
-        seg_start = state["ts_offset"] + start_pts
-    else:
-        seg_start = state["last_end"]
+    previous_pts = state["last_pts"]
+    wrapped = is_mpeg_ts_pts_wrap(previous_pts, start_pts)
+    seg_start, state["ts_offset"], pts_reset = resolve_segment_start(
+        ts_offset=state["ts_offset"],
+        last_end=state["last_end"],
+        previous_pts=previous_pts,
+        current_pts=start_pts,
+        discontinuity=segment.discontinuity,
+        anchor_uncertain=state["pts_anchor_uncertain"],
+    )
+    if pts_reset:
+        reset_kind = (
+            "33-bit-wrap"
+            if wrapped
+            else (
+                "backward-jump"
+                if (
+                    previous_pts is not None
+                    and start_pts is not None
+                    and start_pts < previous_pts
+                )
+                else "duration-drift"
+            )
+        )
+        logger.warning(
+            "Media clock re-anchored at last segment end",
+            reset_kind=reset_kind,
+            previous_pts=str(previous_pts),
+            current_pts=str(start_pts),
+            last_end=str(state["last_end"]),
+        )
     seg_end = seg_start + duration
     timerange = TimeRange(seg_start, seg_end, TimeRange.INCLUDE_START)
     segment_dict = {
@@ -204,6 +244,12 @@ def process_segment(
     if str(state["ts_offset"]) != "0:0":
         segment_dict["ts_offset"] = str(state["ts_offset"])
     segments.append(segment_dict)
+    if start_pts is not None and (start_pts != Timestamp() or wrapped):
+        state["last_pts"] = start_pts
+        state["pts_anchor_uncertain"] = False
+    else:
+        state["last_pts"] = None
+        state["pts_anchor_uncertain"] = True
     state["last_end"] = seg_end
 
 
@@ -234,11 +280,20 @@ def process_message(message: dict, task_token: str) -> None:
         state = {
             "ts_offset": Timestamp.from_str(message["tsOffset"]),
             "last_end": Timestamp.from_str(message["lastEnd"]),
+            "last_pts": (
+                Timestamp.from_str(message["lastPts"]) if "lastPts" in message else None
+            ),
+            "pts_anchor_uncertain": message.get("ptsAnchorUncertain", False),
         }
     else:
         pdt = get_manifest_start_pdt(manifest)
         flow_start = Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
-        state = {"ts_offset": None, "last_end": flow_start}
+        state = {
+            "ts_offset": None,
+            "last_end": flow_start,
+            "last_pts": None,
+            "pts_anchor_uncertain": False,
+        }
     segments = []
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
@@ -253,6 +308,27 @@ def process_message(message: dict, task_token: str) -> None:
         sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
     else:
         sfn.send_task_heartbeat(taskToken=task_token)
+        next_message = {
+            **message,
+            "lastMediaSequence": last_media_sequence,
+            "eventTimestamp": next_poll_event_timestamp(message["eventTimestamp"]),
+        }
+        if state["ts_offset"] is not None:
+            next_message["tsOffset"] = str(state["ts_offset"])
+            next_message["lastEnd"] = str(state["last_end"])
+            if state["last_pts"] is not None:
+                next_message["lastPts"] = str(state["last_pts"])
+            else:
+                next_message.pop("lastPts", None)
+            if state["pts_anchor_uncertain"]:
+                next_message["ptsAnchorUncertain"] = True
+            else:
+                next_message.pop("ptsAnchorUncertain", None)
+        else:
+            next_message.pop("tsOffset", None)
+            next_message.pop("lastEnd", None)
+            next_message.pop("lastPts", None)
+            next_message.pop("ptsAnchorUncertain", None)
         sqs.send_message(
             QueueUrl=manifest_queue_url,
             MessageAttributes={
@@ -261,15 +337,7 @@ def process_message(message: dict, task_token: str) -> None:
                     "StringValue": task_token,
                 }
             },
-            MessageBody=json.dumps(
-                {
-                    **message,
-                    "lastMediaSequence": last_media_sequence,
-                    "tsOffset": str(state["ts_offset"]),
-                    "lastEnd": str(state["last_end"]),
-                    "eventTimestamp": int(time.time() * 1000),
-                }
-            ),
+            MessageBody=json.dumps(next_message),
             DelaySeconds=manifest.target_duration,
         )
     return (message["flowId"], message["lastMediaSequence"], message["eventTimestamp"])
@@ -293,7 +361,7 @@ def record_handler(record: SQSRecord) -> None:
         )
 
 
-@logger.inject_lambda_context(log_event=True)
+@logger.inject_lambda_context(log_event=False)
 @tracer.capture_lambda_handler(capture_response=False)
 # pylint: disable=unused-argument
 def lambda_handler(event: SQSEvent, context: LambdaContext) -> dict:
