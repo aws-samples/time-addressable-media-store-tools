@@ -261,6 +261,7 @@ def build_video_flow(
             "frame_width": playlist.stream_info.resolution[0],
             "frame_height": playlist.stream_info.resolution[1],
         },
+        "tags": {"editorial_purpose": "programme"},
     }
 
 
@@ -300,6 +301,7 @@ def build_audio_flow(
             "channels": int(audio_stream["channels"]),
             "sample_rate": int(audio_stream["sample_rate"]),
         },
+        "tags": {"editorial_purpose": "primary"},
     }
 
 
@@ -336,7 +338,7 @@ def build_variant_multi_flow(
         "format": "urn:x-nmos:format:multi",
         "container": map_container(probe),
         "flow_collection": [
-            {"id": f["id"], "role": f["format"].split(":")[-1]}
+            {"id": f["id"], "role": "programme"}
             for f in per_essence_flows
         ],
     }
@@ -389,7 +391,7 @@ def build_audio_media_flow(
             "channels": channels,
             "sample_rate": int(audio_stream["sample_rate"]),
         },
-        "tags": tags,
+        "tags": {**tags, "editorial_purpose": "primary"},
     }
     if audio_stream.get("bit_rate"):
         flow["avg_bit_rate"] = int(audio_stream["bit_rate"])
@@ -418,7 +420,7 @@ def build_subtitle_flow(
             **codec[1],
             "data_type": "urn:x-tams:data:subtitle",
         },
-        "tags": tags,
+        "tags": {**tags, "editorial_purpose": "sdh"},
     }
 
 
@@ -636,7 +638,7 @@ def build_asset_multi_flow(
         "description": description,
         "format": "urn:x-nmos:format:multi",
         "flow_collection": [
-            {"id": f["id"], "role": f["format"].split(":")[-1]}
+            {"id": f["id"], "role": "programme"}
             for f in collection_members
         ],
     }
@@ -705,7 +707,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         for multi in variant_multi_flows_with_duration:
             for flow in standalone_flows:
                 multi["flow_collection"].append(
-                    {"id": flow["id"], "role": flow["format"].split(":")[-1]}
+                    {"id": flow["id"], "role": "programme"}
                 )
         multi_flows = variant_multi_flows_with_duration
     return {

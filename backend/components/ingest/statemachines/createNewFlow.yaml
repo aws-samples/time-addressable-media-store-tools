@@ -158,7 +158,13 @@ States:
       Headers:
         Content-Type: application/json
       RequestBody: >-
-        {% $newFlow %}
+        {%
+          (
+            $essence := $split($newFlow.format, ":")[3];
+            $purpose := $essence = "video" ? "programme" : ($essence = "audio" ? "primary" : $essence);
+            $merge([$newFlow, {"tags": $merge([$newFlow.tags ? $newFlow.tags : {}, {"editorial_purpose": $purpose}])}])
+          )
+        %}
     Retry:
       - ErrorEquals:
           - Events.ConnectionResource.InvalidConnectionState
@@ -189,7 +195,7 @@ States:
             Headers:
               Content-Type: application/json
             RequestBody: >-
-              {% $append($lookup($flowCollectionsMap, $states.input), {"id": $newFlow.id, "role": $split($newFlow.format, ":")[3]}) %}
+              {% $append($lookup($flowCollectionsMap, $states.input), {"id": $newFlow.id, "role": "programme"}) %}
           Retry:
             - ErrorEquals:
                 - Events.ConnectionResource.InvalidConnectionState

@@ -23,7 +23,7 @@ const Collection = ({ entityType, collection }: Props) => {
     {
       id: "role",
       header: "Role",
-      cell: (item) => item.role,
+      cell: (item) => item.role ?? "",
       sortingField: "role",
     },
   ];
