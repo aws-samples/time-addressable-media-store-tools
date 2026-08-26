@@ -4,12 +4,14 @@ import { Mode, applyMode } from "@cloudscape-design/global-styles";
 import { APP_TITLE, APP_TITLE_LOGO, SOLUTION_VERSION } from "@/constants";
 import awsLogo from "@/assets/aws.svg";
 import usePreferencesStore from "@/stores/usePreferencesStore";
+import { useService } from "@/hooks/useService";
 import "@/styles/Header.css";
 
 const Header = () => {
   const mode = usePreferencesStore((state) => state.mode);
   const setMode = usePreferencesStore((state) => state.setMode);
   const auth = useAuth();
+  const { service } = useService();
 
   applyMode(mode);
 
@@ -47,10 +49,18 @@ const Header = () => {
             auth.user?.profile?.email ||
             auth.user?.profile?.preferred_username ||
             "User",
-          description: `TAMS Tools Version: ${SOLUTION_VERSION}`,
           iconName: "user-profile",
           onItemClick: handleDropdownClick,
           items: [
+            {
+              id: "versions",
+              text: "Versions",
+              items: [
+                { id: "api-version", text: `API: ${service?.api_version ?? "…"}`, disabled: true },
+                { id: "service-version", text: `Service: ${service?.service_version ?? "unknown"}`, disabled: true },
+                { id: "tools-version", text: `TAMS Tools: ${SOLUTION_VERSION}`, disabled: true },
+              ],
+            },
             { id: "signout", text: "Sign out" },
             { id: "dark", text: "Dark Mode", disabled: mode === Mode.Dark },
             { id: "light", text: "Light Mode", disabled: mode === Mode.Light },
