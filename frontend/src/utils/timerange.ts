@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { TaiConverter, MODELS } from "t-a-i/nanos";
 import type { TimerangeDateTimeResult } from "@/types/utils";
 
 type TimerangeBigIntResult = {
@@ -210,6 +211,21 @@ export const toTimerangeString = ({
   }
 };
 
+const taiConverter = TaiConverter(MODELS.STALL);
+
+/**
+ * @param {bigint} taiNanos - TAMS timestamp as TAI nanoseconds
+ * @returns {DateTime} Luxon DateTime at the corresponding UTC instant
+ */
+const taiNanosToDateTime = (taiNanos: bigint): DateTime => {
+  const unixNanos = taiConverter.atomicToUnix(taiNanos);
+  const millis =
+    typeof unixNanos === "bigint"
+      ? Number(unixNanos / 1_000_000n)
+      : Number(taiNanos / 1_000_000n);
+  return DateTime.fromMillis(millis);
+};
+
 /**
  * Parses a timerange string into an object with Luxon DateTime values
  *
@@ -223,14 +239,8 @@ export const parseTimerangeDateTime = (
     const { start, end, includesStart, includesEnd } =
       parseTimerange(timerange);
     return {
-      start:
-        start !== null
-          ? DateTime.fromMillis(Number(start / 1_000_000n))
-          : undefined,
-      end:
-        end !== null
-          ? DateTime.fromMillis(Number(end / 1_000_000n))
-          : undefined,
+      start: start !== null ? taiNanosToDateTime(start) : undefined,
+      end: end !== null ? taiNanosToDateTime(end) : undefined,
       includesStart,
       includesEnd,
     };

@@ -144,6 +144,7 @@ export const DATE_FORMAT: Intl.DateTimeFormatOptions = {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
+  timeZoneName: "short",
 };
 export const CONTAINER_FILE_EXTENSION = {
   MP4: "mp4",
