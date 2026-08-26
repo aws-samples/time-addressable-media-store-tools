@@ -46,7 +46,7 @@ def segments_added(event):
             }
         )
         entries.append(
-            {"Id": message_body["objectId"], "MessageBody": json.dumps(message_body)}
+            {"Id": message_body["object_id"], "MessageBody": json.dumps(message_body)}
         )
     if len(entries) == 0:
         # Only send messages if messages exist

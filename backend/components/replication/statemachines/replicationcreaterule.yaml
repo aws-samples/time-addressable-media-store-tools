@@ -79,6 +79,7 @@ States:
         flow_ids: >-
           {% $states.input %}
         presigned: true
+        include_object_timerange: true
     Retry:
       - ErrorEquals:
           - Events.ConnectionResource.InvalidConnectionState
