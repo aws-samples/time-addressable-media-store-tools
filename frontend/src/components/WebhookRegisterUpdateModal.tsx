@@ -31,6 +31,7 @@ const initialWebhookData: WebhookPost = {
   accept_storage_ids: undefined,
   presigned: undefined,
   verbose_storage: undefined,
+  include_object_timerange: undefined,
   tags: undefined,
 };
 
@@ -392,6 +393,20 @@ const WebhookRegisterUpdateModal = ({
                     verbose_storage:
                       typeof ids === "function"
                         ? ids(prev.verbose_storage)
+                        : ids,
+                  }))
+                }
+              />
+              <UndefinedBoolInput
+                description="Whether the underlying object's timerange should appear in flows/segments_added events"
+                label="Include object_timerange"
+                undefinedBool={formData.include_object_timerange}
+                setUndefinedBool={(ids) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    include_object_timerange:
+                      typeof ids === "function"
+                        ? ids(prev.include_object_timerange)
                         : ids,
                   }))
                 }

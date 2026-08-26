@@ -15,6 +15,7 @@ import Header from "@/components/Header";
 import { useState } from "react";
 import useAlertsStore from "@/stores/useAlertsStore";
 import { useFollowLink } from "@/hooks/useFollowLink";
+import { useCapability } from "@/hooks/useCapability";
 
 import type { SideNavigationProps } from "@cloudscape-design/components";
 
@@ -23,6 +24,7 @@ const Layout = () => {
   const alertItems = useAlertsStore((state) => state.alertItems);
   const { pathname } = useLocation();
   const followLink = useFollowLink();
+  const hasProfiles = useCapability("/service/profiles");
 
   const breadCrumbs = () => {
     let breadCrumbPath = pathname;
@@ -64,6 +66,9 @@ const Layout = () => {
         items: [
           { type: "link", text: "Sources", href: "/sources" },
           { type: "link", text: "Flows", href: "/flows" },
+          ...(hasProfiles
+            ? [{ type: "link", text: "Profiles", href: "/profiles" }]
+            : []),
           { type: "link", text: "Webhooks", href: "/webhooks" },
         ],
       },

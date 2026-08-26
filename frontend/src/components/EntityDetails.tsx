@@ -11,11 +11,20 @@ import EditableField from "@/components/EditableField";
 import { DATE_FORMAT, STATUS_MAPPINGS } from "@/constants";
 import chunkArray from "@/utils/chunkArray";
 import { parseTimerangeDateTime } from "@/utils/timerange";
-import { Flow, Source, WebhookGet } from "@/types/tams";
+import { Flow, Source, WebhookGet, Profile } from "@/types/tams";
+
+
+type EntityDetailsEntity =
+  | Source
+  | Flow
+  | WebhookGet
+  | Profile
+  | Profile["flow_metadata"];
 
 type Props = {
   entityType: string;
-  entity: Source | Flow | WebhookGet;
+  entity: EntityDetailsEntity;
+  readOnly?: boolean;
 };
 
 const excludedFields = [
@@ -29,14 +38,15 @@ const excludedFields = [
   "flow_collected_by_ids",
   "source_collected_by_ids",
   "error",
+  "flow_metadata",
 ];
 
 const editableFields = ["label", "description"];
 
-const EntityDetails = ({ entityType, entity }: Props) => {
+const EntityDetails = ({ entityType, entity, readOnly }: Props) => {
   if (!entity) return null;
 
-  const processEntityData = (entity: Source | Flow | WebhookGet) => {
+  const processEntityData = (entity: EntityDetailsEntity) => {
     const filteredEntity = Object.entries(entity).filter(
       ([key]) => !excludedFields.includes(key),
     );
@@ -82,11 +92,11 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     label: string,
     value: string | number | boolean | undefined | string[],
   ) => {
-    if (editableFields.includes(label)) {
+    if (!readOnly && editableFields.includes(label)) {
       return (
         <EditableField
           entityType={entityType}
-          entityId={entity.id}
+          entityId={"id" in entity ? entity.id : ""}
           field={label}
           value={value as string}
         >
@@ -98,6 +108,9 @@ const EntityDetails = ({ entityType, entity }: Props) => {
     // Handle special cases
     if (label === "source_id") {
       return <Link to={`/sources/${value}`}>{value}</Link>;
+    }
+    if (label === "profile_id") {
+      return <Link to={`/profiles/${value}`}>{value}</Link>;
     }
 
     if (

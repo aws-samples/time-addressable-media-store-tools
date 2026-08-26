@@ -11,14 +11,15 @@ import { useUpdate } from "@/hooks/useTags";
 import TagAddModal from "./TagAddModal";
 import TagDeleteModal from "./TagDeleteModal";
 import { useState } from "react";
-import type { Flow, Source, TagName, WebhookGet } from "@/types/tams";
+import type { Flow, Source, TagName, WebhookGet, Profile } from "@/types/tams";
 import type { TableProps } from "@cloudscape-design/components";
 
 type TagItem = { key: TagName; value: string };
 
 type Props = {
   entityType: string;
-  entity: Flow | Source | WebhookGet;
+  entity: Flow | Source | WebhookGet | Profile;
+  readOnly?: boolean;
 };
 
 const isUrl = (text: string) => {
@@ -30,7 +31,7 @@ const isUrl = (text: string) => {
   }
 };
 
-const Tags = ({ entityType, entity }: Props) => {
+const Tags = ({ entityType, entity, readOnly }: Props) => {
   const { update } = useUpdate(entityType, entity.id);
   const [modalVisible, setModalVisible] = useState(false);
   const [actionId, setActionId] = useState("");
@@ -70,7 +71,7 @@ const Tags = ({ entityType, entity }: Props) => {
       },
       sortingField: "value",
       editConfig:
-        entityType !== "webhooks"
+        !readOnly
           ? {
               editingCell: (
                 item,
@@ -93,7 +94,7 @@ const Tags = ({ entityType, entity }: Props) => {
             }
           : undefined,
     },
-    ...(entityType !== "webhooks"
+    ...(!readOnly
       ? [
           {
             id: "delete",
@@ -149,7 +150,7 @@ const Tags = ({ entityType, entity }: Props) => {
         ) : (
           <TextContent>No tags</TextContent>
         )}
-        {entityType !== "webhooks" && (
+        {!readOnly && (
           <Button iconName="add-plus" variant="normal" onClick={handleAdd}>
             Add Tag
           </Button>

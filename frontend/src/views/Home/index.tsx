@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { TextContent } from "@cloudscape-design/components";
 import remarkGfm from "remark-gfm";
+import { useCapability } from "@/hooks/useCapability";
 import {
   IS_HLS_DEPLOYED,
   IS_HLS_INGEST_DEPLOYED,
@@ -12,6 +13,7 @@ import {
 } from "@/constants";
 
 const Home = () => {
+  const hasProfiles = useCapability("/service/profiles");
   const markdown = `
   # TAMS UI
 
@@ -34,7 +36,12 @@ const Home = () => {
       : HAS_OMAKASE_EXPORT_CAPABILITY
         ? " and create exports"
         : ""
-  }.
+  }.${
+    hasProfiles
+      ? `
+  - **Profiles** shows the Profiles (reusable, read-only Flow metadata templates) in the TAMS store. You can select individual items to view their flow metadata, essence parameters, and tags.`
+      : ""
+  }
 
   - **Webhooks** shows the registered webhooks in the TAMS store. You can view webhook details, register new webhooks, update existing configurations, and monitor webhook status.
 

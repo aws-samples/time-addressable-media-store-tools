@@ -31,6 +31,12 @@ DEFAULT_DESCRIPTION = "Edit By Reference"
 
 
 @tracer.capture_method(capture_response=False)
+def editorial_purpose(fmt: str) -> str:
+    essence = fmt.split(":")[-1]
+    return {"video": "programme", "audio": "primary"}.get(essence, essence)
+
+
+@tracer.capture_method(capture_response=False)
 def get_flow(flow_id: str) -> dict[str, Any]:
     """
     Retrieve flow information from the TAMS API.
@@ -379,8 +385,7 @@ def create_multi_flow(
         "description": DEFAULT_DESCRIPTION,
         "format": FORMAT_MULTI,
         "flow_collection": [
-            {"id": flow["id"], "role": flow["format"].split(":")[-1]}
-            for flow in flows.values()
+            {"id": flow["id"], "role": "programme"} for flow in flows.values()
         ],
     }
 
@@ -399,6 +404,9 @@ def lambda_handler(event: EventBridgeEvent, context: LambdaContext) -> None:
 
     # Create new flows
     for flow in new_flows.values():
+        flow.setdefault("tags", {})["editorial_purpose"] = editorial_purpose(
+            flow["format"]
+        )
         put_flow(flow)
 
     # Create new Multi flow

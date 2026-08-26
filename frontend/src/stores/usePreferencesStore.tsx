@@ -28,6 +28,9 @@ type PreferencesStore = {
   webhooksPreferences: Preferences;
   setWebhooksPreferences: (preferences: Preferences) => void;
 
+  profilesPreferences: Preferences;
+  setProfilesPreferences: (preferences: Preferences) => void;
+
   hlsIngestPreferences: Preferences;
   setHlsIngestPreferences: (preferences: Preferences) => void;
 
@@ -131,10 +134,28 @@ const usePreferencesStore = create<PreferencesStore>()(
           { id: "accept_storage_ids", visible: false },
           { id: "presigned", visible: false },
           { id: "verbose_storage", visible: false },
+          { id: "include_object_timerange", visible: false },
         ],
       },
       setWebhooksPreferences: (preferences) =>
         set({ webhooksPreferences: preferences }),
+
+      profilesPreferences: {
+        pageSize: PAGE_SIZE,
+        contentDisplay: [
+          { id: "id", visible: true },
+          { id: "label", visible: true },
+          { id: "description", visible: true },
+          { id: "format", visible: true },
+          { id: "created_by", visible: false },
+          { id: "created", visible: false },
+          { id: "codec", visible: true },
+          { id: "container", visible: true },
+          { id: "avg_bit_rate", visible: true },
+        ],
+      },
+      setProfilesPreferences: (preferences) =>
+        set({ profilesPreferences: preferences }),
 
       hlsIngestPreferences: {
         pageSize: PAGE_SIZE,

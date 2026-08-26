@@ -71,6 +71,7 @@ States:
               limit: 10
               presigned: true
               reverse_order: true
+              include_object_timerange: true
               timerange: >-
                 {% $states.input.timerange %}
           Assign:
@@ -160,6 +161,7 @@ States:
               limit: 10
               presigned: true
               reverse_order: true
+              include_object_timerange: true
               timerange: >-
                 {% $timerange %}
               page: >-

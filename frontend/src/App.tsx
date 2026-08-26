@@ -23,12 +23,15 @@ import FfmpegJobs from "@/views/FfmpegJobs";
 import MediaConvertHlsIngestion from "@/views/MediaConvertHlsIngestion";
 import MediaConvertTamsJobs from "@/views/MediaConvertTamsJobs";
 import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
+import Profile from "@/views/Profile";
+import Profiles from "@/views/Profiles";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
 import Webhook from "@/views/Webhook";
 import Webhooks from "@/views/Webhooks";
 import { AuthProvider } from "react-oidc-context";
 import AuthGuard from "@/components/AuthGuard";
+import CapabilityGuard from "@/components/CapabilityGuard";
 
 const oidcConfig = {
   authority: OIDC_AUTHORITY,
@@ -60,6 +63,13 @@ const App = () => {
               <Route path="flows">
                 <Route index element={<Flows />} />
                 <Route path=":flowId" element={<Flow />} />
+              </Route>
+              <Route
+                path="profiles"
+                element={<CapabilityGuard path="/service/profiles" />}
+              >
+                <Route index element={<Profiles />} />
+                <Route path=":profileId" element={<Profile />} />
               </Route>
               <Route path="webhooks">
                 <Route index element={<Webhooks />} />

@@ -36,7 +36,7 @@ const Webhook = () => {
             {
               label: "Tags",
               id: "tags",
-              content: <Tags entityType="webhooks" entity={webhook} />,
+              content: <Tags entityType="webhooks" entity={webhook} readOnly />,
             },
             {
               label: "Flow ids",
