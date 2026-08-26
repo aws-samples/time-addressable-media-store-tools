@@ -131,6 +131,7 @@ const usePreferencesStore = create<PreferencesStore>()(
           { id: "accept_storage_ids", visible: false },
           { id: "presigned", visible: false },
           { id: "verbose_storage", visible: false },
+          { id: "include_object_timerange", visible: false },
         ],
       },
       setWebhooksPreferences: (preferences) =>

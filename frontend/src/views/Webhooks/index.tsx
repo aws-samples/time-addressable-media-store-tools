@@ -175,6 +175,17 @@ const columnDefinitions: TableProps.ColumnDefinition<WebhookGet>[] = [
       ),
     sortingField: "verbose_storage",
   },
+  {
+    id: "include_object_timerange",
+    header: "Include object_timerange",
+    cell: (item) =>
+      item.include_object_timerange !== undefined && (
+        <StatusIndicator
+          type={item.include_object_timerange ? "success" : "error"}
+        />
+      ),
+    sortingField: "include_object_timerange",
+  },
 ];
 const collectionPreferencesProps = {
   pageSizePreference: PAGE_SIZE_PREFERENCE,
