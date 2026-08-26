@@ -32,7 +32,7 @@ repos:
 
   # CloudFormation Lint
   - repo: https://github.com/aws-cloudformation/cfn-python-lint
-    rev: v1.48.0
+    rev: v1.55.1
     hooks:
       - id: cfn-python-lint
         name: cfn-lint
@@ -57,7 +57,7 @@ repos:
 
   # Python
   - repo: https://github.com/pycqa/pylint
-    rev: v4.0.5
+    rev: v4.0.7
     hooks:
       - id: pylint
         args:
@@ -65,7 +65,7 @@ repos:
           - --disable=E0401
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.21
+    rev: v0.16.4
     hooks:
       - id: ruff-check
         args: [--select, I, --fix]   # sorts imports (ruff's built-in isort)
@@ -78,7 +78,7 @@ repos:
 
   # JavaScript/TypeScript
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v10.1.0
+    rev: v10.9.1
     hooks:
       - id: eslint
         files: ^frontend/.*\.(jsx?|tsx?)$
