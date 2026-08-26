@@ -11,7 +11,7 @@ import CollectedBy from "@/components/CollectedBy";
 import Collection from "@/components/Collection";
 import EntityHeaderActions from "@/components/EntityHeaderActions";
 import EntityDetails from "@/components/EntityDetails";
-import EssenceParameters from "./components/EssenceParameters";
+import EssenceParameters from "@/components/EssenceParameters";
 import SegmentsTab from "./components/SegmentsTab";
 import Tags from "@/components/Tags";
 import { useFlow } from "@/hooks/useFlows";

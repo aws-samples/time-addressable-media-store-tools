@@ -23,6 +23,8 @@ import FfmpegJobs from "@/views/FfmpegJobs";
 import MediaConvertHlsIngestion from "@/views/MediaConvertHlsIngestion";
 import MediaConvertTamsJobs from "@/views/MediaConvertTamsJobs";
 import MediaLiveHlsIngestion from "@/views/MediaLiveHlsIngestion";
+import Profile from "@/views/Profile";
+import Profiles from "@/views/Profiles";
 import Source from "@/views/Source";
 import Sources from "@/views/Sources";
 import Webhook from "@/views/Webhook";
@@ -60,6 +62,10 @@ const App = () => {
               <Route path="flows">
                 <Route index element={<Flows />} />
                 <Route path=":flowId" element={<Flow />} />
+              </Route>
+              <Route path="profiles">
+                <Route index element={<Profiles />} />
+                <Route path=":profileId" element={<Profile />} />
               </Route>
               <Route path="webhooks">
                 <Route index element={<Webhooks />} />
