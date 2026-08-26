@@ -3,7 +3,7 @@ import type { components } from "./tams.generated";
 type Schemas = components["schemas"];
 
 export type Uuid = Schemas["uuid"];
-export type Flow = Schemas["flow"];
+export type Flow = Schemas["flow-get"];
 export type Source = Schemas["source"];
 export type Segment = Schemas["flow-segment"];
 export type Object = Schemas["object"];
