@@ -31,6 +31,7 @@ import Webhook from "@/views/Webhook";
 import Webhooks from "@/views/Webhooks";
 import { AuthProvider } from "react-oidc-context";
 import AuthGuard from "@/components/AuthGuard";
+import CapabilityGuard from "@/components/CapabilityGuard";
 
 const oidcConfig = {
   authority: OIDC_AUTHORITY,
@@ -63,7 +64,10 @@ const App = () => {
                 <Route index element={<Flows />} />
                 <Route path=":flowId" element={<Flow />} />
               </Route>
-              <Route path="profiles">
+              <Route
+                path="profiles"
+                element={<CapabilityGuard path="/service/profiles" />}
+              >
                 <Route index element={<Profiles />} />
                 <Route path=":profileId" element={<Profile />} />
               </Route>

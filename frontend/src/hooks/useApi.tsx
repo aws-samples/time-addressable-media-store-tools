@@ -55,16 +55,20 @@ export const useApi = () => {
             JSON.stringify(errorData);
         }
         const fullMessage = `HTTP ${response.status}: ${errorMessage}`;
-        const alertId = `api-error-${Date.now()}-${Math.random()}`;
-        addAlertItem({
-          type: "error",
-          dismissible: true,
-          dismissLabel: "Dismiss message",
-          content: `${method} ${path} failed — ${fullMessage}`,
-          id: alertId,
-          onDismiss: () => delAlertItem(alertId),
-        });
-        throw new Error(fullMessage);
+        if (!options.silent) {
+          const alertId = `api-error-${Date.now()}-${Math.random()}`;
+          addAlertItem({
+            type: "error",
+            dismissible: true,
+            dismissLabel: "Dismiss message",
+            content: `${method} ${path} failed — ${fullMessage}`,
+            id: alertId,
+            onDismiss: () => delAlertItem(alertId),
+          });
+        }
+        const error = new Error(fullMessage) as Error & { status?: number };
+        error.status = response.status;
+        throw error;
       }
 
       return {
@@ -77,6 +81,8 @@ export const useApi = () => {
     return {
       get: <T = unknown,>(path: string, options: RequestOptions = {}) =>
         makeRequest<T>("GET", path, options),
+      head: <T = unknown,>(path: string, options: RequestOptions = {}) =>
+        makeRequest<T>("HEAD", path, options),
       put: (path: string, jsonBody: unknown, options: RequestOptions = {}) =>
         makeRequest("PUT", path, { ...options, body: jsonBody }),
       del: (path: string, options: RequestOptions = {}) =>

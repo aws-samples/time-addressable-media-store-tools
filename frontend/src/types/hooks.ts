@@ -2,6 +2,7 @@ export type RequestOptions = {
   method?: string;
   headers?: Record<string, string>;
   body?: unknown;
+  silent?: boolean;
 };
 
 export type JsonSchema = {
