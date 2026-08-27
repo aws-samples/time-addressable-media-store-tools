@@ -104,6 +104,7 @@ const usePreferencesStore = create<PreferencesStore>()(
       segmentsPreferences: {
         contentDisplay: [
           { id: "id", visible: true },
+          { id: "init_object_id", visible: true },
           { id: "timerange", visible: true },
           { id: "ts_offset", visible: false },
           { id: "last_duration", visible: false },

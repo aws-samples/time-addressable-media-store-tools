@@ -21,7 +21,10 @@ const EssenceParameters = ({ essenceParameters }: Props) => {
     ? Object.entries(essenceParameters).map(([key, value]) => ({
         id: key,
         key,
-        value: typeof value === "object" && value !== null ? undefined : value,
+        value:
+          typeof value === "object" && value !== null
+            ? undefined
+            : String(value),
         children:
           typeof value === "object" && value !== null
             ? Object.entries(value).map(([childKey, childValue]) => ({

@@ -42,11 +42,28 @@ const SegmentsTab = ({ flowId }: { flowId: Uuid }) => {
             <Button
               variant="icon"
               iconName="status-info"
-              onClick={() => handleOnClick({ item })}
+              onClick={() => handleShowObject(item.object_id)}
             />
           </>
         ),
         isRowHeader: true,
+      },
+      {
+        id: "init_object_id",
+        header: "Init Object Id",
+        cell: (item) => {
+          const initObjectId = item.init_object?.object_id;
+          return initObjectId ? (
+            <>
+              {initObjectId}
+              <Button
+                variant="icon"
+                iconName="status-info"
+                onClick={() => handleShowObject(initObjectId)}
+              />
+            </>
+          ) : null;
+        },
       },
       {
         id: "timerange",
@@ -110,8 +127,8 @@ const SegmentsTab = ({ flowId }: { flowId: Uuid }) => {
     title: "Preferences",
   };
 
-  const handleOnClick = ({ item }: { item: Segment }) => {
-    setObjectId(item.object_id);
+  const handleShowObject = (id: string) => {
+    setObjectId(id);
     setModalVisible(true);
   };
 
