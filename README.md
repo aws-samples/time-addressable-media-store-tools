@@ -168,6 +168,7 @@ Provide the URL of an HLS **master/variant manifest** (not a media manifest). S3
 | Alternate renditions | `#EXT-X-MEDIA:TYPE=AUDIO`, `#EXT-X-MEDIA:TYPE=SUBTITLES` |
 | Live playlists | Polled until `#EXT-X-ENDLIST` appears |
 | Byterange segments | `#EXT-X-BYTERANGE` |
+| Init segments | `#EXT-X-MAP` (fragmented MP4 / CMAF), including single-file byterange where the init and media segments share one file |
 | Discontinuities | `#EXT-X-DISCONTINUITY` — round-trips through TAMS via `ts_offset` |
 | Program date-time | `#EXT-X-PROGRAM-DATE-TIME` on the first segment sets the TAMS flow start timestamp |
 
@@ -175,7 +176,6 @@ The codec and container lists are both configurable via SSM parameters — see [
 
 Content using any of the following is rejected with a clear error:
 
-- **Fragmented MP4 / CMAF** (`#EXT-X-MAP` / init segments). This is the most common reason ingest will refuse real-world HLS content.
 - **Segment encryption** (`#EXT-X-KEY`). Decrypt before ingest if you need to store the content in TAMS.
 - **Alternate VIDEO renditions** (`#EXT-X-MEDIA:TYPE=VIDEO`).
 - **Closed captions** (`#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS`).
