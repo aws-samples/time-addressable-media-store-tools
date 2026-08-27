@@ -75,6 +75,25 @@ def get_manifest(source: str) -> m3u8.M3U8:
 
 
 @tracer.capture_method(capture_response=False)
+def normalize_byterange_offsets(segments: list) -> None:
+    """Rewrite every #EXT-X-BYTERANGE to explicit 'length@offset' form, in place.
+
+    Per RFC 8216, a byterange that omits '@offset' continues from the byte following
+    the previous sub-range of the same resource. The m3u8 library stores the raw tag
+    value, so an omitted offset arrives here as a bare length (e.g. '144550'). Resolving
+    it here means the probe and the segment ingester always receive an absolute offset."""
+    next_offset = {}
+    for segment in segments:
+        if not segment.byterange:
+            continue
+        parts = segment.byterange.split("@")
+        length = int(parts[0])
+        offset = int(parts[1]) if len(parts) > 1 else next_offset.get(segment.uri, 0)
+        segment.byterange = f"{length}@{offset}"
+        next_offset[segment.uri] = offset + length
+
+
+@tracer.capture_method(capture_response=False)
 def get_file(source: str, byterange: str | None = None) -> bytes:
     """Reads the content of a file from the supplied source uri, optionally limited to a byterange in HLS #EXT-X-BYTERANGE format ('length@offset')."""
     source_parse = urlparse(source)
@@ -209,6 +228,7 @@ def process_message(message: dict, task_token: str) -> None:
     manifest = get_manifest(manifest_location)
     if manifest.is_variant:
         raise ValueError("Not a media manifest")
+    normalize_byterange_offsets(manifest.segments)
     last_media_sequence = message["lastMediaSequence"]
     if "tsOffset" in message:
         state = {

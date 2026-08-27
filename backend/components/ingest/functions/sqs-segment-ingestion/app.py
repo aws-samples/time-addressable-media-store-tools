@@ -35,17 +35,20 @@ creds = Credentials(
 def get_file(source: str, byterange: str | None = None) -> bytes:
     """Reads the content of a file from the supplied source uri"""
     source_parse = urlparse(source)
+    range_value = None
     if byterange:
-        byterange_len, byterange_start = map(int, byterange.split("@"))
-        range_string = f"{byterange_start}-{byterange_start + byterange_len - 1}"
+        parts = byterange.split("@")
+        byterange_len = int(parts[0])
+        byterange_start = int(parts[1]) if len(parts) > 1 else 0
+        range_value = f"bytes={byterange_start}-{byterange_start + byterange_len - 1}"
     match source_parse.scheme:
         case "s3":
             params = {
                 "Bucket": source_parse.netloc,
                 "Key": source_parse.path[1:],
             }
-            if byterange:
-                params["Range"] = range_string
+            if range_value:
+                params["Range"] = range_value
             try:
                 response = s3.get_object(**params)
                 return response["Body"].read()
@@ -53,7 +56,7 @@ def get_file(source: str, byterange: str | None = None) -> bytes:
                 logger.error("NoSuchKey", error=ex.response["Error"])
                 return None
         case "https" | "http":
-            headers = {"Range": f"bytes={range_string}"} if byterange else None
+            headers = {"Range": range_value} if range_value else None
             response = requests.get(source, headers=headers, timeout=30)
             response.raise_for_status()
             return response.content
