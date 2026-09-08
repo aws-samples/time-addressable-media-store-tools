@@ -1,6 +1,5 @@
 /* Force Omakase player to respect container width */
 .omakase-tams-player #omakase-video-container .omakase-player,
-.omakase-tams-player #omakase-video-container .omakase-player-wrapper,
 .omakase-tams-player #omakase-video-container video {
   width: 100%;
   max-width: 100%;
