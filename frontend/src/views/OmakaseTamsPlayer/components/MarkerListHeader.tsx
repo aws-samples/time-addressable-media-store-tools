@@ -1,26 +1,36 @@
 import { useState, useCallback, useSyncExternalStore } from "react";
 import { Tabs, Button } from "@cloudscape-design/components";
 import {
-  MarkerLane,
+  MarkerList,
+  TimedItemsTrackEventType,
+} from "@byomakase/omakase-player";
+import type {
   MarkerListApi,
+  MarkerTrackLane,
   OmakasePlayerApi,
-  PeriodMarker,
 } from "@byomakase/omakase-player";
 import OmakaseExportModal from "@/components/OmakaseExportModal";
 import DeleteModal from "./DeleteModal";
 import { Flow } from "@/types/tams";
-import { createEditTimeranges, segmentationNameFor } from "../utils";
+import {
+  createEditTimeranges,
+  isSpanningMarker,
+  laneTrack,
+  markerEnd,
+  markerStart,
+  segmentationNameFor,
+} from "../utils";
 
 type Props = {
-  segmentationLanes: MarkerLane[];
-  source: MarkerLane | undefined;
+  segmentationLanes: MarkerTrackLane[];
+  source: MarkerTrackLane | undefined;
   sourceMarkerList: MarkerListApi | undefined;
-  onSegmentationClickCallback: (markerLane: MarkerLane) => void;
+  onSegmentationClickCallback: (markerLane: MarkerTrackLane) => void;
   sourceId: string;
   flows: Flow[];
   markerOffset: number;
   omakasePlayer: OmakasePlayerApi;
-  onSegmentationLanesChange?: (lanes: MarkerLane[]) => void;
+  onSegmentationLanesChange?: (lanes: MarkerTrackLane[]) => void;
 };
 
 const MarkerListHeader = ({
@@ -39,29 +49,40 @@ const MarkerListHeader = ({
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [laneToDelete, setLaneToDelete] = useState<string | null>(null);
 
+  // 1.x replaces the per-lane onMarkerCreate$/Update$/Delete$ trio with one event stream on the
+  // lane's marker track.
   const subscribeToMarkerChanges = useCallback(
     (onChange: () => void) => {
-      if (!source) return () => {};
-      const subs = [
-        source.onMarkerCreate$.subscribe({ next: onChange }),
-        source.onMarkerUpdate$.subscribe({ next: onChange }),
-        source.onMarkerDelete$.subscribe({ next: onChange }),
-      ];
-      return () => subs.forEach((s) => s.unsubscribe());
+      const track = source ? laneTrack(source) : undefined;
+      if (!track) return () => {};
+      const sub = track.onEvent$.subscribe({
+        next: (event) => {
+          if (
+            event.type ===
+              TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_ADDED ||
+            event.type ===
+              TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_UPDATED ||
+            event.type ===
+              TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_DELETED
+          ) {
+            onChange();
+          }
+        },
+      });
+      return () => sub.unsubscribe();
     },
     [source],
   );
 
   const getHasValidMarker = useCallback(() => {
-    if (!source) return false;
-    return source
-      .getMarkers()
-      .some(
-        (m) =>
-          m instanceof PeriodMarker &&
-          m.timeObservation.start != null &&
-          m.timeObservation.end != null,
-      );
+    const track = source ? laneTrack(source) : undefined;
+    if (!track) return false;
+    return track.timedItems.some(
+      (marker) =>
+        isSpanningMarker(marker) &&
+        markerStart(marker) != null &&
+        markerEnd(marker) != null,
+    );
   }, [source]);
 
   const hasValidMarker = useSyncExternalStore(
@@ -73,8 +94,14 @@ const MarkerListHeader = ({
 
   const handleExportModal = () => {
     if (sourceMarkerList) {
+      // Export order must follow the CUTLIST list order, which drag-reorder mutates. Only the
+      // concrete MarkerList exposes that order; MarkerListApi has no marker accessor.
       setEditTimeranges(
-        createEditTimeranges(sourceMarkerList, markerOffset, omakasePlayer),
+        createEditTimeranges(
+          (sourceMarkerList as MarkerList).markers,
+          markerOffset,
+          omakasePlayer,
+        ),
       );
       setOmakaseModalVisible(true);
     }
@@ -106,7 +133,7 @@ const MarkerListHeader = ({
     return null;
   }
 
-  const labelForLane = (lane: MarkerLane) =>
+  const labelForLane = (lane: MarkerTrackLane) =>
     segmentationNameFor(segmentationLanes.indexOf(lane));
 
   const deleteModalLaneName = laneToDelete
