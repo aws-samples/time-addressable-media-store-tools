@@ -1,25 +1,31 @@
 import { Mode } from "@cloudscape-design/global-styles";
 import {
-  PeriodMarkerStyle,
+  MarkerOnMarkerTrackLaneStyle,
   TimelineStyle,
   TimelineLaneStyle,
   ScrubberLaneStyle,
   TextLabelStyle,
-  SubtitlesLaneStyle,
+  TextTrackLaneStyle,
+  ThumbnailTrackLaneStyle,
+  ScrollbarLaneStyle,
   ImageButtonConfig,
 } from "@byomakase/omakase-player";
 import chatboxActiveSvg from "@/assets/chatbox-active.svg";
-import chatboxDisabledSvg from "@/assets/chatbox-disabled.svg";
 import chatboxSvg from "@/assets/chatbox.svg";
 import chevronDownSvg from "@/assets/chevron-down.svg";
 import chevronRightSvg from "@/assets/chevron-right.svg";
 import soundActiveButton from "@/assets/sound-active-button.svg";
 import soundInactiveButton from "@/assets/sound-inactive-button.svg";
 
-export const FONT_CONFIG = {
+const FONT_CONFIG = {
   fontFamily: `"Nunito Sans", sans-serif`,
   fontStyle: "400",
 };
+
+// Guard rail on the initial load: some flows are very large, and an unbounded TAMS request makes
+// the player page every segment. 0.25.4 expressed this as `TamsVideoLoadOptions.duration: 300`,
+// which loaded the last 300 seconds of the resource — see `capTimerange`.
+export const INITIAL_LOAD_MAX_SECONDS = 300;
 
 export const TIME_RANGE_PICKER_CONFIG = {
   numberOfSegments: 6,
@@ -27,8 +33,9 @@ export const TIME_RANGE_PICKER_CONFIG = {
   segmentSize: 600,
 };
 
-export const TIMELINE_DIMENSIONS = {
-  stageMinHeight: 200,
+const TIMELINE_DIMENSIONS = {
+  // `stageMinHeight` in 0.25.4
+  minHeight: 200,
   headerHeight: 10,
   footerHeight: 50,
   footerMarginTop: 1,
@@ -38,14 +45,18 @@ export const TIMELINE_DIMENSIONS = {
   rightPaneClipPadding: 20,
 };
 
-export const SCROLLBAR_CONFIG = {
+// In 0.25.4 the horizontal zoom scrollbar was part of the timeline itself, drawn in the footer
+// and styled through these `scrollbar*` keys on `TimelineStyle`. In 1.x it is a lane you add
+// yourself (`ScrollbarLane`, see `addScrollbarLane`), and the keys moved to its lane style —
+// unchanged in name, so this config carries over as-is.
+const SCROLLBAR_CONFIG = {
   scrollbarHeight: 15,
   scrollbarBackgroundFillOpacity: 0.3,
   scrollbarHandleBarOpacity: 0.7,
   scrollbarHandleOpacity: 1,
 };
 
-export const PLAYHEAD_CONFIG = {
+const PLAYHEAD_CONFIG = {
   playheadBufferedOpacity: 1,
   playheadBackgroundOpacity: 1,
   playheadTextYOffset: -14,
@@ -56,13 +67,13 @@ export const PLAYHEAD_CONFIG = {
   playheadTextFill: "rgb(0,0,0,0)",
 };
 
-export const SCRUBBER_CONFIG = {
+const SCRUBBER_CONFIG = {
   scrubberSymbolHeight: 12,
   scrubberTextYOffset: -15,
   scrubberMarginBottom: 1,
 };
 
-export const LANE_CONFIG = {
+const LANE_CONFIG = {
   marginBottom: 1,
   height: 50,
   descriptionTextFontSize: 12,
@@ -74,7 +85,7 @@ export const LANE_LABEL_CONFIG = {
   margin: [0, 0, 0, 10] as [number, number, number, number],
 };
 
-export const SCRUBBER_LANE_CONFIG = {
+const SCRUBBER_LANE_CONFIG = {
   leftBackgroundOpacity: 1,
   rightBackgroundOpacity: 1,
   backgroundOpacity: 0.1,
@@ -82,26 +93,37 @@ export const SCRUBBER_LANE_CONFIG = {
   descriptionTextFontSize: 20,
 };
 
-export const THUMBNAIL_LANE_CONFIG = {
+const THUMBNAIL_LANE_CONFIG = {
   height: 70,
 };
 
-export const SEGMENT_PERIOD_MARKER_STYLE: Partial<PeriodMarkerStyle> = {
-  symbolType: "triangle",
-  symbolSize: 15,
-  selectedAreaOpacity: 0.2,
-  lineOpacity: 0.5,
+// 0.25.4 carried marker shape/opacity on each `PeriodMarker`'s own style. In 1.x only
+// `markerColor` stays per-marker; everything else moved up to the lane style
+// (`MarkerOnMarkerTrackLaneStyle`, mixed into `MarkerTrackLaneStyle`). We already applied a
+// single style to every marker in a lane, so the values map across one-for-one.
+export const SEGMENT_MARKER_LANE_STYLE: Partial<MarkerOnMarkerTrackLaneStyle> = {
+  markerSymbol: "triangle",
+  markerSymbolSize: 15,
+  markerAreaOpacity: 0.2,
+  markerLineOpacity: 0.5,
   markerHandleAreaOpacity: 0.5,
-  renderType: "lane",
+  markerRenderType: "default",
 };
 
-export const SEGMENTATION_PERIOD_MARKER_STYLE: Partial<PeriodMarkerStyle> = {
-  symbolType: "square",
-  symbolSize: 15,
-  selectedAreaOpacity: 0.2,
-  lineOpacity: 0.5,
+// Shape and opacity only. Split out from the lane style below because per-marker id rules must not
+// carry `markerRenderType` — that is the key `useMarkerFocusStyles` toggles at the same cascade
+// level to draw the selection band, and a competing id rule would clobber it.
+export const SEGMENTATION_MARKER_SHAPE: Partial<MarkerOnMarkerTrackLaneStyle> = {
+  markerSymbol: "square",
+  markerSymbolSize: 15,
+  markerAreaOpacity: 0.2,
+  markerLineOpacity: 0.5,
   markerHandleAreaOpacity: 0.5,
-  renderType: "lane",
+};
+
+export const SEGMENTATION_MARKER_LANE_STYLE: Partial<MarkerOnMarkerTrackLaneStyle> = {
+  ...SEGMENTATION_MARKER_SHAPE,
+  markerRenderType: "default",
 };
 
 const COLORS = {
@@ -233,7 +255,6 @@ function buildThemeConfig(mode: Mode) {
 
     timelineStyle: {
       ...TIMELINE_DIMENSIONS,
-      ...SCROLLBAR_CONFIG,
       ...PLAYHEAD_CONFIG,
       ...SCRUBBER_CONFIG,
 
@@ -243,9 +264,6 @@ function buildThemeConfig(mode: Mode) {
       footerBackgroundFill: colors.backgroundDark,
       footerBackgroundOpacity: 0.6,
 
-      scrollbarBackgroundFill: colors.scrollbarBackground,
-      scrollbarHandleBarFill: colors.scrollbarHandle,
-
       playheadFill: colors.playheadPrimary,
       playheadBufferedFill: colors.playheadBuffered,
       playheadBackgroundFill: colors.playheadBackground,
@@ -254,6 +272,18 @@ function buildThemeConfig(mode: Mode) {
       scrubberFill: colors.scrubberDefault,
       scrubberSnappedFill: colors.scrubberSnapped,
     } as Partial<TimelineStyle>,
+
+    // The lane fills the timeline footer (`footerHeight`) so the scrollbar ends up vertically
+    // centred in it, as it was when the timeline drew the scrollbar in the footer itself. Its own
+    // background has to be stated: the library's lane default is opaque white, which would paint a
+    // white band across the footer.
+    scrollbarLaneStyle: {
+      ...SCROLLBAR_CONFIG,
+      height: TIMELINE_DIMENSIONS.footerHeight,
+      backgroundFill: colors.backgroundDark,
+      scrollbarBackgroundFill: colors.scrollbarBackground,
+      scrollbarHandleBarFill: colors.scrollbarHandle,
+    } as Partial<ScrollbarLaneStyle>,
 
     timelineLaneStyle: {
       ...LANE_CONFIG,
@@ -278,16 +308,16 @@ function buildThemeConfig(mode: Mode) {
       backgroundFill: colors.backgroundDarkest,
       rightBackgroundFill: colors.backgroundLight,
       descriptionTextFill: colors.text,
-    } as Partial<TimelineLaneStyle>,
+    } as Partial<ThumbnailTrackLaneStyle>,
 
-    subtitlesLaneStyle: {
+    textTrackLaneStyle: {
       ...LANE_CONFIG,
       backgroundFill: colors.backgroundDarkest,
       rightBackgroundFill: colors.backgroundLight,
       descriptionTextFill: colors.text,
       paddingTop: 12,
       paddingBottom: 12,
-    } as Partial<SubtitlesLaneStyle>,
+    } as Partial<TextTrackLaneStyle>,
 
     markerLaneTextLabelStyle: {
       ...FONT_CONFIG,
@@ -313,20 +343,10 @@ export const MARKER_LIST_CONFIG = {
   emptyHTMLElementId: "empty-template",
 };
 
-export const MARKER_LANE_TEXT_LABEL_STYLE: Partial<TextLabelStyle> = {
-  verticalAlign: "middle",
-  fill: "#ffffff",
-  align: "right",
-  wrap: "char",
-  offsetX: 0,
-  textAreaStretch: true,
-};
-
 export const CHEVRON_DOWN_SVG_SOURCE = chevronDownSvg;
 export const CHEVRON_RIGHT_SVG_SOURCE = chevronRightSvg;
 export const CHATBOX_SVG_SOURCE = chatboxSvg;
 export const CHATBOX_ACTIVE_SVG_SOURCE = chatboxActiveSvg;
-export const CHATBOX_DISABLED_SVG_SOURCE = chatboxDisabledSvg;
 export const SOUND_ACTIVE_BUTTON_SOURCE = soundActiveButton;
 export const SOUND_INACTIVE_BUTTON_SOURCE = soundInactiveButton;
 

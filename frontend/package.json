@@ -20,9 +20,8 @@
     "@aws-sdk/client-sfn": "^3.1118.0",
     "@aws-sdk/client-ssm": "^3.1118.0",
     "@aws-sdk/s3-request-presigner": "^3.1118.0",
-    "@byomakase/omakase-player": "^0.25.4",
-    "@byomakase/omakase-react-components": "^1.4.2",
-    "@byomakase/omakase-tams-player": "^1.0.6",
+    "@byomakase/omakase-player": "1.1.2-SNAPSHOT.1788521000",
+    "@byomakase/omakase-react-components": "2.0.0-SNAPSHOT.1788255946",
     "@cloudscape-design/collection-hooks": "^1.0.107",
     "@cloudscape-design/components": "^3.0.1352",
     "@cloudscape-design/design-tokens": "^3.0.108",
@@ -77,9 +76,8 @@
     "vite": "^8.2.2"
   },
   "overrides": {
-    "@byomakase/omakase-player": {
-      "axios": "^1.19.0"
-    }
+    "xml2js": "^0.6.2",
+    "js-yaml": "^3.15.2"
   },
   "optionalDependencies": {
     "@esbuild/darwin-arm64": "^0.28.2",
