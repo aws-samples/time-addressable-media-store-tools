@@ -22,9 +22,9 @@ const FONT_CONFIG = {
   fontStyle: "400",
 };
 
-// Guard rail on the initial load: some flows are very large, and an unbounded TAMS request makes
-// the player page every segment. 0.25.4 expressed this as `TamsVideoLoadOptions.duration: 300`,
-// which loaded the last 300 seconds of the resource — see `capTimerange`.
+// Guard rail on the initial load: some flows are very large, and an unbounded TAMS request makes the
+// player page every segment. Passed as `duration` — see the note in `useOmakasePlayer`. This is the
+// same 300 the library would apply by default, stated explicitly so it is ours rather than theirs.
 export const INITIAL_LOAD_MAX_SECONDS = 300;
 
 export const TIME_RANGE_PICKER_CONFIG = {
