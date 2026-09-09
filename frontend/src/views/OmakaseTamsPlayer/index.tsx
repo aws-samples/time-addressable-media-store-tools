@@ -13,7 +13,6 @@ import {
   OmakaseTimeRangeSelectorComponent,
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
-import { useInitialLoadTimerange } from "./hooks/useInitialLoadTimerange";
 import { useMarkerFocusStyles } from "./hooks/useMarkerFocusStyles";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
 import { usePlayerHotkeys } from "./hooks/usePlayerHotkeys";
@@ -93,6 +92,15 @@ const OmakaseTamsPlayer = () => {
       }
     }
     setSelectedMarker(action);
+  }, []);
+
+  // A timerange change drops any marker the new window cannot hold in full, so a selection can
+  // outlive the marker it points at. Clearing it keeps the marker list, the lane and the toolbar's
+  // set-in/set-out buttons agreeing on what is selected.
+  const handleMarkersDiscarded = useCallback((markerIds: string[]) => {
+    setSelectedMarker((prev) =>
+      prev && markerIds.includes(prev.id) ? undefined : prev,
+    );
   }, []);
 
   const handleSegmentationTabClick = useCallback((lane: MarkerTrackLane) => {
@@ -234,23 +242,17 @@ const OmakaseTamsPlayer = () => {
     setCurrentSource((prev) => (prev && prev.id !== lane.id ? prev : lane));
   };
 
-  const {
-    timerange: initialTimerange,
-    isResolved: isInitialTimerangeResolved,
-  } = useInitialLoadTimerange(type, id);
-
   const { reloadWithTimerange, handleTimelineCreated } = useOmakasePlayer({
     type,
     id,
     accessToken: auth.user?.access_token,
-    initialTimerange,
-    isInitialTimerangeResolved,
     mode,
     segmentationLaneCount: segmentationLanes.length,
     onError: setError,
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
     onMarkerClick: setSelectedMarkerWithSync,
+    onMarkersDiscarded: handleMarkersDiscarded,
     onPlayerReady: setOmakasePlayer,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
