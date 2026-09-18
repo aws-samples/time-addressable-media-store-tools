@@ -3,6 +3,14 @@ from mediatimestamp.immutable import Timestamp
 MPEG_TS_PTS_TIMESCALE = 90_000
 MPEG_TS_PTS_HALF_RANGE = Timestamp.from_count(1 << 32, MPEG_TS_PTS_TIMESCALE)
 
+# Media with no usable PTS advances purely by probed segment durations, so tiny
+# per-segment duration errors integrate into unbounded drift. Explicit
+# EXT-X-PROGRAM-DATE-TIME tags are the only recurring source of truth for such
+# media. The threshold is large enough to ignore encoder tag jitter and small
+# probe/EXTINF disagreement, and small enough that the residual labelling error
+# stays well below common lip-sync tolerances.
+NO_PTS_PDT_REANCHOR_THRESHOLD = Timestamp.from_nanosec(200_000_000)
+
 
 def is_mpeg_ts_pts_wrap(
     previous_pts: Timestamp | None,
@@ -54,3 +62,33 @@ def resolve_segment_start(
         if previous_pts is not None:
             pts_reset = True
     return segment_start, ts_offset, pts_reset
+
+
+def reconcile_no_pts_program_date_time(
+    *,
+    segment_start: Timestamp,
+    program_date_time: Timestamp | None,
+    threshold: Timestamp = NO_PTS_PDT_REANCHOR_THRESHOLD,
+) -> tuple[Timestamp, bool, bool]:
+    """Re-align duration-accumulated Flow time with the playlist wall clock.
+
+    Only meaningful for segments with no usable PTS, whose start otherwise
+    advances by accumulated probe durations alone. Returns
+    (segment_start, reanchored, running_ahead):
+
+    - When the playlist's explicit EXT-X-PROGRAM-DATE-TIME is ahead of the
+      accumulated position by more than the threshold, re-anchor forward to
+      the tag. The label gap left behind is intentional: the tag is truth and
+      the accumulated position under-counted real time.
+    - When the accumulated position is ahead of the tag by more than the
+      threshold, the drift cannot be corrected without overlapping Flow time
+      that has already been registered, so keep the position and report
+      running_ahead for the caller to surface.
+    """
+    if program_date_time is None:
+        return segment_start, False, False
+    if program_date_time - segment_start > threshold:
+        return program_date_time, True, False
+    if segment_start - program_date_time > threshold:
+        return segment_start, False, True
+    return segment_start, False, False

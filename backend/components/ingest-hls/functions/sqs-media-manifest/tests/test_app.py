@@ -4,6 +4,7 @@ import json
 import sys
 import types
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -100,7 +101,11 @@ def test_process_message_persists_last_pts_for_the_next_poll(
         target_duration=6,
     )
     monkeypatch.setattr(app, "get_manifest", lambda *_: manifest)
-    monkeypatch.setattr(app, "get_manifest_start_pdt", lambda *_: 1_700_000_000)
+    monkeypatch.setattr(
+        app,
+        "get_manifest_start_pdt",
+        lambda *_: Timestamp.from_str("1700000000:0"),
+    )
     monkeypatch.setattr(
         app,
         "probe_segment",
@@ -334,7 +339,11 @@ def test_empty_playlist_does_not_serialize_none_as_an_offset(app, monkeypatch) -
         target_duration=6,
     )
     monkeypatch.setattr(app, "get_manifest", lambda *_: manifest)
-    monkeypatch.setattr(app, "get_manifest_start_pdt", lambda *_: 1_700_000_000)
+    monkeypatch.setattr(
+        app,
+        "get_manifest_start_pdt",
+        lambda *_: Timestamp.from_str("1700000000:0"),
+    )
     monkeypatch.setattr(app, "send_message_batch", MagicMock())
     monkeypatch.setattr(app.time, "time", lambda: 2.0)
 
@@ -373,7 +382,11 @@ def test_unchanged_playlist_self_polls_keep_heartbeating_and_requeueing(
         target_duration=6,
     )
     monkeypatch.setattr(app, "get_manifest", lambda *_: manifest)
-    monkeypatch.setattr(app, "get_manifest_start_pdt", lambda *_: 1_700_000_000)
+    monkeypatch.setattr(
+        app,
+        "get_manifest_start_pdt",
+        lambda *_: Timestamp.from_str("1700000000:0"),
+    )
     monkeypatch.setattr(app, "normalize_byterange_offsets", lambda *_: None)
     monkeypatch.setattr(app, "send_message_batch", MagicMock())
     timestamps = iter([2.0, 3.0])
@@ -445,3 +458,114 @@ def test_poll_timestamp_advances_when_clock_does_not(app, monkeypatch) -> None:
     monkeypatch.setattr(app.time, "time", lambda: 1.0)
 
     assert app.next_poll_event_timestamp(1000) == 1001
+
+
+def test_process_segment_reanchors_no_pts_media_to_program_date_time(
+    app,
+    monkeypatch,
+) -> None:
+    flow_start = Timestamp.from_str("1700000000:0")
+    last_end = flow_start + pts(60 * PTS_RATE)
+    duration = pts(6 * PTS_RATE)
+    tag_epoch = 1_700_000_062.5
+    state = {
+        "ts_offset": flow_start,
+        "last_end": last_end,
+        "last_pts": None,
+        "pts_anchor_uncertain": True,
+    }
+    segment = SimpleNamespace(
+        uri="segment.aac",
+        byterange=None,
+        duration=6,
+        discontinuity=False,
+        program_date_time=datetime.fromtimestamp(tag_epoch, tz=timezone.utc),
+    )
+    records = []
+    monkeypatch.setattr(app, "probe_segment", lambda *_: (None, duration))
+
+    app.process_segment(state, segment, "flow-id", "s3://bucket/live", records)
+
+    expected_start = Timestamp.from_nanosec(int(tag_epoch * 1_000_000_000))
+    timerange = TimeRange.from_str(records[0]["timerange"])
+    assert timerange.start == expected_start
+    assert state["ts_offset"] == expected_start
+    assert state["last_end"] == expected_start + duration
+    assert state["pts_anchor_uncertain"] is True
+
+
+def test_process_segment_no_pts_running_ahead_keeps_registered_flow_time(
+    app,
+    monkeypatch,
+) -> None:
+    flow_start = Timestamp.from_str("1700000000:0")
+    last_end = flow_start + pts(60 * PTS_RATE)
+    duration = pts(6 * PTS_RATE)
+    state = {
+        "ts_offset": flow_start,
+        "last_end": last_end,
+        "last_pts": None,
+        "pts_anchor_uncertain": True,
+    }
+    segment = SimpleNamespace(
+        uri="segment.aac",
+        byterange=None,
+        duration=6,
+        discontinuity=False,
+        program_date_time=datetime.fromtimestamp(1_700_000_058, tz=timezone.utc),
+    )
+    records = []
+    monkeypatch.setattr(app, "probe_segment", lambda *_: (None, duration))
+
+    app.process_segment(state, segment, "flow-id", "s3://bucket/live", records)
+
+    timerange = TimeRange.from_str(records[0]["timerange"])
+    assert timerange.start == last_end
+    assert state["ts_offset"] == flow_start
+    assert state["last_end"] == last_end + duration
+
+
+def test_process_segment_no_pts_within_threshold_keeps_accumulated_continuity(
+    app,
+    monkeypatch,
+) -> None:
+    flow_start = Timestamp.from_str("1700000000:0")
+    last_end = flow_start + pts(60 * PTS_RATE)
+    duration = pts(6 * PTS_RATE)
+    state = {
+        "ts_offset": flow_start,
+        "last_end": last_end,
+        "last_pts": None,
+        "pts_anchor_uncertain": True,
+    }
+    segment = SimpleNamespace(
+        uri="segment.aac",
+        byterange=None,
+        duration=6,
+        discontinuity=False,
+        program_date_time=datetime.fromtimestamp(1_700_000_060.05, tz=timezone.utc),
+    )
+    records = []
+    monkeypatch.setattr(app, "probe_segment", lambda *_: (None, duration))
+
+    app.process_segment(state, segment, "flow-id", "s3://bucket/live", records)
+
+    timerange = TimeRange.from_str(records[0]["timerange"])
+    assert timerange.start == last_end
+    assert state["ts_offset"] == flow_start
+
+
+def test_get_manifest_start_pdt_preserves_subsecond_precision(app) -> None:
+    manifest = SimpleNamespace(
+        segments=[
+            SimpleNamespace(
+                program_date_time=datetime.fromtimestamp(
+                    1_700_000_000.5, tz=timezone.utc
+                )
+            )
+        ]
+    )
+
+    result = inspect.unwrap(app.get_manifest_start_pdt)(manifest)
+
+    assert result == Timestamp.from_nanosec(1_700_000_000_500_000_000)

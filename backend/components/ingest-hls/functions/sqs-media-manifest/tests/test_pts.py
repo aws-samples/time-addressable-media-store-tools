@@ -5,7 +5,13 @@ from mediatimestamp.immutable import Timestamp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pts import MPEG_TS_PTS_HALF_RANGE, is_mpeg_ts_pts_wrap, resolve_segment_start
+from pts import (
+    MPEG_TS_PTS_HALF_RANGE,
+    NO_PTS_PDT_REANCHOR_THRESHOLD,
+    is_mpeg_ts_pts_wrap,
+    reconcile_no_pts_program_date_time,
+    resolve_segment_start,
+)
 
 PTS_RATE = 90_000
 PTS_WRAP_COUNT = 1 << 33
@@ -241,3 +247,72 @@ def test_refuses_a_range_before_last_end_when_prior_pts_is_unavailable() -> None
     assert detected_wrap is False
     assert segment_start == offset + pts(100 * PTS_RATE)
     assert new_offset == offset + pts(6 * PTS_RATE)
+
+
+def test_no_pts_reanchors_forward_to_program_date_time() -> None:
+    accumulated = Timestamp.from_str("1700000000:0")
+    tag = Timestamp.from_str("1700000001:0")
+
+    segment_start, reanchored, running_ahead = reconcile_no_pts_program_date_time(
+        segment_start=accumulated,
+        program_date_time=tag,
+    )
+
+    assert segment_start == tag
+    assert reanchored is True
+    assert running_ahead is False
+
+
+def test_no_pts_running_ahead_of_program_date_time_is_reported_not_rewound() -> None:
+    accumulated = Timestamp.from_str("1700000001:0")
+    tag = Timestamp.from_str("1700000000:0")
+
+    segment_start, reanchored, running_ahead = reconcile_no_pts_program_date_time(
+        segment_start=accumulated,
+        program_date_time=tag,
+    )
+
+    assert segment_start == accumulated
+    assert reanchored is False
+    assert running_ahead is True
+
+
+def test_no_pts_drift_within_threshold_keeps_accumulated_continuity() -> None:
+    accumulated = Timestamp.from_str("1700000000:0")
+    tag = accumulated + Timestamp.from_nanosec(50_000_000)
+
+    segment_start, reanchored, running_ahead = reconcile_no_pts_program_date_time(
+        segment_start=accumulated,
+        program_date_time=tag,
+    )
+
+    assert segment_start == accumulated
+    assert reanchored is False
+    assert running_ahead is False
+
+
+def test_no_pts_drift_exactly_at_threshold_keeps_accumulated_continuity() -> None:
+    accumulated = Timestamp.from_str("1700000000:0")
+    tag = accumulated + NO_PTS_PDT_REANCHOR_THRESHOLD
+
+    segment_start, reanchored, running_ahead = reconcile_no_pts_program_date_time(
+        segment_start=accumulated,
+        program_date_time=tag,
+    )
+
+    assert segment_start == accumulated
+    assert reanchored is False
+    assert running_ahead is False
+
+
+def test_no_pts_without_program_date_time_keeps_accumulated_continuity() -> None:
+    accumulated = Timestamp.from_str("1700000000:0")
+
+    segment_start, reanchored, running_ahead = reconcile_no_pts_program_date_time(
+        segment_start=accumulated,
+        program_date_time=None,
+    )
+
+    assert segment_start == accumulated
+    assert reanchored is False
+    assert running_ahead is False

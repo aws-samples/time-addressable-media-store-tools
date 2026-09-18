@@ -26,7 +26,12 @@ from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from ffprobe import ffprobe_link
 from mediatimestamp.immutable import TimeRange, Timestamp
-from pts import is_mpeg_ts_pts_wrap, resolve_segment_start
+
+from pts import (
+    is_mpeg_ts_pts_wrap,
+    reconcile_no_pts_program_date_time,
+    resolve_segment_start,
+)
 
 tracer = Tracer()
 logger = Logger()
@@ -143,14 +148,19 @@ def get_file(source: str, byterange: str | None = None) -> bytes:
 
 
 @tracer.capture_method(capture_response=False)
-def get_manifest_start_pdt(manifest: m3u8.M3U8) -> int | None:
-    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch int, or None if absent."""
+def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
+    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a Timestamp, or None if absent."""
     if not manifest.segments:
         return None
     program_date_time = manifest.segments[0].program_date_time
     if not program_date_time:
         return None
-    return int(program_date_time.timestamp())
+    return datetime_to_timestamp(program_date_time)
+
+
+def datetime_to_timestamp(value) -> Timestamp:
+    """Converts a datetime to a mediatimestamp Timestamp, preserving sub-second precision."""
+    return Timestamp.from_nanosec(int(round(value.timestamp() * 1_000_000_000)))
 
 
 @tracer.capture_method(capture_response=False)
@@ -232,6 +242,31 @@ def process_segment(
             current_pts=str(start_pts),
             last_end=str(state["last_end"]),
         )
+    no_usable_pts = start_pts is None or (start_pts == Timestamp() and not wrapped)
+    program_date_time = getattr(segment, "program_date_time", None)
+    if no_usable_pts and program_date_time is not None:
+        seg_start, pdt_reanchored, running_ahead = reconcile_no_pts_program_date_time(
+            segment_start=seg_start,
+            program_date_time=datetime_to_timestamp(program_date_time),
+        )
+        if pdt_reanchored:
+            # A re-anchor starts a new accumulation region, exactly like the
+            # no-PTS branch of resolve_segment_start: media time zero now maps
+            # to the re-anchored Flow time.
+            state["ts_offset"] = seg_start
+            logger.warning(
+                "No-PTS media re-anchored to playlist PROGRAM-DATE-TIME",
+                program_date_time=str(program_date_time),
+                accumulated_start=str(state["last_end"]),
+                segment_start=str(seg_start),
+            )
+        elif running_ahead:
+            logger.warning(
+                "No-PTS media runs ahead of playlist PROGRAM-DATE-TIME; "
+                "already-registered Flow time cannot be rewound",
+                program_date_time=str(program_date_time),
+                accumulated_start=str(seg_start),
+            )
     seg_end = seg_start + duration
     timerange = TimeRange(seg_start, seg_end, TimeRange.INCLUDE_START)
     segment_dict = {
@@ -287,7 +322,7 @@ def process_message(message: dict, task_token: str) -> None:
         }
     else:
         pdt = get_manifest_start_pdt(manifest)
-        flow_start = Timestamp.from_str(f"{pdt}:0") if pdt is not None else Timestamp()
+        flow_start = pdt if pdt is not None else Timestamp()
         state = {
             "ts_offset": None,
             "last_end": flow_start,
