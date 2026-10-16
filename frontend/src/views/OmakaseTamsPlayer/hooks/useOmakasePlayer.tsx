@@ -28,6 +28,7 @@ import type {
   TamsMainMediaLoadOptions,
   TimelineApi,
   TextLabel,
+  ThumbnailTrack,
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
 
@@ -54,6 +55,11 @@ type UseOmakasePlayerParams = {
    */
   onMarkersDiscarded?: (markerIds: string[]) => void;
   onPlayerReady?: (player: OmakasePlayerApi) => void;
+  /**
+   * The thumbnail track the lanes were just built with. Every load registers a new one, and the
+   * marker list resolves its thumbnail track once, at creation, so it has to be rebuilt for it.
+   */
+  onThumbnailTrackChange?: (track: ThumbnailTrack | undefined) => void;
   onMediaStartTimeCalculated?: (mediaStartTime: number) => void;
   onFlowsCalculated?: (flows: Flow[]) => void;
 };
@@ -70,6 +76,7 @@ export const useOmakasePlayer = ({
   onMarkerClick,
   onMarkersDiscarded,
   onPlayerReady,
+  onThumbnailTrackChange,
   onMediaStartTimeCalculated,
   onFlowsCalculated,
 }: UseOmakasePlayerParams) => {
@@ -81,6 +88,9 @@ export const useOmakasePlayer = ({
   // Lane ids are library-generated uuids in omakase-player 1.x, so the ids to tear down on the
   // next rebuild have to be carried over from the previous build rather than derived by prefix.
   const visualizationLaneIdsRef = useRef<string[]>([]);
+  // Held for the same reason: by the time the next build runs, the load has detached these tracks
+  // from their lanes. See `removeVisualizationLanes`.
+  const segmentTracksRef = useRef<MarkerTrack[]>([]);
   // Each segmentation lane's MarkerTrack, keyed by lane id. A timerange reload clears the track
   // repository and detaches these tracks from their lanes — the lanes survive, their tracks do not —
   // so they are captured just before the load and re-registered by `restoreSegmentationTrack`. The
@@ -104,6 +114,7 @@ export const useOmakasePlayer = ({
     onMarkerClick,
     onMarkersDiscarded,
     onPlayerReady,
+    onThumbnailTrackChange,
     onMediaStartTimeCalculated,
     onFlowsCalculated,
   };
@@ -150,7 +161,12 @@ export const useOmakasePlayer = ({
     if (builtForMediaIdRef.current === mainMedia.id) return;
 
     const destroy$ = swapLanesDestroy();
-    removeVisualizationLanes(timeline, visualizationLaneIdsRef.current, player);
+    removeVisualizationLanes(
+      timeline,
+      visualizationLaneIdsRef.current,
+      segmentTracksRef.current,
+      player,
+    );
 
     const built = buildLanesOnTimeline({
       timeline,
@@ -165,7 +181,9 @@ export const useOmakasePlayer = ({
     });
     textLabelsRef.current = built.textLabels;
     visualizationLaneIdsRef.current = built.visualizationLaneIds;
+    segmentTracksRef.current = built.segmentTracks;
     refreshSegmentLanesRef.current = built.refreshSegmentLanes;
+    callbacksRef.current.onThumbnailTrackChange?.(built.thumbnailTrack);
     if (built.discardedMarkerIds.length) {
       callbacksRef.current.onMarkersDiscarded?.(built.discardedMarkerIds);
     }
@@ -333,6 +351,7 @@ export const useOmakasePlayer = ({
       timelineRef.current = null;
       textLabelsRef.current = new Map();
       visualizationLaneIdsRef.current = [];
+      segmentTracksRef.current = [];
       segmentationTracksRef.current = new Map();
       markerMediaStartTimeRef.current = undefined;
       builtForMediaIdRef.current = undefined;

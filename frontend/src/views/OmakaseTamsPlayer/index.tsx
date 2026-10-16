@@ -23,17 +23,14 @@ import {
   renumberSegmentationLanes,
   segmentationLaneStyleFor,
 } from "./utils";
-import {
-  MarkerListEventType,
-  TrackSource,
-  TrackType,
-} from "@byomakase/omakase-player";
+import { MarkerListEventType, TrackSource } from "@byomakase/omakase-player";
 import type {
   OmakasePlayerApi,
   MarkerListConfig,
   MarkerTrackLane,
   Marker,
   MarkerListApi,
+  ThumbnailTrack,
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
 import {
@@ -68,6 +65,9 @@ const OmakaseTamsPlayer = () => {
   >();
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [thumbnailTrack, setThumbnailTrack] = useState<
+    ThumbnailTrack | undefined
+  >();
   const segmentationLanesRef = useRef(segmentationLanes);
   const currentSourceRef = useRef(currentSource);
   const selectedMarkerRef = useRef(selectedMarker);
@@ -191,11 +191,13 @@ const OmakaseTamsPlayer = () => {
   // The marker list is fed by tracks now rather than by a lane: `source` became `markerTrack`,
   // and the thumbnail VTT file became the player's thumbnail track. `MarkerListMode` is declared
   // but not exported by omakase-player 1.1.2, hence the cast.
+  //
+  // `OmakaseMarkerListComponent` only rebuilds the list when `markerTrack` changes identity, and the
+  // list resolves its thumbnail track once, at creation. Every load registers a new thumbnail track,
+  // so `thumbnailTrack` is a dependency here: the fresh `markerTrack` object it produces is what
+  // makes a timerange reload rebuild the list against the new window's thumbnails.
   const markerListConfig = useMemo<MarkerListConfig>(() => {
     const markerTrack = currentSource ? laneTrack(currentSource) : undefined;
-    const thumbnailTrack = omakasePlayer?.track.findFirst(
-      (track) => track.trackType === TrackType.THUMBNAIL_TRACK,
-    );
     return {
       ...MARKER_LIST_CONFIG,
       markerTrack: markerTrack
@@ -206,7 +208,7 @@ const OmakaseTamsPlayer = () => {
         : undefined,
       mode: "CUTLIST" as MarkerListConfig["mode"],
     };
-  }, [currentSource, omakasePlayer]);
+  }, [currentSource, thumbnailTrack]);
 
   const timelineConfig = useMemo(
     () => ({
@@ -248,15 +250,11 @@ const OmakaseTamsPlayer = () => {
     setMaxTimerange(maxTimerangeStr);
   };
 
+  // Only called for a timeline's first segmentation lane, and the view is remounted per media (see
+  // the default export), so there is never an earlier lane to keep.
   const handleSegmentationLaneCreated = (lane: MarkerTrackLane) => {
-    setSegmentationLanes((prev) => {
-      const idx = prev.findIndex((l) => l.id === lane.id);
-      if (idx < 0) return [...prev, lane];
-      const next = [...prev];
-      next[idx] = lane;
-      return next;
-    });
-    setCurrentSource((prev) => (prev && prev.id !== lane.id ? prev : lane));
+    setSegmentationLanes([lane]);
+    setCurrentSource(lane);
   };
 
   const { reloadWithTimerange, handleTimelineCreated } = useOmakasePlayer({
@@ -271,6 +269,7 @@ const OmakaseTamsPlayer = () => {
     onMarkerClick: setSelectedMarkerWithSync,
     onMarkersDiscarded: handleMarkersDiscarded,
     onPlayerReady: setOmakasePlayer,
+    onThumbnailTrackChange: setThumbnailTrack,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
@@ -390,4 +389,13 @@ const OmakaseTamsPlayer = () => {
   );
 };
 
-export default OmakaseTamsPlayer;
+// Keyed by media so that navigating from one flow or source to another starts from fresh state.
+// The route element is otherwise reused, and every piece of state above — lanes, selection, marker
+// list, ranges — would carry over from a player that has just been destroyed. Lane ids are uuids in
+// 1.x, so nothing downstream can tell the old lanes from the new ones.
+const OmakaseTamsPlayerRoute = () => {
+  const { type, id } = useParams();
+  return <OmakaseTamsPlayer key={`${type}/${id}`} />;
+};
+
+export default OmakaseTamsPlayerRoute;
