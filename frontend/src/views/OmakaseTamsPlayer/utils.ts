@@ -189,6 +189,16 @@ const applyMarkerColor = (
   markerColor: string,
 ) => player.ui.updateStyleRule<MarkerStyle>({ id: markerId, style: { markerColor } });
 
+// `player.ui` keeps id rules for as long as the app leaves them, independent of the marker's life.
+const removeMarkerStyleRules = (
+  player: OmakasePlayerApi,
+  markerIds: Iterable<string>,
+) => {
+  const ids = new Set(markerIds);
+  if (!ids.size) return;
+  player.ui.removeStyleRules((rule) => "id" in rule && ids.has(rule.id));
+};
+
 const applySegmentMarkerColors = (
   player: OmakasePlayerApi,
   track: MarkerTrack,
@@ -235,7 +245,11 @@ const syncSegmentMarkers = (
   const evicted = track.timedItems
     .filter((marker) => !current.has(marker.data?.[SEGMENT_TIMERANGE_ATTR]))
     .map((marker) => marker.id);
-  if (evicted.length) track.deleteTimedItems(evicted);
+  if (evicted.length) {
+    track.deleteTimedItems(evicted);
+    // Each marker's colour is an id rule; without this a sliding window leaks one per poll.
+    removeMarkerStyleRules(player, evicted);
+  }
 
   // At load the markers were clipped to the duration of the moment, and in live the newest segment
   // can run past it — so it was drawn short, leaving a gap before the first segment that arrives
@@ -540,24 +554,25 @@ export const applySegmentationMarkerColors = (
 // Removes segment visualization lanes but preserves segmentation lanes, which hold user-created
 // markers that must persist across timerange reloads. Lane ids are library-generated uuids in
 // 1.x, so the caller passes back the ids the previous build returned.
+//
+// The segment tracks are passed in too rather than read off the lanes: this runs after
+// `loadMainMedia` has cleared the track repository, which detaches every track from its lane, so
+// `lane.getTracks()` is already empty. The track objects themselves still hold their markers, and
+// those markers' colour rules live on in `player.ui` unless removed here.
 export const removeVisualizationLanes = (
   timeline: TimelineApi,
   laneIds: string[],
+  segmentTracks: MarkerTrack[],
   player: OmakasePlayerApi,
 ) => {
-  if (!laneIds.length) return;
-  for (const laneId of laneIds) {
-    const lane = timeline.getTimelineLane(laneId);
-    if (!(lane instanceof MarkerTrackLane)) continue;
-    for (const track of lane.getTracks()) {
-      const markerIds = new Set(track.timedItems.map((marker) => marker.id));
-      player.ui.removeStyleRules(
-        (rule) => "id" in rule && markerIds.has(rule.id),
-      );
-      player.track.delete(track.id);
-    }
+  for (const track of segmentTracks) {
+    removeMarkerStyleRules(
+      player,
+      track.timedItems.map((marker) => marker.id),
+    );
+    player.track.delete(track.id);
   }
-  timeline.removeTimelineLanes(laneIds);
+  if (laneIds.length) timeline.removeTimelineLanes(laneIds);
 };
 
 const checkMarkerOverlap = (
@@ -941,6 +956,10 @@ export const buildLanesOnTimeline = ({
 }): {
   textLabels: Map<string, TextLabel>;
   visualizationLaneIds: string[];
+  /** The segment visualisation tracks, for the next build to clean up. See `removeVisualizationLanes`. */
+  segmentTracks: MarkerTrack[];
+  /** A new one per load, so anything that resolved the previous one has to be handed this. */
+  thumbnailTrack: ThumbnailTrack | undefined;
   discardedMarkerIds: string[];
   /** Re-reads the live segment lists into the segment lanes. See `syncSegmentMarkers`. */
   refreshSegmentLanes: () => void;
@@ -1146,6 +1165,8 @@ export const buildLanesOnTimeline = ({
   return {
     textLabels,
     visualizationLaneIds,
+    segmentTracks: segmentTracks.map(({ track }) => track),
+    thumbnailTrack,
     discardedMarkerIds,
     refreshSegmentLanes,
   };
