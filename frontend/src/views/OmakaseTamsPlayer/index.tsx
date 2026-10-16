@@ -71,6 +71,7 @@ const OmakaseTamsPlayer = () => {
   const segmentationLanesRef = useRef(segmentationLanes);
   const currentSourceRef = useRef(currentSource);
   const selectedMarkerRef = useRef(selectedMarker);
+  const rangeSelectorWrapperRef = useRef<HTMLDivElement>(null);
 
   // Marker selection is entirely app state in omakase-player 1.x — the lane and marker list no
   // longer hold a selected marker, so there is nothing to mirror onto them. What still belongs
@@ -223,10 +224,26 @@ const OmakaseTamsPlayer = () => {
     "--omakase-scrollbarBorder": THEME[mode].colors.scrollbarBorder,
   } as React.CSSProperties;
 
+  // A live media calls this on every poll, and each new value remounts the time range selector —
+  // see its `key` below. A remount would throw away a range the user has dragged but not yet
+  // confirmed, so updates are held back while the selector is showing its confirm / cancel buttons;
+  // the next poll after the user resolves the edit catches it up. The selector exposes no edit
+  // state, so its own button container's visibility class is the only signal available.
   const handleTimerangeChange = (
     currentTimerange: string | undefined,
     maxTimerangeStr: string | undefined,
   ) => {
+    const isEditingRange = !!document.querySelector(
+      ".omakase-time-range-selector-button-container:not(.omakase-time-range-selector-invisible)",
+    );
+    if (isEditingRange) return;
+    // The remounted component only appends its web component in a post-paint effect, so for a frame
+    // it is empty, the row above the timeline collapses and everything below jumps up and back.
+    // Holding the space at the height it last rendered at keeps the layout still.
+    const wrapper = rangeSelectorWrapperRef.current;
+    if (wrapper?.offsetHeight) {
+      wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
+    }
     setTimerange(currentTimerange);
     setMaxTimerange(maxTimerangeStr);
   };
@@ -328,14 +345,20 @@ const OmakaseTamsPlayer = () => {
         </div>
         <Box>
           <div id="omakase-video-container" />
-          {timerange && maxTimerange && (
-            <OmakaseTimeRangeSelectorComponent
-              {...TIME_RANGE_PICKER_CONFIG}
-              timeRange={timerange}
-              maxTimeRange={maxTimerange}
-              onCheckmarkClickCallback={handleTimeRangePickerChange}
-            />
-          )}
+          <div ref={rangeSelectorWrapperRef}>
+            {timerange && maxTimerange && (
+              // The component reads its props once, in a mount-only effect, and the web component
+              // underneath has no attribute-change handling either — so a new range only shows by
+              // remounting it. Matters for live, where both ranges grow after load.
+              <OmakaseTimeRangeSelectorComponent
+                key={`${timerange}|${maxTimerange}`}
+                {...TIME_RANGE_PICKER_CONFIG}
+                timeRange={timerange}
+                maxTimeRange={maxTimerange}
+                onCheckmarkClickCallback={handleTimeRangePickerChange}
+              />
+            )}
+          </div>
         </Box>
       </Grid>
       <Box>

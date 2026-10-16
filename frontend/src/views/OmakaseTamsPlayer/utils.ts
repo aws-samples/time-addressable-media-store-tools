@@ -200,6 +200,95 @@ const applySegmentMarkerColors = (
   }
 };
 
+// Each segment marker remembers the TAMS timerange it was drawn from, which is what lets a live
+// update tell the segments already drawn from the ones that have just arrived or been evicted.
+const SEGMENT_TIMERANGE_ATTR = "tamsSegmentTimerange";
+
+const segmentsToMarkers = (
+  segments: Segment[],
+  mediaStartTime: number,
+  videoDuration: number,
+): MarkerArgs[] =>
+  segments.flatMap((segment) => {
+    const marker = segmentToMarker(segment, mediaStartTime, videoDuration);
+    return marker
+      ? [{ ...marker, data: { [SEGMENT_TIMERANGE_ATTR]: segment.timerange } }]
+      : [];
+  });
+
+/**
+ * Brings a segment track up to date with a live flow's current segment list.
+ *
+ * In live playback the player keeps polling the store, and appends new segments to — and, for a
+ * sliding window, evicts old ones from — the `tamsMediaData.flowsSegments` arrays in place. The
+ * markers were built from those arrays once, at load, so without this the lane stops at whatever
+ * existed then while the timeline itself grows past it.
+ */
+const syncSegmentMarkers = (
+  track: MarkerTrack,
+  segments: Segment[],
+  mediaStartTime: number,
+  mode: Mode,
+  player: OmakasePlayerApi,
+) => {
+  const current = new Set(segments.map((segment) => segment.timerange));
+  const evicted = track.timedItems
+    .filter((marker) => !current.has(marker.data?.[SEGMENT_TIMERANGE_ATTR]))
+    .map((marker) => marker.id);
+  if (evicted.length) track.deleteTimedItems(evicted);
+
+  // At load the markers were clipped to the duration of the moment, and in live the newest segment
+  // can run past it — so it was drawn short, leaving a gap before the first segment that arrives
+  // afterwards. Restore any such marker to its segment's full length. Snapshotted first, because
+  // `updateTimedItem` re-sorts the track's live `timedItems` array.
+  const segmentsByTimerange = new Map(
+    segments.map((segment) => [segment.timerange, segment]),
+  );
+  const clipped = track.timedItems.flatMap((marker) => {
+    const segment = segmentsByTimerange.get(marker.data?.[SEGMENT_TIMERANGE_ATTR]);
+    const full = segment
+      ? segmentToMarker(segment, mediaStartTime, Number.POSITIVE_INFINITY)
+      : null;
+    if (!full) return [];
+    const fullEnd = TimedItemTemporalUtil.extractEndTime(full.temporal);
+    const end = TimedItemTemporalUtil.extractEndTime(marker.temporal);
+    return fullEnd !== undefined && end !== undefined && fullEnd > end
+      ? [{ id: marker.id, temporal: full.temporal }]
+      : [];
+  });
+  for (const { id, temporal } of clipped) {
+    track.updateTimedItem(id, { temporal });
+  }
+
+  const drawn = new Set(
+    track.timedItems.map((marker) => marker.data?.[SEGMENT_TIMERANGE_ATTR]),
+  );
+  // No clipping at the far end: the duration read at load is exactly what live has outgrown.
+  const arrived = segmentsToMarkers(
+    segments.filter((segment) => !drawn.has(segment.timerange)),
+    mediaStartTime,
+    Number.POSITIVE_INFINITY,
+  );
+  if (!arrived.length) return;
+
+  // Continue the colour cycle from the number of markers this track has EVER been given, not the
+  // number it holds now: a sliding window evicts one segment for every one that arrives, so the
+  // current count stands still and every new segment would get the same colour.
+  const colors = THEME[mode].markerColors;
+  const added = segmentMarkersAdded.get(track) ?? track.timedItems.length;
+  const before = new Set(track.timedItems.map((marker) => marker.id));
+  track.addTimedItems(arrived);
+  track.timedItems
+    .filter((marker) => !before.has(marker.id))
+    .forEach((marker, i) =>
+      applyMarkerColor(player, marker.id, colors[(added + i) % colors.length]),
+    );
+  segmentMarkersAdded.set(track, added + arrived.length);
+};
+
+// Running count of markers each live segment track has been given — see `syncSegmentMarkers`.
+const segmentMarkersAdded = new WeakMap<MarkerTrack, number>();
+
 const addSegmentMarkersToLane = (
   lane: MarkerTrackLane,
   segments: Segment[],
@@ -207,10 +296,8 @@ const addSegmentMarkersToLane = (
   videoDuration: number,
   mode: Mode,
   player: OmakasePlayerApi,
-) => {
-  const markers = segments
-    .map((segment) => segmentToMarker(segment, mediaStartTime, videoDuration))
-    .filter((marker): marker is MarkerArgs => marker !== null);
+): MarkerTrack => {
+  const markers = segmentsToMarkers(segments, mediaStartTime, videoDuration);
 
   // 0.25.4 marked each segment marker `editable: false`; editability is a track-level concern
   // in 1.x. Deliberately no `label` — the first track's label would become the lane description,
@@ -224,6 +311,7 @@ const addSegmentMarkersToLane = (
   lane.addTrack(track, { style: SEGMENT_MARKER_LANE_STYLE });
 
   applySegmentMarkerColors(player, track, mode);
+  return track;
 };
 
 const addSubtitleLaneControls = (
@@ -854,9 +942,12 @@ export const buildLanesOnTimeline = ({
   textLabels: Map<string, TextLabel>;
   visualizationLaneIds: string[];
   discardedMarkerIds: string[];
+  /** Re-reads the live segment lists into the segment lanes. See `syncSegmentMarkers`. */
+  refreshSegmentLanes: () => void;
 } => {
   const textLabels = new Map<string, TextLabel>();
   const visualizationLaneIds: string[] = [];
+  const segmentTracks: { flowId: string; track: MarkerTrack }[] = [];
 
   timeline.scrubberLane.setStyle(THEME[mode].scrubberLaneStyle);
   addScrollbarLane(timeline, mode);
@@ -994,14 +1085,17 @@ export const buildLanesOnTimeline = ({
         markerLane.minimize();
         visualizationLaneIds.push(markerLane.id);
 
-        addSegmentMarkersToLane(
-          markerLane,
-          segments,
-          mediaStartTime,
-          videoDuration,
-          mode,
-          player,
-        );
+        segmentTracks.push({
+          flowId: flow.id,
+          track: addSegmentMarkersToLane(
+            markerLane,
+            segments,
+            mediaStartTime,
+            videoDuration,
+            mode,
+            player,
+          ),
+        });
         addSubtitleLaneControls(
           subtitlesLane,
           markerLane,
@@ -1020,21 +1114,41 @@ export const buildLanesOnTimeline = ({
       const laneLabel = addLaneLabel(markerLane, label, mode);
       textLabels.set(markerLane.id, laneLabel);
 
-      addSegmentMarkersToLane(
-        markerLane,
-        segments,
-        mediaStartTime,
-        videoDuration,
-        mode,
-        player,
-      );
+      segmentTracks.push({
+        flowId: flow.id,
+        track: addSegmentMarkersToLane(
+          markerLane,
+          segments,
+          mediaStartTime,
+          videoDuration,
+          mode,
+          player,
+        ),
+      });
       if (isAudioFlow(flow)) {
         addAudioLaneControls(markerLane, flow, player, destroy$);
       }
     });
   }
 
-  return { textLabels, visualizationLaneIds, discardedMarkerIds };
+  const refreshSegmentLanes = () => {
+    const flowsSegments = mainMedia.tamsMediaData?.flowsSegments;
+    if (!flowsSegments) return;
+    const mediaStartTime = mainMedia.tamsMetadata?.mediaStartTime ?? 0;
+    for (const { flowId, track } of segmentTracks) {
+      const segments = flowsSegments.get(flowId);
+      if (segments) {
+        syncSegmentMarkers(track, segments, mediaStartTime, mode, player);
+      }
+    }
+  };
+
+  return {
+    textLabels,
+    visualizationLaneIds,
+    discardedMarkerIds,
+    refreshSegmentLanes,
+  };
 };
 
 export const updateTimelineStyles = (
@@ -1099,14 +1213,41 @@ export const calculateTimerangeFromMainMedia = (
     (f): f is Flow => !!f && !!f.timerange,
   );
 
-  const maxTimerange = computeMaxTimerangeFromFlows(allFlows);
-  if (!maxTimerange) {
+  const flowsTimerange = computeMaxTimerangeFromFlows(allFlows);
+  if (!flowsTimerange) {
     return null;
   }
 
   try {
-    const loadedStartSeconds = mediaStartTime;
-    const loadedEndSeconds = mediaStartTime + mainMedia.duration;
+    let loadedStartSeconds = mediaStartTime;
+    let loadedEndSeconds = mediaStartTime + mainMedia.duration;
+
+    // In live playback the loaded window moves after load: the player rewrites
+    // `tamsMetadata.timerange` from the segments on every poll, while `duration` and the flows'
+    // own timeranges stay as they were fetched. So the window is read from the former, and the
+    // overall range is stretched to cover it — otherwise it stops at the load-time flow head.
+    // `TamsPlaybackMode` is not exported, hence the string comparison.
+    const loaded = mainMedia.tamsMetadata?.timerange
+      ? TimeRangeUtil.parseTimeRange(mainMedia.tamsMetadata.timerange)
+      : undefined;
+    const isLive = String(mainMedia.tamsMetadata?.playbackMode) !== "VOD";
+    if (isLive && loaded?.start && loaded.end) {
+      loadedStartSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.start);
+      loadedEndSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.end);
+    }
+
+    const flowsRange = TimeRangeUtil.parseTimeRange(flowsTimerange);
+    const maxTimerange =
+      loadedEndSeconds > TimeRangeUtil.timeMomentToSeconds(flowsRange.end!)
+        ? TimeRangeUtil.formatTimeRangeExpr(
+            TimeRangeUtil.toTimeRange(
+              flowsRange.start!,
+              TimeRangeUtil.secondsToTimeMoment(loadedEndSeconds),
+              true,
+              true,
+            ),
+          )
+        : flowsTimerange;
 
     const startMoment = TimeRangeUtil.secondsToTimeMoment(loadedStartSeconds);
     const endMoment = TimeRangeUtil.secondsToTimeMoment(loadedEndSeconds);
