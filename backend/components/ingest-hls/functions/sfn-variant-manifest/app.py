@@ -34,6 +34,18 @@ def resolve_child_uri(base_url: str, child_uri: str) -> str:
 
 
 @tracer.capture_method(capture_response=False)
+def normalize_map_byterange(byterange: str | None) -> str | None:
+    """Rewrite an #EXT-X-MAP BYTERANGE to explicit 'length@offset' form.
+    Per RFC 8216 the offset of an EXT-X-MAP byterange defaults to 0 when omitted."""
+    if not byterange:
+        return None
+    parts = byterange.split("@")
+    length = int(parts[0])
+    offset = int(parts[1]) if len(parts) > 1 else 0
+    return f"{length}@{offset}"
+
+
+@tracer.capture_method(capture_response=False)
 @lru_cache()
 def get_containers_mappings() -> dict:
     """Returns a dictionary of containers mappings from the parameter store"""
@@ -195,14 +207,12 @@ def attach_segment_duration(flow: dict, durations: dict) -> dict:
 
 
 @tracer.capture_method(capture_response=False)
-def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
-    """Probes the first segment of the manifest supplied. Returns (probe_result, target_duration)."""
+def get_manifest_segment_probe(source: str) -> tuple[dict, int, bool]:
+    """Probes the first segment of the manifest supplied. Returns (probe_result, target_duration, uses_init).
+    uses_init is True when the media manifest uses #EXT-X-MAP initialisation segments (fragmented MP4 / CMAF)."""
     manifest_path = os.path.dirname(source)
     manifest = get_manifest(source)
-    if manifest.segment_map:
-        raise ValueError(
-            f"Media manifest '{source}' uses #EXT-X-MAP (init segments / fragmented MP4) which is not supported by this HLS ingester"
-        )
+    uses_init = bool(manifest.segment_map)
     if any(key for key in manifest.keys):
         raise ValueError(
             f"Media manifest '{source}' uses #EXT-X-KEY (segment encryption) which is not supported by this HLS ingester"
@@ -214,8 +224,18 @@ def get_manifest_segment_probe(source: str) -> tuple[dict, int]:
     if manifest.segments:
         first_segment = manifest.segments[0]
         segment_uri = resolve_child_uri(manifest_path, first_segment.uri)
-        probe_result = ffprobe_link(segment_uri, byterange=first_segment.byterange)
-    return probe_result, manifest.target_duration
+        init = None
+        if first_segment.init_section:
+            init = {
+                "uri": resolve_child_uri(manifest_path, first_segment.init_section.uri),
+                "byterange": normalize_map_byterange(
+                    first_segment.init_section.byterange
+                ),
+            }
+        probe_result = ffprobe_link(
+            segment_uri, byterange=first_segment.byterange, init=init
+        )
+    return probe_result, manifest.target_duration, uses_init
 
 
 @tracer.capture_method(capture_response=False)
@@ -338,8 +358,7 @@ def build_variant_multi_flow(
         "format": "urn:x-nmos:format:multi",
         "container": map_container(probe),
         "flow_collection": [
-            {"id": f["id"], "role": "programme"}
-            for f in per_essence_flows
+            {"id": f["id"], "role": "programme"} for f in per_essence_flows
         ],
     }
 
@@ -437,7 +456,9 @@ def process_playlists(
     warnings = []
     for playlist in manifest.playlists:
         playlist_manifest_url = resolve_child_uri(manifest_path, playlist.uri)
-        probe, target_duration = get_manifest_segment_probe(playlist_manifest_url)
+        probe, target_duration, uses_init = get_manifest_segment_probe(
+            playlist_manifest_url
+        )
         audio_group_id = next(
             (media.group_id for media in playlist.media if media.type == "AUDIO"),
             None,
@@ -484,6 +505,10 @@ def process_playlists(
                 [video_flow, audio_flow],
             )
             apply_bitrate(multi_flow, playlist)
+            # The per-variant multi flow owns the muxed segments, so init-segment usage is
+            # declared here rather than on the metadata-only per-essence flows.
+            if uses_init:
+                multi_flow.setdefault("essence_parameters", {})["init_segments"] = True
             variant_multi_flows.append(multi_flow)
             continue
         # Single-essence variant (existing behaviour)
@@ -506,6 +531,8 @@ def process_playlists(
             flow = build_audio_flow(flow_id, label, playlist, probe, audio_codec)
         flow["container"] = map_container(probe)
         apply_bitrate(flow, playlist)
+        if uses_init:
+            flow.setdefault("essence_parameters", {})["init_segments"] = True
         flows.append(flow)
     return (
         flows,
@@ -581,7 +608,9 @@ def process_media(
             )
         flow_id = str(uuid.uuid4())
         flow_manifests[flow_id] = resolve_child_uri(manifest_path, media.uri)
-        probe, target_duration = get_manifest_segment_probe(flow_manifests[flow_id])
+        probe, target_duration, uses_init = get_manifest_segment_probe(
+            flow_manifests[flow_id]
+        )
         segment_durations[flow_id] = target_duration
         tags = {
             f"hls_{attr}": getattr(media, attr)
@@ -596,10 +625,8 @@ def process_media(
                 )
                 codec = resolve_audio_rendition_codec(media, audio_stream, audio_codecs)
                 channels = resolve_audio_channels(media, audio_stream)
-                flows.append(
-                    build_audio_media_flow(
-                        flow_id, label, media, probe, codec, channels, tags
-                    )
+                flow = build_audio_media_flow(
+                    flow_id, label, media, probe, codec, channels, tags
                 )
             case "SUBTITLES":
                 subtitle_stream = next(
@@ -611,9 +638,10 @@ def process_media(
                     {},
                 )
                 codec = resolve_subtitle_codec(media, subtitle_stream)
-                flows.append(
-                    build_subtitle_flow(flow_id, label, media, probe, codec, tags)
-                )
+                flow = build_subtitle_flow(flow_id, label, media, probe, codec, tags)
+        if uses_init:
+            flow.setdefault("essence_parameters", {})["init_segments"] = True
+        flows.append(flow)
     return flows, flow_manifests, segment_durations, warnings
 
 
@@ -638,8 +666,7 @@ def build_asset_multi_flow(
         "description": description,
         "format": "urn:x-nmos:format:multi",
         "flow_collection": [
-            {"id": f["id"], "role": "programme"}
-            for f in collection_members
+            {"id": f["id"], "role": "programme"} for f in collection_members
         ],
     }
 
@@ -706,9 +733,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
         standalone_flows = [f for f in flows if f["id"] not in muxed_flow_ids]
         for multi in variant_multi_flows_with_duration:
             for flow in standalone_flows:
-                multi["flow_collection"].append(
-                    {"id": flow["id"], "role": "programme"}
-                )
+                multi["flow_collection"].append({"id": flow["id"], "role": "programme"})
         multi_flows = variant_multi_flows_with_duration
     return {
         "flows": flows,

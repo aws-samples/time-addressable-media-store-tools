@@ -44,19 +44,50 @@ def _download_byterange(source, source_parse, byterange):
     return response.content
 
 
-def ffprobe_link(source, byterange=None):
+def _download_bytes(source, byterange=None):
+    """Download a whole resource, or exactly an HLS #EXT-X-BYTERANGE value ('length[@offset]')."""
+    source_parse = urlparse(source)
+    if byterange:
+        return _download_byterange(source, source_parse, byterange)
+    if source_parse.scheme == "s3":
+        s3_cli = boto3.client("s3")
+        response = s3_cli.get_object(
+            Bucket=source_parse.netloc, Key=source_parse.path[1:]
+        )
+        return response["Body"].read()
+    response = requests.get(source, timeout=30)
+    response.raise_for_status()
+    return response.content
+
+
+def ffprobe_link(source, byterange=None, init=None, show_packets=False):
     source_parse = urlparse(source)
     tmp_path = None
     try:
-        if byterange:
+        if byterange or init:
             # Fetch exactly the segment's bytes and probe them locally. Probing a remote
             # URL with an injected Range header does not work for single-file byterange
             # renditions: for the first segment ffprobe reads the total size from the
             # response Content-Range header and reports the WHOLE file's duration, and it
             # fails outright on mid-file offsets.
-            data = _download_byterange(source, source_parse, byterange)
+            #
+            # For fragmented MP4 / CMAF, a media fragment (moof+mdat) carries no moov box, so
+            # ffprobe cannot read its codec configuration or timescale on its own. The
+            # initialisation segment (#EXT-X-MAP) is prepended to the media bytes so the
+            # concatenation probes as a complete file. `init` is {'uri': ..., 'byterange': ...}.
+            media_bytes = (
+                _download_byterange(source, source_parse, byterange)
+                if byterange
+                else _download_bytes(source)
+            )
+            init_bytes = (
+                _download_bytes(init["uri"], init.get("byterange")) if init else b""
+            )
+            data = init_bytes + media_bytes
             suffix = os.path.splitext(source_parse.path)[1]
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir="/tmp") as tmp:  # nosec B108 - /tmp is the only writable path in Lambda
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=suffix, dir="/tmp"
+            ) as tmp:  # nosec B108 - /tmp is the only writable path in Lambda
                 tmp.write(data)
                 tmp_path = tmp.name
             target = tmp_path
@@ -70,6 +101,10 @@ def ffprobe_link(source, byterange=None):
             "error",
             "-show_format",
             "-show_streams",
+        ]
+        if show_packets:
+            args.append("-show_packets")
+        args += [
             target,
             "-print_format",
             "json",

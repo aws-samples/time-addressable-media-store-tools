@@ -14,6 +14,7 @@ from aws_lambda_powertools.event_handler import LambdaFunctionUrlResolver, Respo
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.auth import SigV4QueryAuth
 from botocore.awsrequest import AWSRequest
+from m3u8.model import InitializationSection
 from mediatimestamp.immutable import TimeRange
 from openid_auth import Credentials
 
@@ -219,6 +220,32 @@ def get_segments(flow_id, segment_count):
             yield segment
             if count >= segment_count:
                 break
+
+
+@tracer.capture_method(capture_response=False)
+def get_init_url(init_object):
+    """Return a download URL for the initialisation Object referenced by a Flow Segment.
+    Prefers the presigned get_urls inlined on the segment's init_object; falls back to
+    looking the Object up via the /objects endpoint."""
+    presigned = [
+        get_url["url"]
+        for get_url in init_object.get("get_urls", [])
+        if get_url.get("presigned", False)
+    ]
+    if presigned:
+        return presigned[0]
+    get = requests.get(
+        f"{endpoint}/objects/{init_object['object_id']}",
+        headers={"Authorization": f"Bearer {get_creds().token()}"},
+        timeout=30,
+    )
+    get.raise_for_status()
+    presigned = [
+        get_url["url"]
+        for get_url in get.json().get("get_urls", [])
+        if get_url.get("presigned", False)
+    ]
+    return presigned[0]
 
 
 @tracer.capture_method(capture_response=False)
@@ -517,6 +544,10 @@ def get_segments_hls(flowId: str):
         if not flow_ingesting:
             manifest.playlist_type = "VOD"
         prev_ts_offset = None
+        # Cache one InitializationSection instance per init Object id. Reusing the same
+        # instance for consecutive segments lets m3u8 emit a single #EXT-X-MAP that re-emits
+        # only when the init Object changes (a real codec/config change or discontinuity).
+        init_section_by_id = {}
         for segment in segments:
             presigned_urls = [
                 get_url["url"]
@@ -530,14 +561,26 @@ def get_segments_hls(flowId: str):
             is_discontinuity = (
                 prev_ts_offset is not None and prev_ts_offset != ts_offset
             )
-            manifest.add_segment(
-                segment=m3u8.Segment(
-                    duration=segment_duration,
-                    uri=f"{presigned_urls[0]}",
-                    discontinuity=is_discontinuity,
-                )
+            hls_segment = m3u8.Segment(
+                duration=segment_duration,
+                uri=f"{presigned_urls[0]}",
+                discontinuity=is_discontinuity,
             )
+            # Fragmented MP4 / CMAF (TAMS AppNote 0024): attach the init Object as #EXT-X-MAP.
+            init_object = segment.get("init_object")
+            if init_object:
+                init_id = init_object["object_id"]
+                if init_id not in init_section_by_id:
+                    init_section_by_id[init_id] = InitializationSection(
+                        base_uri=None, uri=get_init_url(init_object)
+                    )
+                hls_segment.init_section = init_section_by_id[init_id]
+            manifest.add_segment(segment=hls_segment)
             prev_ts_offset = ts_offset
+        # A media playlist containing #EXT-X-MAP (fragmented MP4 / CMAF) MUST declare HLS
+        # protocol version 6 or higher (RFC 8216).
+        if init_section_by_id:
+            manifest.version = 6
         if not flow_ingesting:
             manifest.is_endlist = True
         return Response(

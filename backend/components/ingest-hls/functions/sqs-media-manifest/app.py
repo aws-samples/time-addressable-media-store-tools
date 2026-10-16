@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import uuid
 from fractions import Fraction
 from urllib.parse import urlparse
 
@@ -94,6 +95,37 @@ def normalize_byterange_offsets(segments: list) -> None:
 
 
 @tracer.capture_method(capture_response=False)
+def resolve_uri(manifest_path: str, uri: str) -> str:
+    """Resolve a (possibly relative) HLS URI against the media manifest path."""
+    if uri.startswith("http"):
+        return uri
+    if uri.startswith("/"):
+        path_parse = urlparse(manifest_path)
+        return f"{path_parse.scheme}://{path_parse.netloc}{uri}"
+    return f"{manifest_path}/{uri}"
+
+
+@tracer.capture_method(capture_response=False)
+def normalize_map_byterange(byterange: str | None) -> str | None:
+    """Rewrite an #EXT-X-MAP BYTERANGE to explicit 'length@offset' form.
+    Per RFC 8216 the offset of an EXT-X-MAP byterange defaults to 0 when omitted."""
+    if not byterange:
+        return None
+    parts = byterange.split("@")
+    length = int(parts[0])
+    offset = int(parts[1]) if len(parts) > 1 else 0
+    return f"{length}@{offset}"
+
+
+@tracer.capture_method(capture_response=False)
+def init_object_id(init_uri: str, init_byterange: str | None) -> str:
+    """Deterministic, reusable Object id for an initialisation segment identified by its
+    resolved URI (and byterange). Stable across segments, batches, retries and re-imports so
+    the init Object is reused rather than duplicated (TAMS AppNote 0024)."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"{init_uri}#{init_byterange or ''}"))
+
+
+@tracer.capture_method(capture_response=False)
 def get_file(source: str, byterange: str | None = None) -> bytes:
     """Reads the content of a file from the supplied source uri, optionally limited to a byterange in HLS #EXT-X-BYTERANGE format ('length@offset')."""
     source_parse = urlparse(source)
@@ -138,21 +170,42 @@ def probe_segment(
     segment_uri: str,
     byterange: str | None,
     extinf_duration: float,
+    init: dict | None = None,
 ) -> tuple[Timestamp | None, Timestamp]:
-    """Probes the segment and returns (start_pts, duration). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure."""
+    """Probes the segment and returns (start_pts, duration). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure.
+    init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media."""
     try:
-        probe_result = ffprobe_link(segment_uri, byterange=byterange) or {}
+        # For fragmented MP4 / CMAF the initialisation segment's moov describes the WHOLE
+        # presentation, so ffprobe's stream duration_ts is the entire clip's duration, not
+        # this fragment's. Ask for packets so the fragment duration can be summed from them.
+        probe_result = (
+            ffprobe_link(
+                segment_uri, byterange=byterange, init=init, show_packets=bool(init)
+            )
+            or {}
+        )
         streams = probe_result.get("streams", [])
         if not streams:
             raise ValueError("ffprobe returned no streams")
         probe_stream = streams[0]
         rate = 1 / Fraction(probe_stream["time_base"])
-        duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
         start_pts = (
             Timestamp.from_count(probe_stream["start_pts"], rate)
             if "start_pts" in probe_stream
             else None
         )
+        if init:
+            stream_index = probe_stream.get("index", 0)
+            packet_ts = sum(
+                int(packet["duration"])
+                for packet in probe_result.get("packets", [])
+                if packet.get("stream_index") == stream_index and "duration" in packet
+            )
+            if packet_ts <= 0:
+                raise ValueError("no packet durations available for fragment")
+            duration = Timestamp.from_count(packet_ts, rate)
+        else:
+            duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
         return start_pts, duration
     except (KeyError, ValueError, TypeError) as ex:
         logger.warning(
@@ -172,14 +225,15 @@ def process_segment(
     segments: list,
 ) -> None:
     """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end) is mutated in place to carry the contiguous-region anchor, with ts_offset recomputed only on a new region (first segment or segment.discontinuity)."""
-    segment_uri = f"{manifest_path}/{segment.uri}"
-    if segment.uri.startswith("http"):
-        segment_uri = segment.uri
-    elif segment.uri.startswith("/"):
-        path_parse = urlparse(manifest_path)
-        segment_uri = f"{path_parse.scheme}://{path_parse.netloc}{segment.uri}"
+    segment_uri = resolve_uri(manifest_path, segment.uri)
+    init = None
+    if segment.init_section:
+        init = {
+            "uri": resolve_uri(manifest_path, segment.init_section.uri),
+            "byterange": normalize_map_byterange(segment.init_section.byterange),
+        }
     start_pts, duration = probe_segment(
-        segment_uri, segment.byterange, segment.duration
+        segment_uri, segment.byterange, segment.duration, init=init
     )
     # Treat start_pts of None OR 0 identically — both mean "no meaningful position
     # on a continuous media clock" (raw AC-3 / raw AAC / WebVTT all report 0 or nothing).
@@ -201,6 +255,11 @@ def process_segment(
     }
     if segment.byterange:
         segment_dict["byterange"] = segment.byterange
+    if init:
+        segment_dict["initUri"] = init["uri"]
+        if init["byterange"]:
+            segment_dict["initByterange"] = init["byterange"]
+        segment_dict["initObjectId"] = init_object_id(init["uri"], init["byterange"])
     if str(state["ts_offset"]) != "0:0":
         segment_dict["ts_offset"] = str(state["ts_offset"])
     segments.append(segment_dict)

@@ -114,7 +114,15 @@ def upload_file(flow_id: str, data: bytes, object_id: str | None) -> dict:
 def post_segment(flow_id: str, segment_data: dict) -> bool:
     """Register the segment with the TAMS API"""
     # Exclude operational fields that are not part of the TAMS segment schema
-    excluded_fields = {"flowId", "uri", "deleteSource", "byterange"}
+    excluded_fields = {
+        "flowId",
+        "uri",
+        "deleteSource",
+        "byterange",
+        "initUri",
+        "initByterange",
+        "initObjectId",
+    }
     segment = {k: v for k, v in segment_data.items() if k not in excluded_fields}
 
     logger.info("Posting segment to TAMS...")
@@ -195,6 +203,18 @@ def record_handler(record: SQSRecord) -> None:
         message["timerange"] = f"{message['timerange'].split('_')[0]}]"
     # Update object_id in message to use the actual uploaded object_id
     message["object_id"] = media_object["object_id"]
+    # For fragmented MP4 / CMAF (TAMS AppNote 0024) the media segment references an
+    # initialisation Object. Upload it (deterministic object_id makes the upload idempotent
+    # and reused across every segment that shares this init) and link it on the segment.
+    init_object_id = message.get("initObjectId")
+    if init_object_id:
+        init_data = get_file(message["initUri"], message.get("initByterange"))
+        if not init_data:
+            raise ValueError(f"Unable to read init segment {message['initUri']}")
+        init_object = upload_file(flow_id, init_data, init_object_id)
+        if init_object is None:
+            raise ValueError(f"Unable to upload init segment to flow {flow_id}")
+        message["init_object_id"] = init_object["object_id"]
     post_result = post_segment(flow_id, message)
     if not post_result:
         raise ValueError(f"Unable to post segment to flow {flow_id}")
