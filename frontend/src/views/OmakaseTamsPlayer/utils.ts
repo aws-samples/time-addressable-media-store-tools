@@ -27,7 +27,6 @@ import type {
   MarkerTrackLaneStyle,
   OmakasePlayerApi,
   TamsMainMedia,
-  TextTrack,
   ThumbnailTrack,
   TimedItemTemporal,
   TimelineApi,
@@ -225,70 +224,6 @@ const addSegmentMarkersToLane = (
   lane.addTrack(track, { style: SEGMENT_MARKER_LANE_STYLE });
 
   applySegmentMarkerColors(player, track, mode);
-};
-
-// Marks a cue whose times this app has already moved onto the media timeline, so the cues a later
-// segment read delivers are rebased once and only once.
-const REBASED_CUE_ATTR = "tamsRebasedToMediaTime";
-
-/**
- * Moves fetched subtitle cues from absolute TAMS time onto the media timeline.
- *
- * The store's subtitle segments are verbatim source WebVTT: cue times are the programme's own times,
- * which for a TAMS resource starting at time zero are also absolute TAMS seconds, under a
- * `X-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:<n>` header. So the cues reach the lane on absolute
- * time — e.g. 311..687 s against a media timeline of 0..304.5 s, which puts every one of them past
- * the end of the visible range, and `TextTrackLane.adjustCueVisualizations` silently draws none.
- *
- * The library's own correction cannot fire for such a file. `mapCues` offsets every cue by
- * `VttUtil.resolveCueTimeOffset(map, shift) = Math.max(0, local - (shift ?? 0))`; `LOCAL` is zero so
- * `local` is 0, the registered shift is positive, and the clamp turns the whole thing into 0. The
- * shift itself is `mediaStartTime - flowStartTime` (114.414 here), which even unclamped would leave
- * the cues a further `flowStartTime` too late. What is needed is `-mediaStartTime`, which is exactly
- * the rebasing `segmentToMarker` does for the segment markers, applied to the cues instead.
- *
- * Returns whether anything changed, so the caller can skip a redundant render.
- */
-const rebaseSubtitleCues = (
-  textTrack: TextTrack,
-  mediaStartTime: number,
-  videoDuration: number,
-): boolean => {
-  const outOfWindowIds: string[] = [];
-  let changed = false;
-
-  for (const cue of textTrack.timedItems) {
-    if (cue.data[REBASED_CUE_ATTR]) continue;
-
-    const absoluteStart = TimedItemTemporalUtil.extractStartTime(cue.temporal);
-    const absoluteEnd = TimedItemTemporalUtil.extractEndTime(cue.temporal);
-    if (absoluteStart === undefined || absoluteEnd === undefined) continue;
-
-    const start = absoluteStart - mediaStartTime;
-    const end = absoluteEnd - mediaStartTime;
-
-    // A subtitle flow can cover more than the loaded window at either end.
-    if (end <= 0 || start >= videoDuration) {
-      outOfWindowIds.push(cue.id);
-      continue;
-    }
-
-    textTrack.updateTimedItem(cue.id, {
-      temporal: spanTemporal(
-        Math.max(0, start),
-        Math.min(videoDuration, end),
-      ),
-      data: { ...cue.data, [REBASED_CUE_ATTR]: true },
-    });
-    changed = true;
-  }
-
-  if (outOfWindowIds.length) {
-    textTrack.deleteTimedItems(outOfWindowIds);
-    changed = true;
-  }
-
-  return changed;
 };
 
 const addSubtitleLaneControls = (
@@ -1027,10 +962,9 @@ export const buildLanesOnTimeline = ({
         // `TextTrackLane` re-renders on timed-item UPDATE and DELETE events but not on ADD, and the
         // TAMS cue reader delivers every cue through `addTimedItems`, which emits ADD. Cues that
         // land before `setTrack` are picked up by the lane itself; these are the ones that stream in
-        // afterwards, which for TAMS is all of them. They arrive on absolute TAMS time, so they are
-        // rebased onto the media timeline first — see `rebaseSubtitleCues`. That rebasing emits its
-        // own UPDATE/DELETE events, which the lane does re-render on, so the explicit render only
-        // has to cover the case where nothing needed moving.
+        // afterwards, which for TAMS is all of them. The reader already delivers them on media time
+        // (`TamsSegmentedVttTimedItemsFetcher` applies the window offset), so they need no moving —
+        // only drawing.
         textTrack.onEvent$
           .pipe(
             filter(
@@ -1040,18 +974,7 @@ export const buildLanesOnTimeline = ({
             ),
             takeUntil(destroy$),
           )
-          .subscribe({
-            next: () => {
-              if (
-                !rebaseSubtitleCues(textTrack, mediaStartTime, videoDuration)
-              ) {
-                subtitlesLane.render();
-              }
-            },
-          });
-        // Cues already on the track when the lane was built are rebased too: the reader can deliver
-        // a whole segment before the timeline exists.
-        rebaseSubtitleCues(textTrack, mediaStartTime, videoDuration);
+          .subscribe({ next: () => subtitlesLane.render() });
         visualizationLaneIds.push(subtitlesLane.id);
         const laneLabel = addLaneLabel(subtitlesLane, label, mode);
         textLabels.set(subtitlesLane.id, laneLabel);
