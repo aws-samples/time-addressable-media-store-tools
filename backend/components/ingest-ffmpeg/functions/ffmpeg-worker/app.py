@@ -48,12 +48,16 @@ def calculate_ffmpeg_timing(segment):
             skip = segment_timerange.start.to_unix_float() - (
                 object_timerange.start.to_unix_float() + ts_offset.to_unix_float()
             )
+            # note: the input is a pipe. An input -ss seeks, which only works inside the bytes ffmpeg
+            # probed (5 MB by default): past that, the seek fails and no video frame is output. An
+            # output -ss decodes, then discards, whatever the segment size.
             output_timing = {
+                "-ss": skip,
+                "-t": input_timing.pop("-t"),
                 "-muxpreload": "0",
                 "-muxdelay": "0",
                 "-output_ts_offset": segment_timerange.start.to_unix_float(),
             }
-            input_timing["-ss"] = skip
 
         return {"input": input_timing, "output": output_timing}
     except (KeyError, ValueError, ZeroDivisionError):
