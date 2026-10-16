@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   ChromingTheme,
   DefaultThemeFloatingControl,
+  MainMediaEventType,
   MainMediaType,
   OmakasePlayer,
   TamsMainMedia,
@@ -18,7 +19,7 @@ import {
   createAuthenticationConfig,
   snapshotSegmentationTracks,
 } from "../utils";
-import { Subject } from "rxjs";
+import { filter, Subject, type Subscription } from "rxjs";
 import type {
   OmakasePlayerApi,
   MarkerTrack,
@@ -92,6 +93,9 @@ export const useOmakasePlayer = ({
   // Id of the media the lanes were last built for, used to ignore the library's stale rebuild
   // trigger. See `buildLanes`.
   const builtForMediaIdRef = useRef<string | undefined>(undefined);
+  // Live playback keeps growing the loaded media after load; see `subscribeToLiveUpdates`.
+  const refreshSegmentLanesRef = useRef<(() => void) | undefined>(undefined);
+  const liveUpdatesRef = useRef<Subscription | undefined>(undefined);
 
   const callbacks = {
     onError,
@@ -161,6 +165,7 @@ export const useOmakasePlayer = ({
     });
     textLabelsRef.current = built.textLabels;
     visualizationLaneIdsRef.current = built.visualizationLaneIds;
+    refreshSegmentLanesRef.current = built.refreshSegmentLanes;
     if (built.discardedMarkerIds.length) {
       callbacksRef.current.onMarkersDiscarded?.(built.discardedMarkerIds);
     }
@@ -181,10 +186,43 @@ export const useOmakasePlayer = ({
     buildLanesRef.current();
   }, []);
 
+  /**
+   * Follows a live media as it grows. The player polls the store and, after every rewrite of the
+   * playlists, appends the new segments to `tamsMediaData.flowsSegments` in place and emits
+   * `MAIN_MEDIA_UPDATED` with a refreshed `tamsMetadata.timerange`. The segment lanes and the time
+   * range selector were both built from the load-time values, so both are refreshed from here.
+   * A VOD media never updates after load, so it gets no subscription.
+   */
+  const subscribeToLiveUpdates = useCallback((mainMedia: TamsMainMedia) => {
+    liveUpdatesRef.current?.unsubscribe();
+    liveUpdatesRef.current = undefined;
+    // `TamsPlaybackMode` is not exported, hence the string comparison.
+    if (String(mainMedia.tamsMetadata?.playbackMode) === "VOD") return;
+
+    liveUpdatesRef.current = mainMedia.onEvent$
+      .pipe(
+        filter((event) => event.type === MainMediaEventType.MAIN_MEDIA_UPDATED),
+      )
+      .subscribe(() => {
+        refreshSegmentLanesRef.current?.();
+        const timerangeData = calculateTimerangeFromMainMedia(mainMedia);
+        if (timerangeData) {
+          callbacksRef.current.onTimerangeChange(
+            timerangeData.timerange,
+            timerangeData.maxTimerange,
+          );
+        }
+      });
+  }, []);
+
   const loadMedia = useCallback(
     (tamsUrl: string, options: TamsMainMediaLoadOptions) => {
       const player = playerRef.current;
       if (!player) return;
+
+      // The outgoing media's live updates must not reach the lanes built for the incoming one.
+      liveUpdatesRef.current?.unsubscribe();
+      liveUpdatesRef.current = undefined;
 
       // Last chance to see the segmentation lanes' tracks: `loadMainMedia` unloads first, and
       // `unloadMainMedia` clears the track repository, which detaches every track from its lane.
@@ -212,6 +250,7 @@ export const useOmakasePlayer = ({
             // at which the new media's `tamsMetadata` is readable. See `buildLanes`. On the very
             // first load there is no timeline yet, so this is a no-op and creation drives the build.
             buildLanesRef.current();
+            subscribeToLiveUpdates(mainMedia);
 
             const timerangeData = calculateTimerangeFromMainMedia(mainMedia);
             if (timerangeData) {
@@ -241,7 +280,7 @@ export const useOmakasePlayer = ({
           },
         });
     },
-    [],
+    [subscribeToLiveUpdates],
   );
 
   useEffect(() => {
@@ -297,6 +336,9 @@ export const useOmakasePlayer = ({
       segmentationTracksRef.current = new Map();
       markerMediaStartTimeRef.current = undefined;
       builtForMediaIdRef.current = undefined;
+      liveUpdatesRef.current?.unsubscribe();
+      liveUpdatesRef.current = undefined;
+      refreshSegmentLanesRef.current = undefined;
       playerRef.current?.destroy();
       playerRef.current = null;
       mainMediaRef.current = null;
