@@ -77,7 +77,9 @@
   },
   "overrides": {
     "xml2js": "^0.6.2",
-    "js-yaml": "^3.15.2"
+    "@byomakase/omakase-ttconv-ts": {
+      "xmlbuilder2": "^4.0.3"
+    }
   },
   "optionalDependencies": {
     "@esbuild/darwin-arm64": "^0.28.2",
