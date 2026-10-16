@@ -185,7 +185,7 @@ def get_job_details(execution_arn):
             if describe_execution.get("stopDate")
             else ""
         ),
-        sourceTimerange=job_input.get("sourceTimerange", ""),
+        sourceTimerange=job_input.get("timerange", ""),
         ffmpeg=job_input["ffmpeg"],
         outputFlow=job_input["outputFlow"],
     )
