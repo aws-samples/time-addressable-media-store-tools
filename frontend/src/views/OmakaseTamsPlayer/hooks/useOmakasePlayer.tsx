@@ -14,7 +14,6 @@ import {
   buildLanesOnTimeline,
   updateTimelineStyles,
   removeVisualizationLanes,
-  reseatThumbnailLane,
   calculateTimerangeFromMainMedia,
   createAuthenticationConfig,
   snapshotSegmentationTracks,
@@ -37,11 +36,6 @@ type UseOmakasePlayerParams = {
   id: string | undefined;
   accessToken: string | undefined;
   mode: Mode;
-  /**
-   * Number of segmentation lanes currently on the timeline. Only used to re-seat the Thumbnails
-   * lane below them — react-components' toolbar inserts new segmentation lanes one row too low.
-   */
-  segmentationLaneCount: number;
   onError: (error: string | null) => void;
   onTimerangeChange: (
     timerange: string | undefined,
@@ -69,7 +63,6 @@ export const useOmakasePlayer = ({
   id,
   accessToken,
   mode,
-  segmentationLaneCount,
   onError,
   onTimerangeChange,
   onSegmentationLaneCreated,
@@ -334,11 +327,9 @@ export const useOmakasePlayer = ({
     // `TamsVideoLoadOptions.duration: 300` behaviour, and our guard rail against opening a very
     // large flow unbounded and paging every one of its segments.
     //
-    // Note it also selects `TamsPlaybackMode.CONTINUOUS` (live). Today that always gets downgraded
-    // to VOD, because the ingesting check that would keep it live is broken in
-    // `1.1.2-SNAPSHOT.1788521000` — reported to byomakase as round 2 §1. When they fix it, an
-    // INGESTING flow loaded here will genuinely resolve to live, which the timeline does not yet
-    // support: revisit this call alongside the live-timeline work, and retest after any version bump.
+    // It also selects `TamsPlaybackMode.CONTINUOUS`: an INGESTING flow plays as a sliding live
+    // window of this length, and anything else is downgraded to VOD. Live growth is followed by
+    // `subscribeToLiveUpdates`.
     loadMedia(tamsUrl, {
       returnTamsMediaData: true,
       duration: INITIAL_LOAD_MAX_SECONDS,
@@ -372,25 +363,6 @@ export const useOmakasePlayer = ({
         error: (err) => console.error("Error setting authentication:", err),
       });
   }, [accessToken]);
-
-  // Toolbar-created segmentation lanes land below the Thumbnails lane instead of above it, so the
-  // Thumbnails lane is re-seated whenever the segmentation-lane count changes. See
-  // `reseatThumbnailLane` for why the Thumbnails lane is the one that moves.
-  useEffect(() => {
-    const timeline = timelineRef.current;
-    const player = playerRef.current;
-    if (!timeline || !player) return;
-    const moved = reseatThumbnailLane(
-      timeline,
-      player,
-      modeRef.current,
-      segmentationLaneCount,
-    );
-    if (!moved) return;
-    visualizationLaneIdsRef.current = visualizationLaneIdsRef.current.map((id) =>
-      id === moved.previousId ? moved.laneId : id,
-    );
-  }, [segmentationLaneCount]);
 
   // Theme changes update styles in-place rather than destroying/recreating the
   // timeline, which preserves segmentation lane state and marker selections.

@@ -2,7 +2,6 @@ import {
   ImageButton,
   MarkerTrack,
   MarkerTrackLane,
-  MarkerTrackLaneEventType,
   MarkerType,
   MediaTemporalFormat,
   PlayerAudioType,
@@ -68,6 +67,11 @@ const SEGMENT_TRACK_ATTR = "tamsSegments";
 const isSegmentTrack = (track: MarkerTrack) =>
   track.customAttrs?.[SEGMENT_TRACK_ATTR] === true;
 
+// Marks the track of the segmentation lane this app creates, as opposed to the ones the toolbar's
+// "add segmentation lane" button creates. The toolbar installs its own overlap guard on its tracks
+// for its whole lifetime, so ours only goes on the track the toolbar never saw being created.
+const APP_SEGMENTATION_TRACK_ATTR = "appSegmentation";
+
 export const laneTrack = (lane: MarkerTrackLane): MarkerTrack | undefined =>
   lane.getTracks().at(0);
 
@@ -78,27 +82,25 @@ const spanTemporal = (start: number, end: number): TimedItemTemporal => ({
   end: String(end),
 });
 
-// Moves a temporal along the time axis, preserving its type. Not clamped to `0..duration`, because
-// the caller decides what to do with a temporal that lands outside the window rather than quietly
-// distorting it — see `rebaseMarkersOnTrack`, which discards those markers.
-const shiftTemporal = (
+// Applies `fn` to every time a temporal carries, preserving its type.
+const mapTemporal = (
   temporal: TimedItemTemporal,
-  delta: number,
+  fn: (seconds: number) => number,
 ): TimedItemTemporal => {
-  const shift = (value: string) => String(Number(value) + delta);
+  const map = (value: string) => String(fn(Number(value)));
   switch (temporal.type) {
     case TimedItemTemporalType.MOMENT:
-      return { ...temporal, time: shift(temporal.time) };
+      return { ...temporal, time: map(temporal.time) };
     case TimedItemTemporalType.SPAN:
       return {
         ...temporal,
-        start: shift(temporal.start),
-        end: shift(temporal.end),
+        start: map(temporal.start),
+        end: map(temporal.end),
       };
     case TimedItemTemporalType.SPAN_START:
-      return { ...temporal, start: shift(temporal.start) };
+      return { ...temporal, start: map(temporal.start) };
     case TimedItemTemporalType.SPAN_END:
-      return { ...temporal, end: shift(temporal.end) };
+      return { ...temporal, end: map(temporal.end) };
   }
 };
 
@@ -603,7 +605,9 @@ const createSegmentationLane = (
     description: segmentationNameFor(0),
     style: segmentationLaneStyleFor(mode),
   });
-  const track = new MarkerTrack();
+  const track = new MarkerTrack({
+    customAttrs: { [APP_SEGMENTATION_TRACK_ATTR]: true },
+  });
   player.track.add(track);
   lane.addTrack(track);
   timeline.addTimelineLane(lane);
@@ -665,9 +669,9 @@ export const snapshotSegmentationTracks = (
  * emits `TRACK_DELETED` for every track, and `TrackLane.trySetOnTrackDeleted` responds by calling
  * `removeTrack`, which splices the track out of the lane's `_tracks` and calls `onTrackRemoved` →
  * `clearContent()`. So the deliberately-reused segmentation lane comes back with NO track at all:
- * `laneTrack(lane)` is undefined, the lane draws as an empty row, and `wireSegmentationLane` bails at
- * its guard — which also means no marker-click subscription, so the lane is inert as well as blank and
- * the toolbar's marker buttons have nothing selected to act on.
+ * `laneTrack(lane)` is undefined and the lane draws as an empty row. The toolbar's marker-click
+ * subscription looks the clicked marker up through `laneTrack(lane)` too, so the lane is inert as well
+ * as blank and the toolbar's marker buttons have nothing selected to act on.
  *
  * The track object itself is not destroyed — `Repository._delete` only drops it from a Map — so the
  * instance we hold still carries every timed item. Re-adding it to the repository and the lane
@@ -730,53 +734,62 @@ const rebaseMarkersOnTrack = (
     (time >= -WINDOW_CONTAINMENT_EPSILON &&
       time <= duration + WINDOW_CONTAINMENT_EPSILON);
 
+  // A marker kept by the epsilon can still sit a hair outside the window, and a hair below zero is
+  // as fatal to the toolbar as a whole second — so kept markers are pinned to the window exactly.
+  const clampToWindow = (seconds: number) =>
+    Math.min(Math.max(seconds, 0), duration);
+
   // Snapshotted because `updateTimedItem` re-sorts the track's live `timedItems` array.
   const rebased = track.timedItems.map((item) => ({
     id: item.id,
-    temporal: shiftTemporal(item.temporal, delta),
+    original: item.temporal,
+    temporal: mapTemporal(item.temporal, (seconds) => seconds + delta),
   }));
 
   const discarded: string[] = [];
-  for (const { id, temporal } of rebased) {
+  for (const { id, original, temporal } of rebased) {
     const within =
       isWithinWindow(TimedItemTemporalUtil.extractStartTime(temporal)) &&
       isWithinWindow(TimedItemTemporalUtil.extractEndTime(temporal));
     if (!within) {
       discarded.push(id);
-    } else if (delta) {
-      track.updateTimedItem(id, { temporal });
+      continue;
     }
+    const clamped = mapTemporal(temporal, clampToWindow);
+    const moved =
+      TimedItemTemporalUtil.extractStartTime(clamped) !==
+        TimedItemTemporalUtil.extractStartTime(original) ||
+      TimedItemTemporalUtil.extractEndTime(clamped) !==
+        TimedItemTemporalUtil.extractEndTime(original);
+    if (moved) track.updateTimedItem(id, { temporal: clamped });
   }
   if (discarded.length) track.deleteTimedItems(discarded);
   return discarded;
 };
 
 /**
- * Wires a segmentation lane's marker-click and overlap-guard subscriptions.
+ * Reverts edits that would make a marker overlap another on the same track — the library doesn't
+ * enforce non-overlap natively.
  *
- * Called for every segmentation lane on EVERY lane build, not just when a lane is created. A timerange reload rebuilds the
- * lanes, and `swapLanesDestroy` completes the previous `destroy$` first — which tears the two
- * subscriptions down. The segmentation lane itself is deliberately reused so the user's markers
- * survive the reload, so it never passes through `createSegmentationLane` again: wiring only at
- * creation left every marker click dropped after the first reload, and the overlap guard dead with
- * it. Must run AFTER `restoreSegmentationTrack`, or the `laneTrack` guard below short-circuits and
- * nothing gets wired. The library gates click dispatch on there being a live subscriber
- * (`if (!this._onEvent$.observed) return;` in `MarkerTrackLane.handleTimecodeClick`), and for a
- * spanning marker that is the only path a body click takes, so an unsubscribed lane swallows
- * selection entirely.
+ * Only for the segmentation track this app created: the toolbar guards every track it creates, for
+ * as long as it is mounted, so guarding those again would only duplicate it. Marker clicks need no
+ * wiring here either, because the toolbar subscribes to `TIMELINE_MARKER_TRACK_LANE_ITEM_CLICK` on
+ * every lane in its `segmentationLanes` prop.
+ *
+ * Called on EVERY lane build, not just at creation: a timerange reload completes the previous
+ * `destroy$`, tearing this down, while the lane and track are deliberately reused. Must run AFTER
+ * `restoreSegmentationTrack`, or the lane has no track to guard.
  */
-const wireSegmentationLane = (
+const guardSegmentationOverlap = (
   lane: MarkerTrackLane,
   destroy$: Observable<void>,
-  onMarkerClick?: (marker: Marker) => void,
 ) => {
   const track = laneTrack(lane);
-  if (!track) return;
+  if (track?.customAttrs?.[APP_SEGMENTATION_TRACK_ATTR] !== true) return;
 
-  // Revert marker edits that would overlap another marker — the library doesn't enforce
-  // non-overlap constraints natively. No 1.x timed-item event carries the previous value, so the
-  // last known-good temporal is cached per marker. Seeded from the markers already on the track,
-  // because on a re-wire no ADD event will ever fire again for markers created before it.
+  // No 1.x timed-item event carries the previous value, so the last known-good temporal is cached
+  // per marker. Seeded from the markers already on the track, because on a re-wire no ADD event
+  // will ever fire again for markers created before it.
   const lastGoodTemporal = new Map<string, TimedItemTemporal>(
     track.timedItems.map((item) => [item.id, item.temporal]),
   );
@@ -808,22 +821,6 @@ const wireSegmentationLane = (
       }
     },
   });
-
-  lane.onEvent$
-    .pipe(
-      filter(
-        (event) =>
-          event.type ===
-          MarkerTrackLaneEventType.TIMELINE_MARKER_TRACK_LANE_ITEM_CLICK,
-      ),
-      takeUntil(destroy$),
-    )
-    .subscribe({
-      next: (event) => {
-        const marker = track.getTimedItem(event.data.item.id);
-        if (marker) onMarkerClick?.(marker);
-      },
-    });
 };
 
 const createThumbnailLane = (mode: Mode) =>
@@ -863,48 +860,46 @@ const wireThumbnailTrack = (player: OmakasePlayerApi, track: ThumbnailTrack) => 
 };
 
 /**
- * Puts the Thumbnails lane back directly below the segmentation lanes.
+ * Moves any segmentation lane that is not at its expected row back into place, by rebuilding it there.
  *
  * react-components' toolbar inserts a new segmentation lane at
  * `min(segmentationLanes.length + 1, mainSlotLaneCount)`. The `+1` assumes the scrubber occupies
  * MAIN index 0, but the scrubber lives in the HEADER slot — so MAIN index 0 is already
- * `Segmentation 1` and every toolbar-created lane lands one row too low, below the Thumbnails lane.
+ * `Segmentation 1` and every toolbar-created lane lands one row too low, below whichever lane follows
+ * the segmentation lanes.
  *
- * omakase-player has no lane move API, so the order is restored by rebuilding the Thumbnails lane
- * at the right index. It is the one that gets rebuilt because it holds no state of its own beyond
- * the shared thumbnail track, whereas `removeTimelineLane` destroys the lane it removes and the
- * segmentation lanes hold the user's markers.
+ * omakase-player has no lane move API and `removeTimelineLane` destroys the lane, but not its track,
+ * so the lane is rebuilt around the same track: the markers, their colours and the toolbar's overlap
+ * guard all live on the track and carry over. The toolbar derives everything else from its
+ * `segmentationLanes` / `source` props, so the caller only has to swap the new lane into its state.
  *
- * Returns the old and new lane ids when the lane moved, so the caller can keep its lane-id
- * bookkeeping in step, or undefined when nothing needed doing.
+ * `lanes` is the app's segmentation lanes in order; lane `i` belongs at MAIN index `i`. Returns each
+ * replaced lane mapped to its replacement — empty when every lane was already in place.
  */
-export const reseatThumbnailLane = (
+export const reseatSegmentationLanes = (
   timeline: TimelineApi,
-  player: OmakasePlayerApi,
+  lanes: MarkerTrackLane[],
   mode: Mode,
-  expectedIndex: number,
-): { previousId: string; laneId: string } | undefined => {
-  const lanes = timeline.getTimelineLanes();
-  const currentIndex = lanes.findIndex(
-    (lane) => lane instanceof ThumbnailTrackLane,
-  );
-  if (currentIndex < 0 || currentIndex === expectedIndex) return undefined;
+): Map<MarkerTrackLane, MarkerTrackLane> => {
+  const replacements = new Map<MarkerTrackLane, MarkerTrackLane>();
+  lanes.forEach((lane, expectedIndex) => {
+    if (!isLaneLive(lane)) return;
+    const currentIndex = timeline
+      .getTimelineLanes()
+      .findIndex((candidate) => candidate.id === lane.id);
+    const track = laneTrack(lane);
+    if (currentIndex < 0 || currentIndex === expectedIndex || !track) return;
 
-  const thumbnailTrack = player.track.findFirst(
-    (track) => track.trackType === TrackType.THUMBNAIL_TRACK,
-  ) as ThumbnailTrack | undefined;
-  if (!thumbnailTrack) return undefined;
-
-  const previousId = lanes[currentIndex].id;
-  timeline.removeTimelineLane(previousId);
-
-  const thumbnailLane = createThumbnailLane(mode);
-  timeline.addTimelineLane(thumbnailLane, {
-    index: Math.min(expectedIndex, lanes.length - 1),
+    timeline.removeTimelineLane(lane.id);
+    const replacement = new MarkerTrackLane({
+      description: segmentationNameFor(expectedIndex),
+      style: segmentationLaneStyleFor(mode),
+    });
+    replacement.addTrack(track);
+    timeline.addTimelineLane(replacement, { index: expectedIndex });
+    replacements.set(lane, replacement);
   });
-  thumbnailLane.setTrack(thumbnailTrack);
-
-  return { previousId, laneId: thumbnailLane.id };
+  return replacements;
 };
 
 /**
@@ -998,13 +993,13 @@ export const buildLanesOnTimeline = ({
       discardedMarkerIds.push(
         ...rebaseMarkersOnTrack(remembered, delta, duration),
       );
-      // The reload wiped the track repository and with it the lane's track — put it back before
-      // wiring, or `wireSegmentationLane` bails at its guard and the lane stays blank and inert.
+      // The reload wiped the track repository and with it the lane's track — put it back, or the
+      // lane stays blank and inert.
       restoreSegmentationTrack(player, lane, remembered);
     }
   }
   for (const lane of segmentationLanes) {
-    wireSegmentationLane(lane, destroy$, onMarkerClick);
+    guardSegmentationOverlap(lane, destroy$);
   }
 
   // TAMS builds and registers the thumbnail track itself during loadMainMedia.
