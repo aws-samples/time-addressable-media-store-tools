@@ -210,7 +210,7 @@ def probe_segment(
     except (KeyError, ValueError, TypeError) as ex:
         logger.warning(
             "Segment probe incomplete, falling back to #EXTINF",
-            segment_uri=segment_uri,
+            segment_scheme=urlparse(segment_uri).scheme or "unknown",
             error=str(ex),
         )
         return None, Timestamp.from_nanosec(int(extinf_duration * 1_000_000_000))
@@ -352,7 +352,7 @@ def record_handler(record: SQSRecord) -> None:
         )
 
 
-@logger.inject_lambda_context(log_event=True)
+@logger.inject_lambda_context(log_event=False)
 @tracer.capture_lambda_handler(capture_response=False)
 # pylint: disable=unused-argument
 def lambda_handler(event: SQSEvent, context: LambdaContext) -> dict:
