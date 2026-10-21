@@ -60,6 +60,11 @@ PTS_RATE = 90000
 PTS_WRAP_TICKS = 2**33
 PTS_HALF_WRAP = Timestamp.from_count(PTS_WRAP_TICKS // 2, PTS_RATE)
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+# Stop taking on new segments with this much invocation time left, so a long catch-up
+# re-queues itself rather than hitting the Lambda timeout on every attempt.
+CATCH_UP_RESERVE_SECONDS = 60
+# time.monotonic() value after which no new segments are started; set per invocation
+invocation_deadline = None
 
 
 @tracer.capture_method(capture_response=False)
@@ -343,6 +348,44 @@ def process_segment(
     state["last_end"] = seg_end
 
 
+def is_out_of_time() -> bool:
+    """True once this invocation should stop starting new segments."""
+    return invocation_deadline is not None and time.monotonic() >= invocation_deadline
+
+
+def build_poll_message(message: dict, last_media_sequence: int, state: dict) -> dict:
+    """Builds the next poll message, carrying forward progress and the timing anchor."""
+    next_message = {
+        **message,
+        "lastMediaSequence": last_media_sequence,
+        "eventTimestamp": int(time.time() * 1000),
+    }
+    # Until a segment has been processed there is no anchor to carry forward, and
+    # the next poll must take the first-poll path rather than parse an empty one.
+    if state["ts_offset"] is not None:
+        next_message["tsOffset"] = str(state["ts_offset"])
+        next_message["lastEnd"] = str(state["last_end"])
+        next_message["ptsAnchored"] = state["pts_anchored"]
+        next_message["ptsWraps"] = state["pts_wraps"]
+    return next_message
+
+
+@tracer.capture_method(capture_response=False)
+def queue_poll(task_token: str, body: dict, delay_seconds: int) -> None:
+    """Queues the next poll of the media manifest."""
+    sqs.send_message(
+        QueueUrl=manifest_queue_url,
+        MessageAttributes={
+            "TaskToken": {
+                "DataType": "String",
+                "StringValue": task_token,
+            }
+        },
+        MessageBody=json.dumps(body),
+        DelaySeconds=delay_seconds,
+    )
+
+
 @idempotent_function(
     data_keyword_argument="message",
     config=idempotency_config,
@@ -385,8 +428,12 @@ def process_message(message: dict, task_token: str) -> None:
             "pts_wraps": 0,
         }
     segments = []
+    caught_up = True
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
+            if is_out_of_time():
+                caught_up = False
+                break
             process_segment(state, segment, flow_id, manifest_path, segments)
             last_media_sequence = segment.media_sequence
             if len(segments) == 10:
@@ -394,32 +441,20 @@ def process_message(message: dict, task_token: str) -> None:
                 segments = []
     send_message_batch(segments)
     # pylint: disable=no-member
-    if manifest.is_endlist:
+    if caught_up and manifest.is_endlist:
         sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
     else:
         sfn.send_task_heartbeat(taskToken=task_token)
-        next_message = {
-            **message,
-            "lastMediaSequence": last_media_sequence,
-            "eventTimestamp": int(time.time() * 1000),
-        }
-        # Until a segment has been processed there is no anchor to carry forward, and
-        # the next poll must take the first-poll path rather than parse an empty one.
-        if state["ts_offset"] is not None:
-            next_message["tsOffset"] = str(state["ts_offset"])
-            next_message["lastEnd"] = str(state["last_end"])
-            next_message["ptsAnchored"] = state["pts_anchored"]
-            next_message["ptsWraps"] = state["pts_wraps"]
-        sqs.send_message(
-            QueueUrl=manifest_queue_url,
-            MessageAttributes={
-                "TaskToken": {
-                    "DataType": "String",
-                    "StringValue": task_token,
-                }
-            },
-            MessageBody=json.dumps(next_message),
-            DelaySeconds=manifest.target_duration,
+        if not caught_up:
+            logger.info(
+                "Pausing catch-up before the invocation times out",
+                last_media_sequence=last_media_sequence,
+            )
+        queue_poll(
+            task_token,
+            build_poll_message(message, last_media_sequence, state),
+            # Carry straight on with the remaining segments if catch-up was paused
+            manifest.target_duration if caught_up else 0,
         )
     return (message["flowId"], message["lastMediaSequence"], message["eventTimestamp"])
 
@@ -446,6 +481,12 @@ def record_handler(record: SQSRecord) -> None:
 @tracer.capture_lambda_handler(capture_response=False)
 # pylint: disable=unused-argument
 def lambda_handler(event: SQSEvent, context: LambdaContext) -> dict:
+    global invocation_deadline  # pylint: disable=global-statement
+    invocation_deadline = (
+        time.monotonic()
+        + context.get_remaining_time_in_millis() / 1000
+        - CATCH_UP_RESERVE_SECONDS
+    )
     idempotency_config.register_lambda_context(context)
     return process_partial_response(
         event=event,
