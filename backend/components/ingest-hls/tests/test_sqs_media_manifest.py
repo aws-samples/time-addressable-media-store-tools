@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -41,7 +42,19 @@ def pts(ticks: int) -> Timestamp:
     return Timestamp.from_count(ticks, RATE)
 
 
-def build_manifest(count: int, first_sequence: int = 0, endlist: bool = False) -> str:
+def pdt_tag(seconds_after_start: float) -> str:
+    """An EXT-X-PROGRAM-DATE-TIME value this many seconds after FLOW_START"""
+    value = datetime(2026, 10, 16, 10, 10, 56, 700000, tzinfo=timezone.utc)
+    value += timedelta(seconds=seconds_after_start)
+    return value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def build_manifest(
+    count: int,
+    first_sequence: int = 0,
+    endlist: bool = False,
+    pdt_at: dict | None = None,
+) -> str:
     lines = [
         "#EXTM3U",
         "#EXT-X-VERSION:3",
@@ -50,14 +63,18 @@ def build_manifest(count: int, first_sequence: int = 0, endlist: bool = False) -
         "#EXT-X-PROGRAM-DATE-TIME:2026-10-16T10:10:56.700Z",
     ]
     for i in range(count):
+        if pdt_at and i in pdt_at:
+            lines.append(f"#EXT-X-PROGRAM-DATE-TIME:{pdt_at[i]}")
         lines += ["#EXTINF:6.000,", f"seg_{first_sequence + i}.ts"]
     if endlist:
         lines.append("#EXT-X-ENDLIST")
     return "\n".join(lines) + "\n"
 
 
-def segments(count: int = 1, discontinuity_at: int | None = None) -> list:
-    manifest = m3u8.loads(build_manifest(count))
+def segments(
+    count: int = 1, discontinuity_at: int | None = None, pdt_at: dict | None = None
+) -> list:
+    manifest = m3u8.loads(build_manifest(count, pdt_at=pdt_at))
     if discontinuity_at is not None:
         manifest.segments[discontinuity_at].discontinuity = True
     return manifest.segments
@@ -319,6 +336,59 @@ class SegmentTimingTest(unittest.TestCase):
         self.assertEqual(timeranges[0].start, FLOW_START)
         self.assertFalse(self.state["pts_anchored"])
 
+    def test_media_without_pts_moves_forward_to_program_date_time(self) -> None:
+        # Probed durations run 150 ms short, so by the tag on the third segment the
+        # summed start is 300 ms behind the playlist clock
+        short = Timestamp.from_millisec(5_850)
+        timeranges = self.run_segments(
+            [(None, short, False)] * 3, pdt_at={2: pdt_tag(12)}
+        )
+        self.assertEqual(timeranges[1].start, FLOW_START + short)
+        self.assertEqual(timeranges[2].start, FLOW_START + pts(12 * RATE))
+        self.assertEqual(self.state["ts_offset"], timeranges[2].start)
+
+    def test_media_without_pts_within_threshold_stays_contiguous(self) -> None:
+        short = Timestamp.from_millisec(5_950)
+        timeranges = self.run_segments(
+            [(None, short, False)] * 3, pdt_at={2: pdt_tag(12)}
+        )
+        self.assert_contiguous(timeranges)
+
+    def test_media_without_pts_running_ahead_is_not_rewound(self) -> None:
+        # 300 ms ahead of the tag, but moving back would overlap registered time
+        long = Timestamp.from_millisec(6_150)
+        timeranges = self.run_segments(
+            [(None, long, False)] * 3, pdt_at={2: pdt_tag(12)}
+        )
+        self.assert_contiguous(timeranges)
+
+    def test_discontinuity_keeps_placement_of_media_without_pts(self) -> None:
+        # A 30 s outage behind a discontinuity. PTS media starts the new region at
+        # the previous end, so media without PTS must too, or the Flows would split.
+        timeranges = self.run_segments(
+            [(None, SEGMENT, False)] * 3,
+            discontinuity_at=1,
+            pdt_at={1: pdt_tag(36), 2: pdt_tag(42)},
+        )
+        self.assert_contiguous(timeranges)
+
+    def test_probe_failure_in_pts_region_ignores_program_date_time(self) -> None:
+        # Failed probes in a PTS region carry on from the previous end. Following the
+        # tags there (the second is 1 s off) would replace the PTS offset.
+        base = 1_000 * RATE
+        timeranges = self.run_segments(
+            [
+                (pts(base), SEGMENT, True),
+                (None, SEGMENT, False),
+                (pts(base + 12 * RATE), SEGMENT, True),
+                (None, SEGMENT, False),
+                (pts(base + 24 * RATE), SEGMENT, True),
+            ],
+            pdt_at={1: pdt_tag(6), 3: pdt_tag(19)},
+        )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
+
 
 class ProcessMessageTest(unittest.TestCase):
     """Drives process_message to check what is carried between polls."""
@@ -434,6 +504,42 @@ class ProcessMessageTest(unittest.TestCase):
         self.poll(message, build_manifest(2), [(pts(6 * RATE), SEGMENT, True)])
         timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
         self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+
+    def test_program_date_time_baseline_survives_between_polls(self) -> None:
+        short = Timestamp.from_millisec(5_750)
+        next_message = self.poll(
+            self.first_message(), build_manifest(1), [(None, short, False)]
+        )
+        self.assertEqual(next_message["pdtOffset"], str(Timestamp()))
+        next_message = self.poll(
+            next_message,
+            build_manifest(2, pdt_at={1: pdt_tag(6)}),
+            [(None, short, False)],
+        )
+        timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
+        self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+        self.assertEqual(next_message["tsOffset"], str(FLOW_START + SEGMENT))
+
+    def test_messages_without_pdt_offset_take_a_new_baseline(self) -> None:
+        # An ingest already running when this ships keeps its placement rather
+        # than jumping to the playlist clock at the next tag
+        message = {
+            **self.first_message(),
+            "lastMediaSequence": 0,
+            "tsOffset": str(FLOW_START),
+            "lastEnd": str(FLOW_START + SEGMENT),
+            "ptsAnchored": False,
+        }
+        next_message = self.poll(
+            message,
+            build_manifest(2, pdt_at={1: pdt_tag(9)}),
+            [(None, SEGMENT, False)],
+        )
+        timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
+        self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+        self.assertEqual(
+            Timestamp.from_str(next_message["pdtOffset"]), SEGMENT - pts(9 * RATE)
+        )
 
     def test_flow_start_keeps_sub_second_precision(self) -> None:
         manifest = m3u8.loads(build_manifest(1))
