@@ -26,6 +26,7 @@ from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
     DataRecord,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from botocore.exceptions import ClientError
 from ffprobe import ffprobe_link
 from mediatimestamp.immutable import TimeRange, Timestamp
 
@@ -65,6 +66,18 @@ EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 CATCH_UP_RESERVE_SECONDS = 60
 # time.monotonic() value after which no new segments are started; set per invocation
 invocation_deadline = None
+# A failed poll is re-queued with exponential backoff rather than failing the ingest.
+# Bounded so a source that has gone for good still fails the task (about 25 minutes
+# with these values), and each delay stays well inside the 900s task heartbeat.
+MAX_POLL_RETRIES = 10
+FIRST_RETRY_DELAY_SECONDS = 5
+MAX_RETRY_DELAY_SECONDS = 300
+# Step Functions errors meaning the ingest task has already ended, e.g. a stopped execution
+TASK_ENDED_ERRORS = {"TaskTimedOut", "TaskDoesNotExist", "InvalidToken"}
+
+
+class PermanentIngestError(Exception):
+    """An error that retrying cannot fix, so the ingest task is failed straight away."""
 
 
 @tracer.capture_method(capture_response=False)
@@ -360,6 +373,7 @@ def build_poll_message(message: dict, last_media_sequence: int, state: dict) -> 
         "lastMediaSequence": last_media_sequence,
         "eventTimestamp": int(time.time() * 1000),
     }
+    next_message.pop("retryCount", None)
     # Until a segment has been processed there is no anchor to carry forward, and
     # the next poll must take the first-poll path rather than parse an empty one.
     if state["ts_offset"] is not None:
@@ -392,8 +406,9 @@ def queue_poll(task_token: str, body: dict, delay_seconds: int) -> None:
     persistence_store=persistence_layer,
 )
 @tracer.capture_method(capture_response=False)
-def process_message(message: dict, task_token: str) -> None:
-    """Processes a single message from within the SQS record"""
+def process_message(message: dict, task_token: str, progress: dict) -> None:
+    """Processes a single message from within the SQS record.
+    `progress["message"]` is kept as the poll message to resume from after the last segments sent, so a retry does not re-send them."""
     logger.info("Idempotency allowed processing.")
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
@@ -406,7 +421,7 @@ def process_message(message: dict, task_token: str) -> None:
     manifest_path = os.path.dirname(manifest_location)
     manifest = get_manifest(manifest_location)
     if manifest.is_variant:
-        raise ValueError("Not a media manifest")
+        raise PermanentIngestError("Not a media manifest")
     normalize_byterange_offsets(manifest.segments)
     last_media_sequence = message["lastMediaSequence"]
     if "tsOffset" in message:
@@ -439,7 +454,11 @@ def process_message(message: dict, task_token: str) -> None:
             if len(segments) == 10:
                 send_message_batch(segments)
                 segments = []
+                progress["message"] = build_poll_message(
+                    message, last_media_sequence, state
+                )
     send_message_batch(segments)
+    progress["message"] = build_poll_message(message, last_media_sequence, state)
     # pylint: disable=no-member
     if caught_up and manifest.is_endlist:
         sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
@@ -452,7 +471,7 @@ def process_message(message: dict, task_token: str) -> None:
             )
         queue_poll(
             task_token,
-            build_poll_message(message, last_media_sequence, state),
+            progress["message"],
             # Carry straight on with the remaining segments if catch-up was paused
             manifest.target_duration if caught_up else 0,
         )
@@ -465,16 +484,71 @@ def record_handler(record: SQSRecord) -> None:
     task_token = record.message_attributes.get("TaskToken", {}).get("stringValue", None)
     if not task_token:
         return
+    message = record.json_body
+    progress = {}
     try:
-        process_message(message=record.json_body, task_token=task_token)
+        process_message(message=message, task_token=task_token, progress=progress)
     # pylint: disable=broad-exception-caught
     except Exception as ex:
-        logger.exception("Failing step function task due to unhandled exception")
+        if is_task_ended(ex):
+            logger.info("Ingest task has ended, stopping polling")
+            return
+        retry_count = message.get("retryCount", 0)
+        if isinstance(ex, PermanentIngestError) or retry_count >= MAX_POLL_RETRIES:
+            fail_task(task_token, ex)
+            return
+        retry_poll(task_token, message, progress, retry_count + 1)
+
+
+def is_task_ended(ex: Exception) -> bool:
+    """True if a Step Functions call failed because the ingest task has already ended."""
+    return (
+        isinstance(ex, ClientError)
+        and ex.response.get("Error", {}).get("Code") in TASK_ENDED_ERRORS
+    )
+
+
+@tracer.capture_method(capture_response=False)
+def fail_task(task_token: str, ex: Exception) -> None:
+    """Fails the ingest task, unless it has already ended."""
+    logger.exception("Failing step function task due to unhandled exception")
+    try:
         sfn.send_task_failure(
             taskToken=task_token,
             error=type(ex).__name__,
             cause=str(ex),
         )
+    except ClientError as failure_ex:
+        if not is_task_ended(failure_ex):
+            raise
+
+
+@tracer.capture_method(capture_response=False)
+def retry_poll(
+    task_token: str, message: dict, progress: dict, retry_count: int
+) -> None:
+    """Re-queues a failed poll with exponential backoff, resuming after the last segments sent.
+    Anything raised here fails the SQS record, so SQS redelivers the original poll instead."""
+    delay = min(
+        MAX_RETRY_DELAY_SECONDS, FIRST_RETRY_DELAY_SECONDS * 2 ** (retry_count - 1)
+    )
+    logger.warning(
+        "Polling media manifest failed, retrying",
+        exc_info=True,
+        retry_count=retry_count,
+        delay_seconds=delay,
+    )
+    retry_message = progress.get(
+        "message", {**message, "eventTimestamp": int(time.time() * 1000)}
+    )
+    try:
+        sfn.send_task_heartbeat(taskToken=task_token)
+    except ClientError as ex:
+        if is_task_ended(ex):
+            logger.info("Ingest task has ended, stopping polling")
+            return
+        raise
+    queue_poll(task_token, {**retry_message, "retryCount": retry_count}, delay)
 
 
 @logger.inject_lambda_context(log_event=False)

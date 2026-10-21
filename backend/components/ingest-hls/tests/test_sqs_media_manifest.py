@@ -13,6 +13,8 @@ from pathlib import Path
 from unittest import mock
 
 import m3u8
+import requests
+from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSRecord
 from mediatimestamp.immutable import TimeRange, Timestamp
 
 COMPONENT = Path(__file__).resolve().parents[1]
@@ -345,7 +347,7 @@ class ProcessMessageTest(unittest.TestCase):
                 app, "is_out_of_time", side_effect=out_of_time or (lambda: False)
             ),
         ):
-            app.process_message(message=message, task_token="token")
+            app.process_message(message=message, task_token="token", progress={})
         self.sfn = sfn
         self.sent_segments = [
             s for call in send_batch.call_args_list for s in call.args[0]
@@ -436,6 +438,133 @@ class ProcessMessageTest(unittest.TestCase):
     def test_flow_start_keeps_sub_second_precision(self) -> None:
         manifest = m3u8.loads(build_manifest(1))
         self.assertEqual(app.get_manifest_start_pdt(manifest), FLOW_START)
+
+
+def sfn_error(code: str) -> Exception:
+    return app.ClientError({"Error": {"Code": code, "Message": code}}, "SfnCall")
+
+
+class RecordHandlerTest(unittest.TestCase):
+    """Drives record_handler to check how failed polls are retried or failed."""
+
+    def setUp(self) -> None:
+        self.sfn = None
+        self.sqs = None
+
+    def handle(
+        self, message: dict, manifest=None, probes=None, sfn_side_effect=None
+    ) -> None:
+        record = SQSRecord(
+            {
+                "messageId": "1",
+                "body": json.dumps(message),
+                "messageAttributes": {
+                    "TaskToken": {"stringValue": "token", "dataType": "String"}
+                },
+            }
+        )
+        with (
+            mock.patch.object(app, "get_manifest", **(manifest or {})),
+            mock.patch.object(app, "probe_segment", side_effect=probes or []),
+            mock.patch.object(app, "send_message_batch"),
+            mock.patch.object(app, "sfn") as sfn,
+            mock.patch.object(app, "sqs") as sqs,
+            mock.patch.object(app, "is_out_of_time", return_value=False),
+        ):
+            if sfn_side_effect:
+                sfn.send_task_heartbeat.side_effect = sfn_side_effect
+                sfn.send_task_failure.side_effect = sfn_side_effect
+            app.record_handler(record)
+        self.sfn = sfn
+        self.sqs = sqs
+
+    def queued(self) -> tuple[dict, int]:
+        kwargs = self.sqs.send_message.call_args.kwargs
+        return json.loads(kwargs["MessageBody"]), kwargs["DelaySeconds"]
+
+    def message(self, **extra) -> dict:
+        return {
+            "flowId": "flow",
+            "manifestLocation": "s3://bucket/path/index.m3u8",
+            "lastMediaSequence": -1,
+            "eventTimestamp": 0,
+            **extra,
+        }
+
+    def test_transient_error_requeues_with_backoff(self) -> None:
+        error = {"side_effect": requests.ConnectionError("origin unavailable")}
+        self.handle(self.message(), manifest=error)
+        body, delay = self.queued()
+        self.assertEqual(body["retryCount"], 1)
+        self.assertEqual(body["lastMediaSequence"], -1)
+        self.assertNotEqual(body["eventTimestamp"], 0)
+        self.assertEqual(delay, app.FIRST_RETRY_DELAY_SECONDS)
+        self.sfn.send_task_heartbeat.assert_called_once()
+        self.sfn.send_task_failure.assert_not_called()
+
+    def test_backoff_is_capped(self) -> None:
+        error = {"side_effect": requests.ConnectionError("origin unavailable")}
+        self.handle(self.message(retryCount=7), manifest=error)
+        body, delay = self.queued()
+        self.assertEqual(body["retryCount"], 8)
+        self.assertEqual(delay, app.MAX_RETRY_DELAY_SECONDS)
+
+    def test_task_fails_once_retries_are_exhausted(self) -> None:
+        error = {"side_effect": requests.ConnectionError("origin unavailable")}
+        self.handle(self.message(retryCount=app.MAX_POLL_RETRIES), manifest=error)
+        self.sfn.send_task_failure.assert_called_once()
+        self.sqs.send_message.assert_not_called()
+
+    def test_permanent_error_fails_the_task_straight_away(self) -> None:
+        variant = m3u8.loads("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nvideo.m3u8\n")
+        self.handle(self.message(), manifest={"return_value": variant})
+        self.sfn.send_task_failure.assert_called_once()
+        self.assertEqual(
+            self.sfn.send_task_failure.call_args.kwargs["error"],
+            "PermanentIngestError",
+        )
+        self.sqs.send_message.assert_not_called()
+
+    def test_retry_resumes_after_segments_already_sent(self) -> None:
+        # The 12th probe fails after the first batch of 10 segments has been sent
+        probes = [(pts(1000 * RATE + i * 6 * RATE), SEGMENT, True) for i in range(11)]
+        probes.append(requests.ConnectionError("segment fetch failed"))
+        manifest = {"return_value": m3u8.loads(build_manifest(15))}
+        self.handle(self.message(), manifest=manifest, probes=probes)
+        body, _ = self.queued()
+        self.assertEqual(body["lastMediaSequence"], 9)
+        self.assertIn("tsOffset", body)
+        self.assertEqual(body["retryCount"], 1)
+
+    def test_successful_poll_clears_the_retry_count(self) -> None:
+        manifest = {"return_value": m3u8.loads(build_manifest(1))}
+        self.handle(
+            self.message(retryCount=3),
+            manifest=manifest,
+            probes=[(pts(RATE), SEGMENT, True)],
+        )
+        body, delay = self.queued()
+        self.assertNotIn("retryCount", body)
+        self.assertEqual(delay, 6)
+
+    def test_ended_task_stops_polling_quietly(self) -> None:
+        manifest = {"return_value": m3u8.loads(build_manifest(1))}
+        self.handle(
+            self.message(),
+            manifest=manifest,
+            probes=[(pts(RATE), SEGMENT, True)],
+            sfn_side_effect=sfn_error("TaskTimedOut"),
+        )
+        self.sqs.send_message.assert_not_called()
+        self.sfn.send_task_failure.assert_not_called()
+
+    def test_failure_to_requeue_is_raised_for_sqs_to_redeliver(self) -> None:
+        error = {"side_effect": requests.ConnectionError("origin unavailable")}
+        with self.assertRaises(app.ClientError):
+            with mock.patch.object(
+                app, "queue_poll", side_effect=sfn_error("ServiceUnavailable")
+            ):
+                self.handle(self.message(), manifest=error)
 
 
 if __name__ == "__main__":
