@@ -567,5 +567,55 @@ class RecordHandlerTest(unittest.TestCase):
                 self.handle(self.message(), manifest=error)
 
 
+class SendMessageBatchTest(unittest.TestCase):
+    """send_message_batch reports per-entry failures in its response instead of raising."""
+
+    def send(self, responses: list) -> mock.MagicMock:
+        with (
+            mock.patch.object(app, "sqs") as sqs,
+            mock.patch.object(app.time, "sleep"),
+        ):
+            sqs.send_message_batch.side_effect = responses
+            app.send_message_batch([{"segment": 0}, {"segment": 1}])
+        return sqs
+
+    def sent_ids(self, sqs: mock.MagicMock) -> list:
+        return [
+            [entry["Id"] for entry in call.kwargs["Entries"]]
+            for call in sqs.send_message_batch.call_args_list
+        ]
+
+    def test_only_failed_entries_are_retried(self) -> None:
+        sqs = self.send(
+            [
+                {
+                    "Successful": [{"Id": "0"}],
+                    "Failed": [{"Id": "1", "SenderFault": False, "Code": "Throttled"}],
+                },
+                {"Successful": [{"Id": "1"}], "Failed": []},
+            ]
+        )
+        self.assertEqual(self.sent_ids(sqs), [["0", "1"], ["1"]])
+
+    def test_raises_once_retries_are_exhausted(self) -> None:
+        failure = {
+            "Failed": [{"Id": "0", "SenderFault": False, "Code": "InternalError"}]
+        }
+        with self.assertRaisesRegex(RuntimeError, "retries exhausted"):
+            self.send([failure] * app.MAX_BATCH_SEND_ATTEMPTS)
+
+    def test_sender_fault_is_not_retried(self) -> None:
+        failure = {
+            "Failed": [{"Id": "0", "SenderFault": True, "Code": "InvalidMessage"}]
+        }
+        with (
+            mock.patch.object(app, "sqs") as sqs,
+            self.assertRaisesRegex(app.PermanentIngestError, "rejected"),
+        ):
+            sqs.send_message_batch.return_value = failure
+            app.send_message_batch([{"segment": 0}])
+        self.assertEqual(sqs.send_message_batch.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

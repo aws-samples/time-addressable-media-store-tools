@@ -74,6 +74,8 @@ FIRST_RETRY_DELAY_SECONDS = 5
 MAX_RETRY_DELAY_SECONDS = 300
 # Step Functions errors meaning the ingest task has already ended, e.g. a stopped execution
 TASK_ENDED_ERRORS = {"TaskTimedOut", "TaskDoesNotExist", "InvalidToken"}
+# Attempts to send segment messages SQS reports as failed, before the poll is retried
+MAX_BATCH_SEND_ATTEMPTS = 3
 
 
 class PermanentIngestError(Exception):
@@ -82,14 +84,30 @@ class PermanentIngestError(Exception):
 
 @tracer.capture_method(capture_response=False)
 def send_message_batch(messages: list) -> None:
-    """Sends a batch of messages to the SQS queue"""
+    """Sends a batch of messages to the SQS queue, retrying entries that fail.
+    send_message_batch reports per-entry failures in its response rather than raising, so without a retry they are dropped silently.
+    Raises once retries are exhausted, so record_handler re-queues the poll from the last batch fully sent.
+    A sender fault fails the task straight away, since sending the same message again cannot succeed."""
     if not messages:
         return
-    entries = [
+    pending = [
         {"Id": str(i), "MessageBody": json.dumps(message)}
         for i, message in enumerate(messages)
     ]
-    sqs.send_message_batch(QueueUrl=ingest_queue_url, Entries=entries)
+    for attempt in range(MAX_BATCH_SEND_ATTEMPTS):
+        response = sqs.send_message_batch(QueueUrl=ingest_queue_url, Entries=pending)
+        failed = response.get("Failed") or []
+        if not failed:
+            return
+        if any(item.get("SenderFault") for item in failed):
+            raise PermanentIngestError("SQS rejected one or more segment messages")
+        failed_ids = {str(item.get("Id")) for item in failed}
+        pending = [entry for entry in pending if entry["Id"] in failed_ids]
+        if not pending:
+            raise RuntimeError("SQS returned malformed batch failure details")
+        if attempt + 1 < MAX_BATCH_SEND_ATTEMPTS:
+            time.sleep(0.1 * (2**attempt))
+    raise RuntimeError("SQS segment message retries exhausted")
 
 
 @tracer.capture_method(capture_response=False)
