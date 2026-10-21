@@ -250,7 +250,8 @@ def process_segment(
 ) -> None:
     """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end, pts_anchored, pts_wraps) is mutated in place to carry the contiguous-region anchor.
     ts_offset is recomputed on a new region: the first segment, segment.discontinuity, the first usable PTS in a region anchored without one, or a backward PTS jump with no discontinuity tag.
-    An MPEG-TS PTS wrap within a region increments pts_wraps, and the PTS is unwrapped in 90kHz ticks before conversion so Flow time stays continuous to the nanosecond."""
+    An MPEG-TS PTS wrap within a region increments pts_wraps, and the PTS is unwrapped in 90kHz ticks before conversion so Flow time stays continuous to the nanosecond.
+    A segment that partly overlaps the previous one has its start trimmed so TAMS accepts it."""
     segment_uri = resolve_uri(manifest_path, segment.uri)
     init = None
     if segment.init_section:
@@ -261,6 +262,13 @@ def process_segment(
     start_pts, duration, is_mpegts = probe_segment(
         segment_uri, segment.byterange, segment.duration, init=init
     )
+    if is_mpegts and start_pts is not None:
+        # ffprobe reports a file whose first PTS is within 60s of the 33-bit wrap as a
+        # negative value. Use the PTS actually carried in the file, so wrap handling and
+        # ts_offset do not depend on where a source happens to cut its segments.
+        start_pts = Timestamp.from_count(
+            start_pts.to_count(PTS_RATE) % PTS_WRAP_TICKS, PTS_RATE
+        )
     # Treat start_pts of None OR 0 identically — both mean "no meaningful position
     # on a continuous media clock" (raw AC-3 / raw AAC / WebVTT all report 0 or nothing).
     has_pts = start_pts is not None and start_pts != Timestamp()
@@ -274,16 +282,15 @@ def process_segment(
         else:
             if is_mpegts:
                 start_pts = unwrap_pts(raw_pts, state["pts_wraps"])
-            seg_start = state["ts_offset"] + start_pts
-            if is_mpegts and seg_start < state["last_end"] - PTS_HALF_WRAP:
-                state["pts_wraps"] += 1
-                start_pts = unwrap_pts(raw_pts, state["pts_wraps"])
-                logger.info(
-                    "MPEG-TS PTS wrapped",
-                    pts_wraps=state["pts_wraps"],
-                    start_pts=str(raw_pts),
-                )
-            elif seg_start + duration <= state["last_end"]:
+                if state["ts_offset"] + start_pts < state["last_end"] - PTS_HALF_WRAP:
+                    state["pts_wraps"] += 1
+                    start_pts = unwrap_pts(raw_pts, state["pts_wraps"])
+                    logger.info(
+                        "MPEG-TS PTS wrapped",
+                        pts_wraps=state["pts_wraps"],
+                        start_pts=str(raw_pts),
+                    )
+            if state["ts_offset"] + start_pts + duration <= state["last_end"]:
                 # The whole segment would land in Flow time already registered, which
                 # means the source clock reset without an #EXT-X-DISCONTINUITY tag.
                 logger.warning(
@@ -303,6 +310,15 @@ def process_segment(
     else:
         seg_start = state["last_end"]
     seg_end = seg_start + duration
+    if seg_start < state["last_end"]:
+        # Probed durations and PTS steps can disagree slightly, and TAMS rejects any
+        # overlap. Trim this segment's start rather than lose it, keeping its end and
+        # ts_offset so later segments are still placed by their own PTS.
+        logger.warning(
+            "Segment overlaps the previous segment, trimming its start",
+            overlap=str(state["last_end"] - seg_start),
+        )
+        seg_start = state["last_end"]
     timerange = TimeRange(seg_start, seg_end, TimeRange.INCLUDE_START)
     segment_dict = {
         "flowId": flow_id,

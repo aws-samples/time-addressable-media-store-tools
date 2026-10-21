@@ -205,15 +205,78 @@ class SegmentTimingTest(unittest.TestCase):
             self.state["ts_offset"], timeranges[2].start - pts(base - reset)
         )
 
-    def test_small_overlap_is_left_for_tams_to_reject(self) -> None:
-        # Only a segment lying wholly inside registered time is treated as a reset.
-        # A partial overlap keeps the PTS mapping rather than ratcheting the anchor.
+    def test_partial_overlap_is_trimmed_not_rejected(self) -> None:
+        # A segment that partly overlaps the previous one has its start trimmed, so
+        # TAMS accepts it. Its end and ts_offset keep following the PTS.
         base = 50_000 * RATE
         timeranges = self.run_segments(
-            [(pts(base), SEGMENT, True), (pts(base + 5 * RATE), SEGMENT, True)]
+            [
+                (pts(base), SEGMENT, True),
+                (pts(base + 5 * RATE), SEGMENT, True),
+                (pts(base + 11 * RATE), SEGMENT, True),
+            ]
         )
-        self.assertLess(timeranges[1].start, timeranges[0].end)
+        self.assert_contiguous(timeranges)
+        self.assertEqual(timeranges[1].end, FLOW_START + pts(11 * RATE))
         self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
+
+    def test_persistent_small_overlaps_neither_stall_nor_drift(self) -> None:
+        # A source whose probed durations always run one frame longer than its PTS
+        # steps must keep ingesting, without the timeline creeping ahead of the PTS.
+        step = 6 * RATE
+        frame = Timestamp.from_count(1, 50)
+        base = 1_000 * RATE
+        timeranges = self.run_segments(
+            [(pts(base + i * step), SEGMENT + frame, True) for i in range(20)]
+        )
+        self.assert_contiguous(timeranges)
+        # Each end is one frame past its PTS position; the error never accumulates
+        self.assertEqual(
+            timeranges[-1].end, FLOW_START + pts(19 * step) + SEGMENT + frame
+        )
+        self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
+
+    def test_ffprobe_negative_pts_before_the_wrap_is_normalised(self) -> None:
+        # Real start_pts/duration_ts from a clip cut 42s before the wrap. ffprobe shifts
+        # files that start within 60s of the wrap negative, then the true wrap follows.
+        probes = [
+            (-3808592, 693000),
+            (-3115592, 450000),
+            (-2665592, 786600),
+            (-1878992, 450000),
+            (-1428992, 450000),
+            (-978992, 442800),
+            (-536192, 529200),
+            (-6992, 574200),
+            (567208, 509400),
+            (1076608, 592200),
+            (1668808, 743400),
+        ]
+        timeranges = self.run_segments(
+            [(pts(start), pts(length), True) for start, length in probes]
+        )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(self.state["pts_wraps"], 1)
+        # The ts_offset sent to TAMS maps the PTS actually in each file
+        self.assertEqual(
+            self.segment_ts_offsets[0], FLOW_START - pts(WRAP_TICKS - 3808592)
+        )
+        self.assertEqual(
+            self.segment_ts_offsets[8] - self.segment_ts_offsets[7], pts(WRAP_TICKS)
+        )
+
+    def test_ffprobe_shift_mid_region_is_not_mistaken_for_a_wrap(self) -> None:
+        # Segments starting 66s and then 60s before the wrap: ffprobe reports the first
+        # as positive and the second as negative, but they are contiguous media.
+        first = WRAP_TICKS - 66 * RATE
+        timeranges = self.run_segments(
+            [
+                (pts(first), SEGMENT, True),
+                (pts(first + 6 * RATE - WRAP_TICKS), SEGMENT, True),
+            ]
+        )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(self.state["pts_wraps"], 0)
 
     def test_discontinuity_still_starts_new_region(self) -> None:
         timeranges = self.run_segments(
