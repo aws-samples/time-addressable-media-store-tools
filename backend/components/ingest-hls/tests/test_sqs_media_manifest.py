@@ -65,18 +65,24 @@ class SegmentTimingTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.state = {}
+        self.segment_ts_offsets = []
 
     def run_segments(self, probes: list, state: dict | None = None, **kwargs) -> list:
         state = state or {
             "ts_offset": None,
             "last_end": FLOW_START,
             "pts_anchored": False,
+            "pts_wraps": 0,
         }
         self.state = state
         out = []
         with mock.patch.object(app, "probe_segment", side_effect=probes):
             for segment in segments(len(probes), **kwargs):
                 app.process_segment(state, segment, "flow", "s3://bucket/path", out)
+        self.segment_ts_offsets = [
+            Timestamp.from_str(s["ts_offset"]) if "ts_offset" in s else Timestamp()
+            for s in out
+        ]
         return [TimeRange.from_str(s["timerange"]) for s in out]
 
     def assert_contiguous(self, timeranges: list) -> None:
@@ -92,34 +98,86 @@ class SegmentTimingTest(unittest.TestCase):
         self.assertEqual(timeranges[0].start, FLOW_START)
         self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
 
-    def test_mpegts_wrap_advances_offset_by_exactly_one_wrap(self) -> None:
-        before_wrap = WRAP_TICKS - 6 * RATE
+    def test_mpegts_wrap_is_exactly_contiguous(self) -> None:
+        # The segment after the wrap must start on the previous end to the nanosecond:
+        # TAMS rejects even a 1ns overlap, which is what adding a rounded wrap duration
+        # to ts_offset produced on the live MediaLive soak test.
+        for after_wrap in (1, 3000, 27000, 186006):
+            with self.subTest(after_wrap=after_wrap):
+                before_wrap = WRAP_TICKS - 6 * RATE + after_wrap
+                timeranges = self.run_segments(
+                    [
+                        (pts(before_wrap), SEGMENT, True),
+                        (pts(after_wrap), SEGMENT, True),
+                        (pts(after_wrap + 6 * RATE), SEGMENT, True),
+                    ]
+                )
+                self.assert_contiguous(timeranges)
+                self.assertEqual(self.state["ts_offset"], FLOW_START - pts(before_wrap))
+                self.assertEqual(self.state["pts_wraps"], 1)
+                self.assertEqual(
+                    self.segment_ts_offsets[-1],
+                    self.state["ts_offset"] + pts(WRAP_TICKS),
+                )
+
+    def test_soak_test_wrap_is_exactly_contiguous(self) -> None:
+        # Segments 15907/15908 from the MediaLive soak test, where 15908 was rejected by
+        # TAMS for overlapping 15907 by 1ns.
+        state = {
+            "ts_offset": Timestamp.from_str("1792419287:367000000"),
+            "last_end": Timestamp.from_str("1792514725:667000000"),
+            "pts_anchored": True,
+            "pts_wraps": 0,
+        }
         timeranges = self.run_segments(
-            [
-                (pts(before_wrap), SEGMENT, True),
-                (pts(0 + 1), SEGMENT, True),
-                (pts(6 * RATE + 1), SEGMENT, True),
-            ]
+            [(pts(8589447000), SEGMENT, True), (pts(52408), SEGMENT, True)],
+            state=state,
         )
-        # One tick of PTS slack either side of the wrap, but no jump backwards
-        self.assertGreaterEqual(timeranges[1].start, timeranges[0].end)
-        self.assertEqual(timeranges[1].end, timeranges[2].start)
         self.assertEqual(
-            self.state["ts_offset"], FLOW_START - pts(before_wrap) + app.PTS_WRAP
+            str(timeranges[0]), "[1792514725:667000000_1792514731:667000000)"
         )
+        self.assertEqual(timeranges[1].start, timeranges[0].end)
 
     def test_wrap_detected_after_a_zero_pts_segment(self) -> None:
         state = {
             "ts_offset": FLOW_START,
             "last_end": FLOW_START + pts(WRAP_TICKS),
             "pts_anchored": True,
+            "pts_wraps": 0,
         }
         timeranges = self.run_segments([(pts(0), SEGMENT, True)], state=state)
         # PTS 0 counts as "no usable PTS", so it carries on from last_end
         self.assertEqual(timeranges[0].start, FLOW_START + pts(WRAP_TICKS))
         timeranges = self.run_segments([(pts(6 * RATE), SEGMENT, True)], state=state)
         self.assertEqual(timeranges[0].start, FLOW_START + pts(WRAP_TICKS + 6 * RATE))
-        self.assertEqual(state["ts_offset"], FLOW_START + app.PTS_WRAP)
+        self.assertEqual(state["ts_offset"], FLOW_START)
+        self.assertEqual(state["pts_wraps"], 1)
+
+    def test_second_wrap_stays_exactly_contiguous(self) -> None:
+        after_wrap = 27000
+        state = {
+            "ts_offset": FLOW_START,
+            "last_end": FLOW_START + pts(2 * WRAP_TICKS + after_wrap),
+            "pts_anchored": True,
+            "pts_wraps": 1,
+        }
+        timeranges = self.run_segments([(pts(after_wrap), SEGMENT, True)], state=state)
+        self.assertEqual(timeranges[0].start, state["last_end"] - SEGMENT)
+        self.assertEqual(state["pts_wraps"], 2)
+
+    def test_new_region_resets_the_wrap_count(self) -> None:
+        state = {
+            "ts_offset": FLOW_START,
+            "last_end": FLOW_START + pts(WRAP_TICKS + 6 * RATE),
+            "pts_anchored": True,
+            "pts_wraps": 1,
+        }
+        timeranges = self.run_segments(
+            [(pts(500 * RATE), SEGMENT, True)], state=state, discontinuity_at=0
+        )
+        self.assertEqual(timeranges[0].start, FLOW_START + pts(WRAP_TICKS + 6 * RATE))
+        self.assertEqual(state["pts_wraps"], 0)
+        self.assertEqual(self.segment_ts_offsets[-1], state["ts_offset"])
 
     def test_wrap_is_not_applied_to_non_mpegts_media(self) -> None:
         # fMP4 / CMAF timestamps are 64-bit and never wrap. A huge backward jump is a
@@ -237,18 +295,18 @@ class ProcessMessageTest(unittest.TestCase):
         self.assertIn("tsOffset", next_message)
 
     def test_wrap_state_survives_between_polls(self) -> None:
-        before_wrap = WRAP_TICKS - 6 * RATE
+        before_wrap = WRAP_TICKS - 6 * RATE + 27000
         next_message = self.poll(
             self.first_message(), build_manifest(1), [(pts(before_wrap), SEGMENT, True)]
         )
         self.assertTrue(next_message["ptsAnchored"])
         first = TimeRange.from_str(self.sent_segments[0]["timerange"])
         next_message = self.poll(
-            next_message, build_manifest(2), [(pts(1), SEGMENT, True)]
+            next_message, build_manifest(2), [(pts(27000), SEGMENT, True)]
         )
         second = TimeRange.from_str(self.sent_segments[0]["timerange"])
-        self.assertGreaterEqual(second.start, first.end)
-        self.assertLess(second.start - first.end, pts(2))
+        self.assertEqual(second.start, first.end)
+        self.assertEqual(next_message["ptsWraps"], 1)
 
     def test_messages_from_before_pts_anchored_keep_existing_behaviour(self) -> None:
         message = {

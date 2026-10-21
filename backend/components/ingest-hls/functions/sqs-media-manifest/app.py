@@ -56,7 +56,9 @@ sqs = boto3.client("sqs")
 manifest_queue_url = os.environ["MANIFEST_QUEUE_URL"]
 ingest_queue_url = os.environ["INGEST_QUEUE_URL"]
 # MPEG-TS PTS is a 33-bit counter at 90kHz, so it wraps back to zero every ~26.5 hours.
-PTS_WRAP = Timestamp.from_count(2**33, 90000)
+PTS_RATE = 90000
+PTS_WRAP_TICKS = 2**33
+PTS_HALF_WRAP = Timestamp.from_count(PTS_WRAP_TICKS // 2, PTS_RATE)
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
@@ -230,6 +232,14 @@ def probe_segment(
         )
 
 
+def unwrap_pts(pts: Timestamp, wraps: int) -> Timestamp:
+    """Adds `wraps` MPEG-TS PTS wraps in 90kHz ticks, so the result rounds exactly as an
+    unwrapped PTS would. Adding a wrap as a Timestamp loses a nanosecond to rounding."""
+    return Timestamp.from_count(
+        pts.to_count(PTS_RATE) + wraps * PTS_WRAP_TICKS, PTS_RATE
+    )
+
+
 @tracer.capture_method(capture_response=False)
 def process_segment(
     state: dict,
@@ -238,9 +248,9 @@ def process_segment(
     manifest_path: str,
     segments: list,
 ) -> None:
-    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end, pts_anchored) is mutated in place to carry the contiguous-region anchor.
+    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end, pts_anchored, pts_wraps) is mutated in place to carry the contiguous-region anchor.
     ts_offset is recomputed on a new region: the first segment, segment.discontinuity, the first usable PTS in a region anchored without one, or a backward PTS jump with no discontinuity tag.
-    An MPEG-TS PTS wrap within a region advances ts_offset by exactly one wrap so Flow time stays continuous."""
+    An MPEG-TS PTS wrap within a region increments pts_wraps, and the PTS is unwrapped in 90kHz ticks before conversion so Flow time stays continuous to the nanosecond."""
     segment_uri = resolve_uri(manifest_path, segment.uri)
     init = None
     if segment.init_section:
@@ -255,32 +265,39 @@ def process_segment(
     # on a continuous media clock" (raw AC-3 / raw AAC / WebVTT all report 0 or nothing).
     has_pts = start_pts is not None and start_pts != Timestamp()
     is_new_region = state["ts_offset"] is None or segment.discontinuity
+    raw_pts = start_pts
     if has_pts and not is_new_region:
         if not state["pts_anchored"]:
             # The region was anchored on a segment with no usable PTS (e.g. a failed
             # probe), so ts_offset assumes media time zero. Anchor on this real PTS.
             is_new_region = True
         else:
+            if is_mpegts:
+                start_pts = unwrap_pts(raw_pts, state["pts_wraps"])
             seg_start = state["ts_offset"] + start_pts
-            if is_mpegts and seg_start < state["last_end"] - PTS_WRAP / 2:
-                state["ts_offset"] += PTS_WRAP
+            if is_mpegts and seg_start < state["last_end"] - PTS_HALF_WRAP:
+                state["pts_wraps"] += 1
+                start_pts = unwrap_pts(raw_pts, state["pts_wraps"])
                 logger.info(
-                    "MPEG-TS PTS wrapped, advancing ts_offset by one wrap",
-                    ts_offset=str(state["ts_offset"]),
+                    "MPEG-TS PTS wrapped",
+                    pts_wraps=state["pts_wraps"],
+                    start_pts=str(raw_pts),
                 )
             elif seg_start + duration <= state["last_end"]:
                 # The whole segment would land in Flow time already registered, which
                 # means the source clock reset without an #EXT-X-DISCONTINUITY tag.
                 logger.warning(
                     "PTS jumped backwards without #EXT-X-DISCONTINUITY, starting a new region",
-                    start_pts=str(start_pts),
+                    start_pts=str(raw_pts),
                     last_end=str(state["last_end"]),
                 )
                 is_new_region = True
     if is_new_region:
+        start_pts = raw_pts
         file_time_at_region_start = start_pts if has_pts else Timestamp()
         state["ts_offset"] = state["last_end"] - file_time_at_region_start
         state["pts_anchored"] = has_pts
+        state["pts_wraps"] = 0
     if has_pts:
         seg_start = state["ts_offset"] + start_pts
     else:
@@ -299,8 +316,13 @@ def process_segment(
         if init["byterange"]:
             segment_dict["initByterange"] = init["byterange"]
         segment_dict["initObjectId"] = init_object_id(init["uri"], init["byterange"])
-    if str(state["ts_offset"]) != "0:0":
-        segment_dict["ts_offset"] = str(state["ts_offset"])
+    # The media inside the segment still carries wrapped PTS values, so its ts_offset
+    # includes the wraps to map them onto Flow time.
+    media_ts_offset = state["ts_offset"] + Timestamp.from_count(
+        state["pts_wraps"] * PTS_WRAP_TICKS, PTS_RATE
+    )
+    if str(media_ts_offset) != "0:0":
+        segment_dict["ts_offset"] = str(media_ts_offset)
     segments.append(segment_dict)
     state["last_end"] = seg_end
 
@@ -334,11 +356,18 @@ def process_message(message: dict, task_token: str) -> None:
             "last_end": Timestamp.from_str(message["lastEnd"]),
             # Messages queued before ptsAnchored existed were anchored as today
             "pts_anchored": message.get("ptsAnchored", True),
+            # Messages queued before ptsWraps existed folded any wrap into tsOffset
+            "pts_wraps": message.get("ptsWraps", 0),
         }
     else:
         pdt = get_manifest_start_pdt(manifest)
         flow_start = pdt if pdt is not None else Timestamp()
-        state = {"ts_offset": None, "last_end": flow_start, "pts_anchored": False}
+        state = {
+            "ts_offset": None,
+            "last_end": flow_start,
+            "pts_anchored": False,
+            "pts_wraps": 0,
+        }
     segments = []
     for segment in manifest.segments:
         if segment.media_sequence > last_media_sequence:
@@ -364,6 +393,7 @@ def process_message(message: dict, task_token: str) -> None:
             next_message["tsOffset"] = str(state["ts_offset"])
             next_message["lastEnd"] = str(state["last_end"])
             next_message["ptsAnchored"] = state["pts_anchored"]
+            next_message["ptsWraps"] = state["pts_wraps"]
         sqs.send_message(
             QueueUrl=manifest_queue_url,
             MessageAttributes={
