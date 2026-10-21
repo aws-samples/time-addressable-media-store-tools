@@ -7,6 +7,7 @@ Run from the backend folder:
 import json
 import os
 import sys
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -322,21 +323,37 @@ class ProcessMessageTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.sent_segments = []
+        self.sfn = None
+        self.delay_seconds = None
 
-    def poll(self, message: dict, manifest_text: str, probes: list) -> dict:
+    def poll(
+        self,
+        message: dict,
+        manifest_text: str,
+        probes: list,
+        out_of_time: list | None = None,
+    ) -> dict | None:
         with (
             mock.patch.object(
                 app, "get_manifest", return_value=m3u8.loads(manifest_text)
             ),
             mock.patch.object(app, "probe_segment", side_effect=probes),
             mock.patch.object(app, "send_message_batch") as send_batch,
-            mock.patch.object(app, "sfn"),
+            mock.patch.object(app, "sfn") as sfn,
             mock.patch.object(app, "sqs") as sqs,
+            mock.patch.object(
+                app, "is_out_of_time", side_effect=out_of_time or (lambda: False)
+            ),
         ):
             app.process_message(message=message, task_token="token")
+        self.sfn = sfn
         self.sent_segments = [
             s for call in send_batch.call_args_list for s in call.args[0]
         ]
+        if not sqs.send_message.called:
+            self.delay_seconds = None
+            return None
+        self.delay_seconds = sqs.send_message.call_args.kwargs["DelaySeconds"]
         return json.loads(sqs.send_message.call_args.kwargs["MessageBody"])
 
     def first_message(self) -> dict:
@@ -346,6 +363,40 @@ class ProcessMessageTest(unittest.TestCase):
             "lastMediaSequence": -1,
             "eventTimestamp": 0,
         }
+
+    def test_long_catch_up_pauses_and_resumes_without_waiting(self) -> None:
+        manifest = build_manifest(5, endlist=True)
+        probes = [(pts(1000 * RATE + i * 6 * RATE), SEGMENT, True) for i in range(5)]
+        next_message = self.poll(
+            self.first_message(),
+            manifest,
+            probes[:2],
+            out_of_time=[False, False, True],
+        )
+        # Paused after two segments: re-queued immediately, not completed
+        self.assertEqual(len(self.sent_segments), 2)
+        self.assertEqual(next_message["lastMediaSequence"], 1)
+        self.assertEqual(self.delay_seconds, 0)
+        self.sfn.send_task_success.assert_not_called()
+        first_part_end = TimeRange.from_str(self.sent_segments[-1]["timerange"]).end
+        # The next poll picks up the remaining segments and then completes
+        self.assertIsNone(self.poll(next_message, manifest, probes[2:]))
+        self.assertEqual(len(self.sent_segments), 3)
+        resumed_start = TimeRange.from_str(self.sent_segments[0]["timerange"]).start
+        self.assertEqual(resumed_start, first_part_end)
+        self.sfn.send_task_success.assert_called_once()
+
+    def test_caught_up_poll_waits_a_target_duration(self) -> None:
+        self.poll(self.first_message(), build_manifest(1), [(pts(RATE), SEGMENT, True)])
+        self.assertEqual(self.delay_seconds, 6)
+
+    def test_out_of_time_follows_the_invocation_deadline(self) -> None:
+        with mock.patch.object(app, "invocation_deadline", None):
+            self.assertFalse(app.is_out_of_time())
+        with mock.patch.object(app, "invocation_deadline", time.monotonic() + 60):
+            self.assertFalse(app.is_out_of_time())
+        with mock.patch.object(app, "invocation_deadline", time.monotonic() - 1):
+            self.assertTrue(app.is_out_of_time())
 
     def test_empty_first_poll_does_not_persist_an_anchor(self) -> None:
         next_message = self.poll(self.first_message(), build_manifest(0), [])
