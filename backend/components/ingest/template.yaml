@@ -105,7 +105,9 @@ Resources:
       MessageRetentionPeriod: 86400
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt SegmentIngestDLQ.Arn
-        maxReceiveCount: 1
+        # Retry transient failures. A segment already registered is skipped, so a retry
+        # after a partial success does not store its media twice.
+        maxReceiveCount: 3
 
   SegmentIngestDLQ:
     Type: AWS::SQS::Queue
