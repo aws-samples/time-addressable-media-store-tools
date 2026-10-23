@@ -15,6 +15,7 @@ from aws_lambda_powertools.utilities.batch import (
 from aws_lambda_powertools.utilities.data_classes.sqs_event import SQSEvent, SQSRecord
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
+from mediatimestamp.immutable import TimeRange
 from openid_auth import Credentials
 
 tracer = Tracer()
@@ -29,6 +30,43 @@ creds = Credentials(
     scopes=["tams-api/read", "tams-api/write"],
     secret_arn=os.environ["SECRET_ARN"],
 )
+
+
+class ObjectNotRegisteredError(Exception):
+    """An Object id that is allocated in the store but not yet referenced by a segment."""
+
+
+@tracer.capture_method(capture_response=False)
+def object_is_registered(object_id: str) -> bool:
+    """True if a segment references the Object. Segments are only registered once their Object upload has succeeded."""
+    response = requests.head(
+        f"{endpoint}/objects/{object_id}",
+        headers={"Authorization": f"Bearer {creds.token()}"},
+        timeout=30,
+    )
+    if response.status_code == 404:
+        return False
+    response.raise_for_status()
+    return True
+
+
+@tracer.capture_method(capture_response=False)
+def segment_is_registered(flow_id: str, timerange: str, object_id: str | None) -> bool:
+    """True if the flow already has a segment with this exact timerange, and this object_id when one is supplied.
+    Messages can be delivered more than once, and a retried HLS poll resends segments SQS had already accepted."""
+    response = requests.get(
+        f"{endpoint}/flows/{flow_id}/segments",
+        headers={"Authorization": f"Bearer {creds.token()}"},
+        params={"timerange": timerange},
+        timeout=30,
+    )
+    response.raise_for_status()
+    wanted = TimeRange.from_str(timerange)
+    return any(
+        TimeRange.from_str(segment["timerange"]) == wanted
+        and (object_id is None or segment.get("object_id") == object_id)
+        for segment in response.json()
+    )
 
 
 @tracer.capture_method(capture_response=False)
@@ -86,15 +124,21 @@ def upload_file(flow_id: str, data: bytes, object_id: str | None) -> dict:
             return None
         elif ex.response.status_code == 400 and object_id:
             try:
-                error_data = ex.response.json()
-                if "already exist" in error_data.get("message", ""):
-                    logger.info(
-                        f"Object ID {object_id} already exists, skipping upload"
-                    )
-                    return {"object_id": object_id}
-            except (ValueError, KeyError):
-                pass
-            raise ex
+                already_exists = "already exist" in ex.response.json().get(
+                    "message", ""
+                )
+            except (ValueError, KeyError, AttributeError):
+                already_exists = False
+            if not already_exists:
+                raise ex
+            # The id is allocated, but only a registered Object is known to be stored.
+            # An unregistered one may still be uploading, or its upload may have failed.
+            if not object_is_registered(object_id):
+                raise ObjectNotRegisteredError(
+                    f"Object ID {object_id} is allocated but not registered"
+                ) from ex
+            logger.info(f"Object ID {object_id} already exists, skipping upload")
+            return {"object_id": object_id}
         else:
             raise ex
     media_object = get_url.json()["media_objects"][0]
@@ -192,15 +236,24 @@ def record_handler(record: SQSRecord) -> None:
             name="base_uri", value="/".join(message["uri"].split("/")[:-1])
         )
     flow_id = message["flowId"]
+    flow_format = get_flow_format(flow_id)
+    if flow_format == IMAGE_FORMAT and "_" in message["timerange"]:
+        message["timerange"] = f"{message['timerange'].split('_')[0]}]"
+    # Checked before uploading, so a duplicate message does not store another Object
+    if segment_is_registered(flow_id, message["timerange"], message.get("object_id")):
+        logger.info(
+            "Segment is already registered, skipping",
+            timerange=message["timerange"],
+        )
+        if message.get("deleteSource", False):
+            delete_s3_file(message["uri"])
+        return
     file_data = get_file(message["uri"], message.get("byterange"))
     if not file_data:
         raise ValueError(f"Unable to read source file {message['uri']}")
     media_object = upload_file(flow_id, file_data, message.get("object_id"))
     if media_object is None:
         raise ValueError(f"Unable to upload file to flow {flow_id}")
-    flow_format = get_flow_format(flow_id)
-    if flow_format == IMAGE_FORMAT and "_" in message["timerange"]:
-        message["timerange"] = f"{message['timerange'].split('_')[0]}]"
     # Update object_id in message to use the actual uploaded object_id
     message["object_id"] = media_object["object_id"]
     # For fragmented MP4 / CMAF (TAMS AppNote 0024) the media segment references an
@@ -211,7 +264,16 @@ def record_handler(record: SQSRecord) -> None:
         init_data = get_file(message["initUri"], message.get("initByterange"))
         if not init_data:
             raise ValueError(f"Unable to read init segment {message['initUri']}")
-        init_object = upload_file(flow_id, init_data, init_object_id)
+        try:
+            init_object = upload_file(flow_id, init_data, init_object_id)
+        except ObjectNotRegisteredError:
+            # Another invocation may still be uploading it, or its upload failed. Store
+            # this segment's init under a new id rather than reference one never stored.
+            logger.warning(
+                "Init object is allocated but not registered, uploading a copy",
+                init_object_id=init_object_id,
+            )
+            init_object = upload_file(flow_id, init_data, None)
         if init_object is None:
             raise ValueError(f"Unable to upload init segment to flow {flow_id}")
         message["init_object_id"] = init_object["object_id"]
