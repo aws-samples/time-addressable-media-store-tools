@@ -196,12 +196,8 @@ def get_file(source: str, byterange: str | None = None) -> bytes:
             raise ValueError(f"Unsupported URL scheme in '{source}'")
 
 
-@tracer.capture_method(capture_response=False)
-def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
-    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch Timestamp (sub-second precision kept), or None if absent."""
-    if not manifest.segments:
-        return None
-    program_date_time = manifest.segments[0].program_date_time
+def pdt_to_timestamp(program_date_time: datetime | None) -> Timestamp | None:
+    """Converts an EXT-X-PROGRAM-DATE-TIME value to a unix epoch Timestamp (sub-second precision kept), or None if absent."""
     if not program_date_time:
         return None
     if program_date_time.tzinfo is None:
@@ -213,6 +209,72 @@ def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
 
 
 @tracer.capture_method(capture_response=False)
+def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
+    """Returns the first segment's EXT-X-PROGRAM-DATE-TIME as a unix epoch Timestamp (sub-second precision kept), or None if absent."""
+    if not manifest.segments:
+        return None
+    return pdt_to_timestamp(manifest.segments[0].program_date_time)
+
+
+# Drift tolerated before media without PTS is moved forward to #EXT-X-PROGRAM-DATE-TIME
+PDT_DRIFT_THRESHOLD = Timestamp.from_millisec(200)
+
+
+def follow_program_date_time(state: dict, segment, seg_start: Timestamp) -> Timestamp:
+    """Returns the start for a segment of media with no usable PTS (e.g. raw AAC), whose Flow time otherwise advances only by summed probe durations and so drifts from the encoder clock without bound.
+    Each explicit #EXT-X-PROGRAM-DATE-TIME is compared with the summed start relative to the offset seen at the region's first tag (state key pdt_offset), so a region opened by a discontinuity keeps the same placement as PTS media.
+    Drift beyond PDT_DRIFT_THRESHOLD moves the segment forward to the tag. It is never moved backward, because that would overlap Flow time already registered."""
+    # program_date_time is only set on segments that carry the tag. current_program_date_time
+    # is the parser's own running total of #EXTINF durations, so it shares the drift.
+    pdt = pdt_to_timestamp(segment.program_date_time)
+    if pdt is None:
+        return seg_start
+    if state.get("pdt_offset") is None:
+        state["pdt_offset"] = seg_start - pdt
+        return seg_start
+    target = pdt + state["pdt_offset"]
+    if target - seg_start > PDT_DRIFT_THRESHOLD:
+        logger.warning(
+            "Media without PTS fell behind #EXT-X-PROGRAM-DATE-TIME, moving forward",
+            drift=str(target - seg_start),
+        )
+        # A new accumulation region: media time zero now maps to the moved start
+        state["ts_offset"] = target
+        return target
+    if seg_start - target > PDT_DRIFT_THRESHOLD:
+        logger.warning(
+            "Media without PTS is ahead of #EXT-X-PROGRAM-DATE-TIME, registered Flow time is not rewound",
+            drift=str(seg_start - target),
+        )
+    return seg_start
+
+
+def sum_packet_durations(probe_result: dict, stream_index: int) -> int:
+    """Returns the summed duration of one stream's packets, in its time_base ticks."""
+    return sum(
+        int(packet["duration"])
+        for packet in probe_result.get("packets", [])
+        if packet.get("stream_index") == stream_index and "duration" in packet
+    )
+
+
+def count_audio_duration(
+    segment_uri: str, byterange: str | None, probe_stream: dict
+) -> Timestamp | None:
+    """Returns the exact duration of raw audio (e.g. ADTS AAC) by summing its frames, or None if they cannot be read.
+    For raw audio ffprobe estimates duration_ts from the bitrate, which is off by tens of milliseconds per segment. Media without PTS is placed by summing durations, so those errors would move it off the encoder clock in either direction.
+    """
+    probe_result = (
+        ffprobe_link(segment_uri, byterange=byterange, show_packets=True) or {}
+    )
+    packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
+    if packet_ts <= 0:
+        logger.warning("Could not count audio frames, keeping the estimated duration")
+        return None
+    return Timestamp.from_count(packet_ts, 1 / Fraction(probe_stream["time_base"]))
+
+
+@tracer.capture_method(capture_response=False)
 def probe_segment(
     segment_uri: str,
     byterange: str | None,
@@ -220,7 +282,9 @@ def probe_segment(
     init: dict | None = None,
 ) -> tuple[Timestamp | None, Timestamp, bool]:
     """Probes the segment and returns (start_pts, duration, is_mpegts). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure.
-    init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media."""
+    init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media.
+    Audio without PTS is probed a second time so its duration can be counted from its frames (see count_audio_duration).
+    """
     try:
         # For fragmented MP4 / CMAF the initialisation segment's moov describes the WHOLE
         # presentation, so ffprobe's stream duration_ts is the entire clip's duration, not
@@ -242,17 +306,20 @@ def probe_segment(
             else None
         )
         if init:
-            stream_index = probe_stream.get("index", 0)
-            packet_ts = sum(
-                int(packet["duration"])
-                for packet in probe_result.get("packets", [])
-                if packet.get("stream_index") == stream_index and "duration" in packet
-            )
+            packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
             if packet_ts <= 0:
                 raise ValueError("no packet durations available for fragment")
             duration = Timestamp.from_count(packet_ts, rate)
         else:
             duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
+            if (
+                not probe_stream.get("start_pts")
+                and probe_stream.get("codec_type") == "audio"
+            ):
+                duration = (
+                    count_audio_duration(segment_uri, byterange, probe_stream)
+                    or duration
+                )
         is_mpegts = probe_result.get("format", {}).get("format_name") == "mpegts"
         return start_pts, duration, is_mpegts
     except (KeyError, ValueError, TypeError) as ex:
@@ -284,10 +351,11 @@ def process_segment(
     manifest_path: str,
     segments: list,
 ) -> None:
-    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end, pts_anchored, pts_wraps) is mutated in place to carry the contiguous-region anchor.
+    """Processes one HLS segment and appends its TAMS record to `segments`; `state` (keys: ts_offset, last_end, pts_anchored, pts_wraps, pdt_offset) is mutated in place to carry the contiguous-region anchor.
     ts_offset is recomputed on a new region: the first segment, segment.discontinuity, the first usable PTS in a region anchored without one, or a backward PTS jump with no discontinuity tag.
     An MPEG-TS PTS wrap within a region increments pts_wraps, and the PTS is unwrapped in 90kHz ticks before conversion so Flow time stays continuous to the nanosecond.
-    A segment that partly overlaps the previous one has its start trimmed so TAMS accepts it."""
+    A segment that partly overlaps the previous one has its start trimmed so TAMS accepts it.
+    In a region without PTS, segments follow #EXT-X-PROGRAM-DATE-TIME (see follow_program_date_time)."""
     segment_uri = resolve_uri(manifest_path, segment.uri)
     init = None
     if segment.init_section:
@@ -341,10 +409,13 @@ def process_segment(
         state["ts_offset"] = state["last_end"] - file_time_at_region_start
         state["pts_anchored"] = has_pts
         state["pts_wraps"] = 0
+        state["pdt_offset"] = None
     if has_pts:
         seg_start = state["ts_offset"] + start_pts
     else:
         seg_start = state["last_end"]
+        if not state["pts_anchored"]:
+            seg_start = follow_program_date_time(state, segment, seg_start)
     seg_end = seg_start + duration
     if seg_start < state["last_end"]:
         # Probed durations and PTS steps can disagree slightly, and TAMS rejects any
@@ -399,6 +470,10 @@ def build_poll_message(message: dict, last_media_sequence: int, state: dict) -> 
         next_message["lastEnd"] = str(state["last_end"])
         next_message["ptsAnchored"] = state["pts_anchored"]
         next_message["ptsWraps"] = state["pts_wraps"]
+        if state["pdt_offset"] is not None:
+            next_message["pdtOffset"] = str(state["pdt_offset"])
+        else:
+            next_message.pop("pdtOffset", None)
     return next_message
 
 
@@ -450,6 +525,12 @@ def process_message(message: dict, task_token: str, progress: dict) -> None:
             "pts_anchored": message.get("ptsAnchored", True),
             # Messages queued before ptsWraps existed folded any wrap into tsOffset
             "pts_wraps": message.get("ptsWraps", 0),
+            # Messages queued before pdtOffset existed take a new baseline at the next tag
+            "pdt_offset": (
+                Timestamp.from_str(message["pdtOffset"])
+                if "pdtOffset" in message
+                else None
+            ),
         }
     else:
         pdt = get_manifest_start_pdt(manifest)
@@ -459,6 +540,7 @@ def process_message(message: dict, task_token: str, progress: dict) -> None:
             "last_end": flow_start,
             "pts_anchored": False,
             "pts_wraps": 0,
+            "pdt_offset": None,
         }
     segments = []
     caught_up = True
