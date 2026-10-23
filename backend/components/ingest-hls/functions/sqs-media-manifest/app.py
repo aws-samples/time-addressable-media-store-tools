@@ -231,6 +231,31 @@ def follow_program_date_time(state: dict, segment, seg_start: Timestamp) -> Time
     return seg_start
 
 
+def sum_packet_durations(probe_result: dict, stream_index: int) -> int:
+    """Returns the summed duration of one stream's packets, in its time_base ticks."""
+    return sum(
+        int(packet["duration"])
+        for packet in probe_result.get("packets", [])
+        if packet.get("stream_index") == stream_index and "duration" in packet
+    )
+
+
+def count_audio_duration(
+    segment_uri: str, byterange: str | None, probe_stream: dict
+) -> Timestamp | None:
+    """Returns the exact duration of raw audio (e.g. ADTS AAC) by summing its frames, or None if they cannot be read.
+    For raw audio ffprobe estimates duration_ts from the bitrate, which is off by tens of milliseconds per segment. Media without PTS is placed by summing durations, so those errors would move it off the encoder clock in either direction.
+    """
+    probe_result = (
+        ffprobe_link(segment_uri, byterange=byterange, show_packets=True) or {}
+    )
+    packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
+    if packet_ts <= 0:
+        logger.warning("Could not count audio frames, keeping the estimated duration")
+        return None
+    return Timestamp.from_count(packet_ts, 1 / Fraction(probe_stream["time_base"]))
+
+
 @tracer.capture_method(capture_response=False)
 def probe_segment(
     segment_uri: str,
@@ -239,7 +264,9 @@ def probe_segment(
     init: dict | None = None,
 ) -> tuple[Timestamp | None, Timestamp, bool]:
     """Probes the segment and returns (start_pts, duration, is_mpegts). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure.
-    init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media."""
+    init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media.
+    Audio without PTS is probed a second time so its duration can be counted from its frames (see count_audio_duration).
+    """
     try:
         # For fragmented MP4 / CMAF the initialisation segment's moov describes the WHOLE
         # presentation, so ffprobe's stream duration_ts is the entire clip's duration, not
@@ -261,17 +288,20 @@ def probe_segment(
             else None
         )
         if init:
-            stream_index = probe_stream.get("index", 0)
-            packet_ts = sum(
-                int(packet["duration"])
-                for packet in probe_result.get("packets", [])
-                if packet.get("stream_index") == stream_index and "duration" in packet
-            )
+            packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
             if packet_ts <= 0:
                 raise ValueError("no packet durations available for fragment")
             duration = Timestamp.from_count(packet_ts, rate)
         else:
             duration = Timestamp.from_count(probe_stream["duration_ts"], rate)
+            if (
+                not probe_stream.get("start_pts")
+                and probe_stream.get("codec_type") == "audio"
+            ):
+                duration = (
+                    count_audio_duration(segment_uri, byterange, probe_stream)
+                    or duration
+                )
         is_mpegts = probe_result.get("format", {}).get("format_name") == "mpegts"
         return start_pts, duration, is_mpegts
     except (KeyError, ValueError, TypeError) as ex:

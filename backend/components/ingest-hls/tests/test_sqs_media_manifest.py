@@ -390,6 +390,120 @@ class SegmentTimingTest(unittest.TestCase):
         self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
 
 
+# Real ffprobe output for a raw ADTS AAC segment of 281 frames at 48 kHz (5.994667 s).
+# ffprobe estimates duration_ts from the bitrate; the packets give the exact length.
+ADTS_TIME_BASE = "1/28224000"
+ADTS_FRAME_TICKS = 602112  # 1024 samples at 48 kHz in ADTS_TIME_BASE
+ADTS_RATE = 28224000
+
+
+def adts_probe(frames: int, estimated_ticks: int | None = None, codec_type="audio"):
+    """ffprobe_link results for a raw segment of `frames` AAC frames: (plain, packets)."""
+    stream = {
+        "index": 0,
+        "codec_type": codec_type,
+        "time_base": ADTS_TIME_BASE,
+        "duration_ts": estimated_ticks or frames * ADTS_FRAME_TICKS + 129776,
+    }
+    plain = {"streams": [stream], "format": {"format_name": "aac"}}
+    packets = {
+        **plain,
+        "packets": [{"stream_index": 0, "duration": str(ADTS_FRAME_TICKS)}] * frames,
+    }
+    return plain, packets
+
+
+class ExactAudioDurationTest(unittest.TestCase):
+    """Raw audio without PTS takes its duration from its frames, not the bitrate estimate."""
+
+    def probe(self, results: list):
+        with mock.patch.object(app, "ffprobe_link", side_effect=results) as link:
+            probed = app.probe_segment("s3://bucket/seg.aac", None, 6.0)
+        return probed, link
+
+    def test_raw_audio_duration_is_counted_from_frames(self) -> None:
+        plain, packets = adts_probe(281, estimated_ticks=169323248)
+        (start_pts, duration, is_mpegts), link = self.probe([plain, packets])
+        self.assertIsNone(start_pts)
+        self.assertFalse(is_mpegts)
+        self.assertEqual(
+            duration, Timestamp.from_count(281 * ADTS_FRAME_TICKS, ADTS_RATE)
+        )
+        self.assertEqual(link.call_args_list[1].kwargs["show_packets"], True)
+
+    def test_audio_with_pts_is_probed_once(self) -> None:
+        stream = {
+            "index": 0,
+            "codec_type": "audio",
+            "time_base": "1/90000",
+            "start_pts": 126000,
+            "duration_ts": 540000,
+        }
+        (start_pts, duration, _), link = self.probe(
+            [{"streams": [stream], "format": {"format_name": "mpegts"}}]
+        )
+        self.assertEqual(start_pts, pts(126000))
+        self.assertEqual(duration, SEGMENT)
+        self.assertEqual(link.call_count, 1)
+
+    def test_subtitles_without_pts_keep_the_probed_duration(self) -> None:
+        plain, _ = adts_probe(281, codec_type="subtitle")
+        (_, duration, _), link = self.probe([plain])
+        self.assertEqual(link.call_count, 1)
+        self.assertEqual(
+            duration,
+            Timestamp.from_count(plain["streams"][0]["duration_ts"], ADTS_RATE),
+        )
+
+    def test_failed_frame_count_keeps_the_estimate(self) -> None:
+        plain, _ = adts_probe(281, estimated_ticks=169323248)
+        (_, duration, _), _ = self.probe([plain, None])
+        self.assertEqual(duration, Timestamp.from_count(169323248, ADTS_RATE))
+
+    def test_an_hour_of_medialive_audio_stays_on_the_playlist_clock(self) -> None:
+        # MediaLive cuts 48 kHz AAC into 6.016 / 5.99467 s segments (282, 281, 281, 281
+        # frames) and tags each with its program date time, rounded to the millisecond.
+        # Every bitrate estimate is 20 ms long, which used to run ahead without limit.
+        frames = [282, 281, 281, 281] * 150
+        starts, ticks = [], 0
+        for count in frames:
+            starts.append(Timestamp.from_count(ticks, ADTS_RATE))
+            ticks += count * ADTS_FRAME_TICKS
+        pdt_at = {i: pdt_tag(round(float(start), 3)) for i, start in enumerate(starts)}
+        results = []
+        for count in frames:
+            results += adts_probe(
+                count, estimated_ticks=count * ADTS_FRAME_TICKS + 564480
+            )
+        state = {
+            "ts_offset": None,
+            "last_end": FLOW_START,
+            "pts_anchored": False,
+            "pts_wraps": 0,
+            "pdt_offset": None,
+        }
+        out = []
+        with (
+            mock.patch.object(app, "ffprobe_link", side_effect=results),
+            mock.patch.object(app.logger, "warning") as warning,
+        ):
+            for segment in segments(len(frames), pdt_at=pdt_at):
+                app.process_segment(state, segment, "flow", "s3://bucket/path", out)
+        timeranges = [TimeRange.from_str(s["timerange"]) for s in out]
+        # 281 frames last 5.99466... s, which rounds to the nanosecond, so the sum loses
+        # under a nanosecond per segment (about 7 microseconds a day) and stays contiguous.
+        self.assertEqual(len(timeranges), len(frames))
+        for timerange, start in zip(timeranges, starts):
+            error = timerange.start - (FLOW_START + start)
+            self.assertLess(abs(error.to_nanosec()), 1_000)
+        error = timeranges[-1].end - (
+            FLOW_START + Timestamp.from_count(ticks, ADTS_RATE)
+        )
+        self.assertLess(abs(error.to_nanosec()), 1_000)
+        warning.assert_not_called()
+        self.assertEqual(state["ts_offset"], FLOW_START)
+
+
 class ProcessMessageTest(unittest.TestCase):
     """Drives process_message to check what is carried between polls."""
 
