@@ -26,7 +26,7 @@ from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import (
     DataRecord,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 from ffprobe import ffprobe_link
 from mediatimestamp.immutable import TimeRange, Timestamp
 
@@ -198,62 +198,70 @@ def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
     return pdt_to_timestamp(manifest.segments[0].program_date_time)
 
 
-# Drift tolerated before media without PTS is moved forward to #EXT-X-PROGRAM-DATE-TIME
-PDT_DRIFT_THRESHOLD = Timestamp.from_millisec(200)
+# A jump in #EXT-X-PROGRAM-DATE-TIME bigger than this, against the durations summed since
+# the previous tag, is taken as missing media. It is above the 500 ms at which MediaLive's
+# SYSTEM_CLOCK mode resyncs the tags to the wall clock, and shorter than a segment.
+PDT_JUMP_THRESHOLD = Timestamp.from_millisec(1000)
 
 
 def follow_program_date_time(state: dict, segment, seg_start: Timestamp) -> Timestamp:
-    """Returns the start for a segment of media with no usable PTS (e.g. raw AAC), whose Flow time otherwise advances only by summed probe durations and so drifts from the encoder clock without bound.
-    Each explicit #EXT-X-PROGRAM-DATE-TIME is compared with the summed start relative to the offset seen at the region's first tag (state key pdt_offset), so a region opened by a discontinuity keeps the same placement as PTS media.
-    Drift beyond PDT_DRIFT_THRESHOLD moves the segment forward to the tag. It is never moved backward, because that would overlap Flow time already registered."""
+    """Returns the start for a segment of media with no usable PTS (e.g. raw AAC), which is otherwise placed by summing probed durations, so media missing from the playlist would close up instead of leaving a gap.
+    Each explicit #EXT-X-PROGRAM-DATE-TIME is compared with the summed start relative to the offset seen at the previous tag (state key pdt_offset). The offset is cleared at each new region, so a region opened by a discontinuity keeps the same placement as PTS media.
+    A tag more than PDT_JUMP_THRESHOLD ahead moves the segment forward to it. Smaller changes, and drift that builds up over many tags, are absorbed rather than followed, because PTS media from the same encoder does not follow the playlist clock either. A bigger jump without missing media, such as a clock step, is still followed.
+    Media is never moved backward, because that would overlap Flow time already registered."""
     # program_date_time is only set on segments that carry the tag. current_program_date_time
-    # is the parser's own running total of #EXTINF durations, so it shares the drift.
+    # is the parser's own running total of #EXTINF durations, not an independent clock.
     pdt = pdt_to_timestamp(segment.program_date_time)
     if pdt is None:
         return seg_start
-    if state.get("pdt_offset") is None:
-        state["pdt_offset"] = seg_start - pdt
-        return seg_start
-    target = pdt + state["pdt_offset"]
-    if target - seg_start > PDT_DRIFT_THRESHOLD:
-        logger.warning(
-            "Media without PTS fell behind #EXT-X-PROGRAM-DATE-TIME, moving forward",
-            drift=str(target - seg_start),
-        )
-        # A new accumulation region: media time zero now maps to the moved start
-        state["ts_offset"] = target
-        return target
-    if seg_start - target > PDT_DRIFT_THRESHOLD:
-        logger.warning(
-            "Media without PTS is ahead of #EXT-X-PROGRAM-DATE-TIME, registered Flow time is not rewound",
-            drift=str(seg_start - target),
-        )
+    if state.get("pdt_offset") is not None:
+        target = pdt + state["pdt_offset"]
+        if target - seg_start > PDT_JUMP_THRESHOLD:
+            logger.warning(
+                "Media without PTS fell behind #EXT-X-PROGRAM-DATE-TIME, moving forward",
+                jump=str(target - seg_start),
+            )
+            # A new accumulation region: media time zero now maps to the moved start
+            state["ts_offset"] = target
+            seg_start = target
+        elif seg_start - target > PDT_JUMP_THRESHOLD:
+            logger.warning(
+                "Media without PTS is ahead of #EXT-X-PROGRAM-DATE-TIME, registered Flow time is not rewound",
+                jump=str(seg_start - target),
+            )
+    # The next tag is measured from this one, so the media follows jumps but not drift
+    state["pdt_offset"] = seg_start - pdt
     return seg_start
-
-
-def sum_packet_durations(probe_result: dict, stream_index: int) -> int:
-    """Returns the summed duration of one stream's packets, in its time_base ticks."""
-    return sum(
-        int(packet["duration"])
-        for packet in probe_result.get("packets", [])
-        if packet.get("stream_index") == stream_index and "duration" in packet
-    )
 
 
 def count_audio_duration(
     segment_uri: str, byterange: str | None, probe_stream: dict
 ) -> Timestamp | None:
-    """Returns the exact duration of raw audio (e.g. ADTS AAC) by summing its frames, or None if they cannot be read.
-    For raw audio ffprobe estimates duration_ts from the bitrate, which is off by tens of milliseconds per segment. Media without PTS is placed by summing durations, so those errors would move it off the encoder clock in either direction.
+    """Returns the duration of raw audio (e.g. ADTS AAC) as the sum of its packet durations, or None if they cannot all be read.
+    For raw audio ffprobe estimates duration_ts from the bitrate, which is off by tens of milliseconds per segment. Media without PTS is placed by summing durations, so those errors would move it off the media clock in either direction.
+    This second probe is optional: if it fails, or any packet has no usable duration, the caller keeps the first probe's estimate.
     """
-    probe_result = (
-        ffprobe_link(segment_uri, byterange=byterange, show_packets=True) or {}
-    )
-    packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
-    if packet_ts <= 0:
-        logger.warning("Could not count audio frames, keeping the estimated duration")
+    stream_index = probe_stream.get("index", 0)
+    try:
+        probe_result = (
+            ffprobe_link(segment_uri, byterange=byterange, show_packets=True) or {}
+        )
+        # Every packet needs a duration: a partial sum would undercount the segment
+        ticks = [
+            int(packet.get("duration", 0))
+            for packet in probe_result.get("packets", [])
+            if packet.get("stream_index") == stream_index
+        ]
+        if not ticks or min(ticks) <= 0:
+            raise ValueError("missing or unusable packet durations")
+        return Timestamp.from_count(sum(ticks), 1 / Fraction(probe_stream["time_base"]))
+    except (BotoCoreError, ClientError, OSError, TypeError, ValueError) as ex:
+        logger.warning(
+            "Could not count audio frames, keeping the estimated duration",
+            segment_scheme=urlparse(segment_uri).scheme or "unknown",
+            error=str(ex),
+        )
         return None
-    return Timestamp.from_count(packet_ts, 1 / Fraction(probe_stream["time_base"]))
 
 
 @tracer.capture_method(capture_response=False)
@@ -265,7 +273,7 @@ def probe_segment(
 ) -> tuple[Timestamp | None, Timestamp, bool]:
     """Probes the segment and returns (start_pts, duration, is_mpegts). start_pts is None if ffprobe doesn't report it; duration falls back to #EXTINF on probe failure.
     init is an optional {'uri':..., 'byterange':...} initialisation segment prepended before probing fragmented MP4 / CMAF media.
-    Audio without PTS is probed a second time so its duration can be counted from its frames (see count_audio_duration).
+    Audio without PTS is probed a second time so its duration can be summed from its packets (see count_audio_duration).
     """
     try:
         # For fragmented MP4 / CMAF the initialisation segment's moov describes the WHOLE
@@ -288,7 +296,12 @@ def probe_segment(
             else None
         )
         if init:
-            packet_ts = sum_packet_durations(probe_result, probe_stream.get("index", 0))
+            stream_index = probe_stream.get("index", 0)
+            packet_ts = sum(
+                int(packet["duration"])
+                for packet in probe_result.get("packets", [])
+                if packet.get("stream_index") == stream_index and "duration" in packet
+            )
             if packet_ts <= 0:
                 raise ValueError("no packet durations available for fragment")
             duration = Timestamp.from_count(packet_ts, rate)
@@ -337,7 +350,7 @@ def process_segment(
     ts_offset is recomputed on a new region: the first segment, segment.discontinuity, the first usable PTS in a region anchored without one, or a backward PTS jump with no discontinuity tag.
     An MPEG-TS PTS wrap within a region increments pts_wraps, and the PTS is unwrapped in 90kHz ticks before conversion so Flow time stays continuous to the nanosecond.
     A segment that partly overlaps the previous one has its start trimmed so TAMS accepts it.
-    In a region without PTS, segments follow #EXT-X-PROGRAM-DATE-TIME (see follow_program_date_time)."""
+    In a region without PTS, segments follow jumps in #EXT-X-PROGRAM-DATE-TIME (see follow_program_date_time)."""
     segment_uri = resolve_uri(manifest_path, segment.uri)
     init = None
     if segment.init_section:
@@ -483,7 +496,8 @@ def queue_poll(task_token: str, body: dict, delay_seconds: int) -> None:
 @tracer.capture_method(capture_response=False)
 def process_message(message: dict, task_token: str, progress: dict) -> None:
     """Processes a single message from within the SQS record.
-    `progress["message"]` is kept as the poll message to resume from after the last segments sent, so a retry does not re-send them."""
+    `progress["message"]` is kept as the poll message to resume from after the last segments sent, so a retry does not re-send them.
+    A retry recomputes the records of a batch that SQS accepted only in part, so they match the first attempt only if every probe repeats its result."""
     logger.info("Idempotency allowed processing.")
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
