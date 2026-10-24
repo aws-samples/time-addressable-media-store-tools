@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -41,7 +42,19 @@ def pts(ticks: int) -> Timestamp:
     return Timestamp.from_count(ticks, RATE)
 
 
-def build_manifest(count: int, first_sequence: int = 0, endlist: bool = False) -> str:
+def pdt_tag(seconds_after_start: float) -> str:
+    """An EXT-X-PROGRAM-DATE-TIME value this many seconds after FLOW_START"""
+    value = datetime(2026, 10, 16, 10, 10, 56, 700000, tzinfo=timezone.utc)
+    value += timedelta(seconds=seconds_after_start)
+    return value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def build_manifest(
+    count: int,
+    first_sequence: int = 0,
+    endlist: bool = False,
+    pdt_at: dict | None = None,
+) -> str:
     lines = [
         "#EXTM3U",
         "#EXT-X-VERSION:3",
@@ -50,14 +63,18 @@ def build_manifest(count: int, first_sequence: int = 0, endlist: bool = False) -
         "#EXT-X-PROGRAM-DATE-TIME:2026-10-16T10:10:56.700Z",
     ]
     for i in range(count):
+        if pdt_at and i in pdt_at:
+            lines.append(f"#EXT-X-PROGRAM-DATE-TIME:{pdt_at[i]}")
         lines += ["#EXTINF:6.000,", f"seg_{first_sequence + i}.ts"]
     if endlist:
         lines.append("#EXT-X-ENDLIST")
     return "\n".join(lines) + "\n"
 
 
-def segments(count: int = 1, discontinuity_at: int | None = None) -> list:
-    manifest = m3u8.loads(build_manifest(count))
+def segments(
+    count: int = 1, discontinuity_at: int | None = None, pdt_at: dict | None = None
+) -> list:
+    manifest = m3u8.loads(build_manifest(count, pdt_at=pdt_at))
     if discontinuity_at is not None:
         manifest.segments[discontinuity_at].discontinuity = True
     return manifest.segments
@@ -319,6 +336,246 @@ class SegmentTimingTest(unittest.TestCase):
         self.assertEqual(timeranges[0].start, FLOW_START)
         self.assertFalse(self.state["pts_anchored"])
 
+    def test_media_without_pts_moves_forward_over_missing_media(self) -> None:
+        # A segment is missing from the playlist between the second and third, so
+        # summed durations put the third at 12 s while its tag says 18 s
+        timeranges = self.run_segments(
+            [(None, SEGMENT, False)] * 3, pdt_at={2: pdt_tag(18)}
+        )
+        self.assertEqual(timeranges[1].start, FLOW_START + SEGMENT)
+        self.assertEqual(timeranges[2].start, FLOW_START + pts(18 * RATE))
+        self.assertEqual(self.state["ts_offset"], timeranges[2].start)
+
+    def test_media_without_pts_within_threshold_stays_contiguous(self) -> None:
+        short = Timestamp.from_millisec(5_950)
+        timeranges = self.run_segments(
+            [(None, short, False)] * 3, pdt_at={2: pdt_tag(12)}
+        )
+        self.assert_contiguous(timeranges)
+
+    def test_media_without_pts_running_ahead_is_not_rewound(self) -> None:
+        # 1.2 s ahead of the tag, but moving back would overlap registered time
+        long = Timestamp.from_millisec(6_600)
+        with mock.patch.object(app.logger, "warning") as warning:
+            timeranges = self.run_segments(
+                [(None, long, False)] * 3, pdt_at={2: pdt_tag(12)}
+            )
+        self.assert_contiguous(timeranges)
+        warning.assert_called_once()
+
+    def test_playlist_clock_resyncs_are_not_followed(self) -> None:
+        # MediaLive's SYSTEM_CLOCK mode resyncs the tags to the wall clock once they are
+        # 500 ms apart, while the media stays continuous. PTS media from the same encoder
+        # does not follow the tags, so media without PTS must not either: here the tags
+        # jump 600 ms forward twice, as a slow source clock makes them, then once back.
+        with mock.patch.object(app.logger, "warning") as warning:
+            timeranges = self.run_segments(
+                [(None, SEGMENT, False)] * 6,
+                pdt_at={
+                    1: pdt_tag(6.6),
+                    2: pdt_tag(12.6),
+                    3: pdt_tag(19.2),
+                    4: pdt_tag(25.2),
+                    5: pdt_tag(30.6),
+                },
+            )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(timeranges[5].start, FLOW_START + pts(30 * RATE))
+        warning.assert_not_called()
+
+    def test_drift_in_the_playlist_clock_is_not_followed(self) -> None:
+        # Each tag runs 150 ms further ahead of the media, 1.35 s by the last one, as a
+        # clock that advances by rounded #EXTINF values or runs fast would
+        with mock.patch.object(app.logger, "warning") as warning:
+            timeranges = self.run_segments(
+                [(None, SEGMENT, False)] * 10,
+                pdt_at={i: pdt_tag(i * 6.15) for i in range(1, 10)},
+            )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(timeranges[9].start, FLOW_START + pts(54 * RATE))
+        warning.assert_not_called()
+
+    def test_discontinuity_keeps_placement_of_media_without_pts(self) -> None:
+        # A 30 s outage behind a discontinuity. PTS media starts the new region at
+        # the previous end, so media without PTS must too, or the Flows would split.
+        timeranges = self.run_segments(
+            [(None, SEGMENT, False)] * 3,
+            discontinuity_at=1,
+            pdt_at={1: pdt_tag(36), 2: pdt_tag(42)},
+        )
+        self.assert_contiguous(timeranges)
+
+    def test_probe_failure_in_pts_region_ignores_program_date_time(self) -> None:
+        # Failed probes in a PTS region carry on from the previous end. Following the
+        # tags there (the second is 2 s off) would replace the PTS offset.
+        base = 1_000 * RATE
+        timeranges = self.run_segments(
+            [
+                (pts(base), SEGMENT, True),
+                (None, SEGMENT, False),
+                (pts(base + 12 * RATE), SEGMENT, True),
+                (None, SEGMENT, False),
+                (pts(base + 24 * RATE), SEGMENT, True),
+            ],
+            pdt_at={1: pdt_tag(6), 3: pdt_tag(20)},
+        )
+        self.assert_contiguous(timeranges)
+        self.assertEqual(self.state["ts_offset"], FLOW_START - pts(base))
+
+
+# Real ffprobe output for a raw ADTS AAC segment of 281 frames at 48 kHz (5.994667 s).
+# ffprobe estimates duration_ts from the bitrate; the packets give the exact length.
+ADTS_TIME_BASE = "1/28224000"
+ADTS_FRAME_TICKS = 602112  # 1024 samples at 48 kHz in ADTS_TIME_BASE
+ADTS_RATE = 28224000
+
+
+def adts_probe(frames: int, estimated_ticks: int | None = None, codec_type="audio"):
+    """ffprobe_link results for a raw segment of `frames` AAC frames: (plain, packets)."""
+    stream = {
+        "index": 0,
+        "codec_type": codec_type,
+        "time_base": ADTS_TIME_BASE,
+        "duration_ts": estimated_ticks or frames * ADTS_FRAME_TICKS + 129776,
+    }
+    plain = {"streams": [stream], "format": {"format_name": "aac"}}
+    packets = {
+        **plain,
+        "packets": [{"stream_index": 0, "duration": str(ADTS_FRAME_TICKS)}] * frames,
+    }
+    return plain, packets
+
+
+class ExactAudioDurationTest(unittest.TestCase):
+    """Raw audio without PTS takes its duration from its frames, not the bitrate estimate."""
+
+    def probe(self, results: list):
+        with mock.patch.object(app, "ffprobe_link", side_effect=results) as link:
+            probed = app.probe_segment("s3://bucket/seg.aac", None, 6.0)
+        return probed, link
+
+    def test_raw_audio_duration_is_counted_from_frames(self) -> None:
+        plain, packets = adts_probe(281, estimated_ticks=169323248)
+        (start_pts, duration, is_mpegts), link = self.probe([plain, packets])
+        self.assertIsNone(start_pts)
+        self.assertFalse(is_mpegts)
+        self.assertEqual(
+            duration, Timestamp.from_count(281 * ADTS_FRAME_TICKS, ADTS_RATE)
+        )
+        self.assertEqual(link.call_args_list[1].kwargs["show_packets"], True)
+
+    def test_audio_with_pts_is_probed_once(self) -> None:
+        stream = {
+            "index": 0,
+            "codec_type": "audio",
+            "time_base": "1/90000",
+            "start_pts": 126000,
+            "duration_ts": 540000,
+        }
+        (start_pts, duration, _), link = self.probe(
+            [{"streams": [stream], "format": {"format_name": "mpegts"}}]
+        )
+        self.assertEqual(start_pts, pts(126000))
+        self.assertEqual(duration, SEGMENT)
+        self.assertEqual(link.call_count, 1)
+
+    def test_subtitles_without_pts_keep_the_probed_duration(self) -> None:
+        plain, _ = adts_probe(281, codec_type="subtitle")
+        (_, duration, _), link = self.probe([plain])
+        self.assertEqual(link.call_count, 1)
+        self.assertEqual(
+            duration,
+            Timestamp.from_count(plain["streams"][0]["duration_ts"], ADTS_RATE),
+        )
+
+    def test_failed_frame_count_keeps_the_estimate(self) -> None:
+        plain, _ = adts_probe(281, estimated_ticks=169323248)
+        failures = {
+            "no result": None,
+            "empty result": {},
+            "no packets": {**plain, "packets": []},
+            "invalid JSON": json.JSONDecodeError("Expecting value", "", 0),
+            "S3 error": app.ClientError(
+                {"Error": {"Code": "SlowDown", "Message": "Slow down"}}, "GetObject"
+            ),
+            "botocore error": app.BotoCoreError(),
+            "file error": OSError("No space left on device"),
+        }
+        for name, failure in failures.items():
+            with (
+                self.subTest(name),
+                mock.patch.object(app.logger, "warning") as warning,
+            ):
+                (start_pts, duration, _), _ = self.probe([plain, failure])
+                self.assertIsNone(start_pts)
+                self.assertEqual(duration, Timestamp.from_count(169323248, ADTS_RATE))
+                warning.assert_called_once()
+
+    def test_incomplete_packet_durations_keep_the_estimate(self) -> None:
+        # One frame without a duration in 281 would undercount the segment by 21 ms
+        plain, packets = adts_probe(281, estimated_ticks=169323248)
+        for name, bad in {"missing": None, "unknown": "N/A", "zero": "0"}.items():
+            frames = [dict(packet) for packet in packets["packets"]]
+            if bad is None:
+                del frames[-1]["duration"]
+            else:
+                frames[-1]["duration"] = bad
+            with (
+                self.subTest(name),
+                mock.patch.object(app.logger, "warning") as warning,
+            ):
+                (_, duration, _), _ = self.probe([plain, {**plain, "packets": frames}])
+                self.assertEqual(duration, Timestamp.from_count(169323248, ADTS_RATE))
+                warning.assert_called_once()
+
+    def test_an_hour_of_medialive_audio_stays_on_the_playlist_clock(self) -> None:
+        # A synthetic duration test, not an encoder capture: 48 kHz AAC cut into
+        # MediaLive's 6.016 / 5.99467 s segments (282, 281, 281, 281 frames), with a tag
+        # every 60 s holding the true start rounded to the millisecond. Every bitrate
+        # estimate is 20 ms long, which used to run ahead without limit.
+        frames = [282, 281, 281, 281] * 150
+        starts, ticks = [], 0
+        for count in frames:
+            starts.append(Timestamp.from_count(ticks, ADTS_RATE))
+            ticks += count * ADTS_FRAME_TICKS
+        pdt_at = {
+            i: pdt_tag(round(float(start), 3))
+            for i, start in enumerate(starts)
+            if i % 10 == 0
+        }
+        results = []
+        for count in frames:
+            results += adts_probe(
+                count, estimated_ticks=count * ADTS_FRAME_TICKS + 564480
+            )
+        state = {
+            "ts_offset": None,
+            "last_end": FLOW_START,
+            "pts_anchored": False,
+            "pts_wraps": 0,
+            "pdt_offset": None,
+        }
+        out = []
+        with (
+            mock.patch.object(app, "ffprobe_link", side_effect=results),
+            mock.patch.object(app.logger, "warning") as warning,
+        ):
+            for segment in segments(len(frames), pdt_at=pdt_at):
+                app.process_segment(state, segment, "flow", "s3://bucket/path", out)
+        timeranges = [TimeRange.from_str(s["timerange"]) for s in out]
+        # 281 frames last 5.99466... s, which rounds to the nanosecond, so the sum loses
+        # under a nanosecond per segment (about 7 microseconds a day) and stays contiguous.
+        self.assertEqual(len(timeranges), len(frames))
+        for timerange, start in zip(timeranges, starts):
+            error = timerange.start - (FLOW_START + start)
+            self.assertLess(abs(error.to_nanosec()), 1_000)
+        error = timeranges[-1].end - (
+            FLOW_START + Timestamp.from_count(ticks, ADTS_RATE)
+        )
+        self.assertLess(abs(error.to_nanosec()), 1_000)
+        warning.assert_not_called()
+        self.assertEqual(state["ts_offset"], FLOW_START)
+
 
 class ProcessMessageTest(unittest.TestCase):
     """Drives process_message to check what is carried between polls."""
@@ -434,6 +691,99 @@ class ProcessMessageTest(unittest.TestCase):
         self.poll(message, build_manifest(2), [(pts(6 * RATE), SEGMENT, True)])
         timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
         self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+
+    def test_program_date_time_baseline_survives_between_polls(self) -> None:
+        # The first segment is 1.25 s short of its successor's tag, as if media were
+        # missing, so the second poll moves forward from the baseline carried over
+        short = Timestamp.from_millisec(4_750)
+        next_message = self.poll(
+            self.first_message(), build_manifest(1), [(None, short, False)]
+        )
+        self.assertEqual(next_message["pdtOffset"], str(Timestamp()))
+        next_message = self.poll(
+            next_message,
+            build_manifest(2, pdt_at={1: pdt_tag(6)}),
+            [(None, short, False)],
+        )
+        timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
+        self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+        self.assertEqual(next_message["tsOffset"], str(FLOW_START + SEGMENT))
+
+    def test_retry_recomputes_records_already_sent(self) -> None:
+        # SQS accepts part of the first batch, then the send fails. The retry starts from
+        # the last batch sent in full, so it recomputes these records rather than
+        # replaying them, and they only match if every probe repeats its result. Here
+        # the first packet probe fails and the retry's succeeds, so they do not.
+        plain, packets = adts_probe(
+            281, estimated_ticks=281 * ADTS_FRAME_TICKS + 564480
+        )
+        sent = []
+
+        def accept_then_fail(batch: list) -> None:
+            sent.extend(batch)
+            if batch:
+                raise RuntimeError("retries exhausted after a partial send")
+
+        def attempt(message: dict, links: list, send) -> dict:
+            progress = {}
+            with (
+                mock.patch.object(
+                    app, "get_manifest", return_value=m3u8.loads(build_manifest(10))
+                ),
+                mock.patch.object(app, "ffprobe_link", side_effect=links),
+                mock.patch.object(app, "send_message_batch", side_effect=send),
+                mock.patch.object(app, "sfn"),
+                mock.patch.object(app, "sqs"),
+                mock.patch.object(app, "is_out_of_time", return_value=False),
+                mock.patch.object(app.logger, "warning"),
+            ):
+                try:
+                    app.process_message(
+                        message=message, task_token=self.id(), progress=progress
+                    )
+                except RuntimeError:
+                    pass
+            return progress.get("message", message)
+
+        retry = attempt(
+            self.first_message(), [plain, None] + [plain, packets] * 9, accept_then_fail
+        )
+        self.assertEqual(retry["lastMediaSequence"], -1)
+        first = [TimeRange.from_str(s["timerange"]) for s in sent]
+        sent.clear()
+        attempt(retry, [plain, packets] * 10, sent.extend)
+        second = [TimeRange.from_str(s["timerange"]) for s in sent]
+        self.assertEqual(len(first), 10)
+        self.assertEqual(len(second), 10)
+        # The retry counts the first segment's frames, so its duration is exact
+        self.assertEqual(
+            second[0].end - second[0].start,
+            Timestamp.from_count(281 * ADTS_FRAME_TICKS, ADTS_RATE),
+        )
+        # and every record it resends ends 20 ms before the one SQS already accepted
+        for accepted, resent in zip(first, second):
+            self.assertEqual(accepted.end - resent.end, Timestamp.from_millisec(20))
+
+    def test_messages_without_pdt_offset_take_a_new_baseline(self) -> None:
+        # An ingest already running when this ships keeps its placement rather
+        # than jumping to the playlist clock at the next tag
+        message = {
+            **self.first_message(),
+            "lastMediaSequence": 0,
+            "tsOffset": str(FLOW_START),
+            "lastEnd": str(FLOW_START + SEGMENT),
+            "ptsAnchored": False,
+        }
+        next_message = self.poll(
+            message,
+            build_manifest(2, pdt_at={1: pdt_tag(9)}),
+            [(None, SEGMENT, False)],
+        )
+        timerange = TimeRange.from_str(self.sent_segments[0]["timerange"])
+        self.assertEqual(timerange.start, FLOW_START + SEGMENT)
+        self.assertEqual(
+            Timestamp.from_str(next_message["pdtOffset"]), SEGMENT - pts(9 * RATE)
+        )
 
     def test_flow_start_keeps_sub_second_precision(self) -> None:
         manifest = m3u8.loads(build_manifest(1))
