@@ -446,6 +446,34 @@ def adts_probe(frames: int, estimated_ticks: int | None = None, codec_type="audi
     return plain, packets
 
 
+class FragmentDurationTest(unittest.TestCase):
+    """A CMAF fragment's duration is summed from its own packets, not the init's moov."""
+
+    def test_fragment_duration_sums_the_probed_stream_packets(self) -> None:
+        stream = {
+            "index": 0,
+            "codec_type": "video",
+            "time_base": "1/90000",
+            "start_pts": 126000,
+            # The whole presentation, as the init segment's moov describes it
+            "duration_ts": 90000 * 3600,
+        }
+        probe = {
+            "streams": [stream],
+            "format": {"format_name": "mov,mp4,m4a,3gp,3g2,mj2"},
+            "packets": [{"stream_index": 0, "duration": "3000"}] * 179
+            # A packet without a duration is skipped, and other streams are ignored
+            + [{"stream_index": 0}, {"stream_index": 1, "duration": "1920"}],
+        }
+        with mock.patch.object(app, "ffprobe_link", return_value=probe) as link:
+            start_pts, duration, _ = app.probe_segment(
+                "s3://bucket/seg.m4s", None, 6.0, init={"uri": "s3://bucket/init.mp4"}
+            )
+        self.assertEqual(start_pts, pts(126000))
+        self.assertEqual(duration, pts(179 * 3000))
+        self.assertEqual(link.call_count, 1)
+
+
 class ExactAudioDurationTest(unittest.TestCase):
     """Raw audio without PTS takes its duration from its frames, not the bitrate estimate."""
 

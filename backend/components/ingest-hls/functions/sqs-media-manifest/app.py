@@ -76,6 +76,10 @@ MAX_RETRY_DELAY_SECONDS = 300
 TASK_ENDED_ERRORS = {"TaskTimedOut", "TaskDoesNotExist", "InvalidToken"}
 # Attempts to send segment messages SQS reports as failed, before the poll is retried
 MAX_BATCH_SEND_ATTEMPTS = 3
+# A jump in #EXT-X-PROGRAM-DATE-TIME bigger than this, against the durations summed since
+# the previous tag, is taken as missing media. It is above the 500 ms at which MediaLive's
+# SYSTEM_CLOCK mode resyncs the tags to the wall clock, and shorter than a segment.
+PDT_JUMP_THRESHOLD = Timestamp.from_millisec(1000)
 
 
 class PermanentIngestError(Exception):
@@ -216,12 +220,6 @@ def get_manifest_start_pdt(manifest: m3u8.M3U8) -> Timestamp | None:
     return pdt_to_timestamp(manifest.segments[0].program_date_time)
 
 
-# A jump in #EXT-X-PROGRAM-DATE-TIME bigger than this, against the durations summed since
-# the previous tag, is taken as missing media. It is above the 500 ms at which MediaLive's
-# SYSTEM_CLOCK mode resyncs the tags to the wall clock, and shorter than a segment.
-PDT_JUMP_THRESHOLD = Timestamp.from_millisec(1000)
-
-
 def follow_program_date_time(state: dict, segment, seg_start: Timestamp) -> Timestamp:
     """Returns the start for a segment of media with no usable PTS (e.g. raw AAC), which is otherwise placed by summing probed durations, so media missing from the playlist would close up instead of leaving a gap.
     Each explicit #EXT-X-PROGRAM-DATE-TIME is compared with the summed start relative to the offset seen at the previous tag (state key pdt_offset). The offset is cleared at each new region, so a region opened by a discontinuity keeps the same placement as PTS media.
@@ -252,6 +250,16 @@ def follow_program_date_time(state: dict, segment, seg_start: Timestamp) -> Time
     return seg_start
 
 
+def packet_durations(probe_result: dict, probe_stream: dict) -> list[int]:
+    """Returns the duration of each of the probed stream's packets in time_base ticks, with 0 for a packet that has none."""
+    stream_index = probe_stream.get("index", 0)
+    return [
+        int(packet.get("duration", 0))
+        for packet in probe_result.get("packets", [])
+        if packet.get("stream_index") == stream_index
+    ]
+
+
 def count_audio_duration(
     segment_uri: str, byterange: str | None, probe_stream: dict
 ) -> Timestamp | None:
@@ -259,17 +267,12 @@ def count_audio_duration(
     For raw audio ffprobe estimates duration_ts from the bitrate, which is off by tens of milliseconds per segment. Media without PTS is placed by summing durations, so those errors would move it off the media clock in either direction.
     This second probe is optional: if it fails, or any packet has no usable duration, the caller keeps the first probe's estimate.
     """
-    stream_index = probe_stream.get("index", 0)
     try:
         probe_result = (
             ffprobe_link(segment_uri, byterange=byterange, show_packets=True) or {}
         )
         # Every packet needs a duration: a partial sum would undercount the segment
-        ticks = [
-            int(packet.get("duration", 0))
-            for packet in probe_result.get("packets", [])
-            if packet.get("stream_index") == stream_index
-        ]
+        ticks = packet_durations(probe_result, probe_stream)
         if not ticks or min(ticks) <= 0:
             raise ValueError("missing or unusable packet durations")
         return Timestamp.from_count(sum(ticks), 1 / Fraction(probe_stream["time_base"]))
@@ -314,12 +317,7 @@ def probe_segment(
             else None
         )
         if init:
-            stream_index = probe_stream.get("index", 0)
-            packet_ts = sum(
-                int(packet["duration"])
-                for packet in probe_result.get("packets", [])
-                if packet.get("stream_index") == stream_index and "duration" in packet
-            )
+            packet_ts = sum(packet_durations(probe_result, probe_stream))
             if packet_ts <= 0:
                 raise ValueError("no packet durations available for fragment")
             duration = Timestamp.from_count(packet_ts, rate)
