@@ -86,11 +86,21 @@ class PermanentIngestError(Exception):
     """An error that retrying cannot fix, so the ingest task is failed straight away."""
 
 
+class UnsentSegmentsError(RuntimeError):
+    """SQS had still not accepted these segment messages when the send attempts ran out."""
+
+    def __init__(self, messages: list):
+        super().__init__(
+            f"SQS segment message retries exhausted, {len(messages)} not accepted"
+        )
+        self.messages = messages
+
+
 @tracer.capture_method(capture_response=False)
 def send_message_batch(messages: list) -> None:
     """Sends a batch of messages to the SQS queue, retrying entries that fail.
     send_message_batch reports per-entry failures in its response rather than raising, so without a retry they are dropped silently.
-    Raises once retries are exhausted, so record_handler re-queues the poll from the last batch fully sent.
+    Once retries are exhausted it raises UnsentSegmentsError holding only the messages SQS has not accepted, so the retried poll can send exactly those again.
     A sender fault fails the task straight away, since sending the same message again cannot succeed."""
     if not messages:
         return
@@ -111,7 +121,7 @@ def send_message_batch(messages: list) -> None:
             raise RuntimeError("SQS returned malformed batch failure details")
         if attempt + 1 < MAX_BATCH_SEND_ATTEMPTS:
             time.sleep(0.1 * (2**attempt))
-    raise RuntimeError("SQS segment message retries exhausted")
+    raise UnsentSegmentsError([messages[int(entry["Id"])] for entry in pending])
 
 
 @tracer.capture_method(capture_response=False)
@@ -474,6 +484,7 @@ def build_poll_message(message: dict, last_media_sequence: int, state: dict) -> 
         "eventTimestamp": int(time.time() * 1000),
     }
     next_message.pop("retryCount", None)
+    next_message.pop("pendingSegments", None)
     # Until a segment has been processed there is no anchor to carry forward, and
     # the next poll must take the first-poll path rather than parse an empty one.
     if state["ts_offset"] is not None:
@@ -486,6 +497,26 @@ def build_poll_message(message: dict, last_media_sequence: int, state: dict) -> 
         else:
             next_message.pop("pdtOffset", None)
     return next_message
+
+
+def send_segments(
+    segments: list,
+    message: dict,
+    last_media_sequence: int,
+    state: dict,
+    progress: dict,
+) -> None:
+    """Sends segment messages, then sets `progress["message"]` to the poll message to resume from after them.
+    If SQS has still not accepted some of them when the attempts run out, the resume point is after them all, and the poll message carries the unaccepted ones as pendingSegments. The retry then sends exactly those again rather than recomputing the batch."""
+    try:
+        send_message_batch(segments)
+    except UnsentSegmentsError as ex:
+        progress["message"] = {
+            **build_poll_message(message, last_media_sequence, state),
+            "pendingSegments": ex.messages,
+        }
+        raise
+    progress["message"] = build_poll_message(message, last_media_sequence, state)
 
 
 @tracer.capture_method(capture_response=False)
@@ -513,7 +544,7 @@ def queue_poll(task_token: str, body: dict, delay_seconds: int) -> None:
 def process_message(message: dict, task_token: str, progress: dict) -> None:
     """Processes a single message from within the SQS record.
     `progress["message"]` is kept as the poll message to resume from after the last segments sent, so a retry does not re-send them.
-    A retry recomputes the records of a batch that SQS accepted only in part, so they match the first attempt only if every probe repeats its result."""
+    Segment messages SQS did not accept are carried as pendingSegments and sent first by the retry, exactly as computed, so they are never probed twice."""
     logger.info("Idempotency allowed processing.")
     flow_id = message["flowId"]
     manifest_location = message["manifestLocation"]
@@ -554,6 +585,11 @@ def process_message(message: dict, task_token: str, progress: dict) -> None:
             "pts_wraps": 0,
             "pdt_offset": None,
         }
+    # The state and lastMediaSequence of a retried poll already follow its pending segments
+    if message.get("pendingSegments"):
+        send_segments(
+            message["pendingSegments"], message, last_media_sequence, state, progress
+        )
     segments = []
     caught_up = True
     for segment in manifest.segments:
@@ -564,13 +600,9 @@ def process_message(message: dict, task_token: str, progress: dict) -> None:
             process_segment(state, segment, flow_id, manifest_path, segments)
             last_media_sequence = segment.media_sequence
             if len(segments) == 10:
-                send_message_batch(segments)
+                send_segments(segments, message, last_media_sequence, state, progress)
                 segments = []
-                progress["message"] = build_poll_message(
-                    message, last_media_sequence, state
-                )
-    send_message_batch(segments)
-    progress["message"] = build_poll_message(message, last_media_sequence, state)
+    send_segments(segments, message, last_media_sequence, state, progress)
     # pylint: disable=no-member
     if caught_up and manifest.is_endlist:
         sfn.send_task_success(taskToken=task_token, output=json.dumps({}))
