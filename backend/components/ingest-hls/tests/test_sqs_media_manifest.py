@@ -737,61 +737,6 @@ class ProcessMessageTest(unittest.TestCase):
         self.assertEqual(timerange.start, FLOW_START + SEGMENT)
         self.assertEqual(next_message["tsOffset"], str(FLOW_START + SEGMENT))
 
-    def test_retry_recomputes_records_already_sent(self) -> None:
-        # SQS accepts part of the first batch, then the send fails. The retry starts from
-        # the last batch sent in full, so it recomputes these records rather than
-        # replaying them, and they only match if every probe repeats its result. Here
-        # the first packet probe fails and the retry's succeeds, so they do not.
-        plain, packets = adts_probe(
-            281, estimated_ticks=281 * ADTS_FRAME_TICKS + 564480
-        )
-        sent = []
-
-        def accept_then_fail(batch: list) -> None:
-            sent.extend(batch)
-            if batch:
-                raise RuntimeError("retries exhausted after a partial send")
-
-        def attempt(message: dict, links: list, send) -> dict:
-            progress = {}
-            with (
-                mock.patch.object(
-                    app, "get_manifest", return_value=m3u8.loads(build_manifest(10))
-                ),
-                mock.patch.object(app, "ffprobe_link", side_effect=links),
-                mock.patch.object(app, "send_message_batch", side_effect=send),
-                mock.patch.object(app, "sfn"),
-                mock.patch.object(app, "sqs"),
-                mock.patch.object(app, "is_out_of_time", return_value=False),
-                mock.patch.object(app.logger, "warning"),
-            ):
-                try:
-                    app.process_message(
-                        message=message, task_token=self.id(), progress=progress
-                    )
-                except RuntimeError:
-                    pass
-            return progress.get("message", message)
-
-        retry = attempt(
-            self.first_message(), [plain, None] + [plain, packets] * 9, accept_then_fail
-        )
-        self.assertEqual(retry["lastMediaSequence"], -1)
-        first = [TimeRange.from_str(s["timerange"]) for s in sent]
-        sent.clear()
-        attempt(retry, [plain, packets] * 10, sent.extend)
-        second = [TimeRange.from_str(s["timerange"]) for s in sent]
-        self.assertEqual(len(first), 10)
-        self.assertEqual(len(second), 10)
-        # The retry counts the first segment's frames, so its duration is exact
-        self.assertEqual(
-            second[0].end - second[0].start,
-            Timestamp.from_count(281 * ADTS_FRAME_TICKS, ADTS_RATE),
-        )
-        # and every record it resends ends 20 ms before the one SQS already accepted
-        for accepted, resent in zip(first, second):
-            self.assertEqual(accepted.end - resent.end, Timestamp.from_millisec(20))
-
     def test_messages_without_pdt_offset_take_a_new_baseline(self) -> None:
         # An ingest already running when this ships keeps its placement rather
         # than jumping to the playlist clock at the next tag
@@ -979,8 +924,10 @@ class SendMessageBatchTest(unittest.TestCase):
         failure = {
             "Failed": [{"Id": "0", "SenderFault": False, "Code": "InternalError"}]
         }
-        with self.assertRaisesRegex(RuntimeError, "retries exhausted"):
+        with self.assertRaisesRegex(RuntimeError, "retries exhausted") as raised:
             self.send([failure] * app.MAX_BATCH_SEND_ATTEMPTS)
+        # Only the message SQS never accepted is handed back for the retried poll
+        self.assertEqual(raised.exception.messages, [{"segment": 0}])
 
     def test_sender_fault_is_not_retried(self) -> None:
         failure = {
@@ -993,6 +940,103 @@ class SendMessageBatchTest(unittest.TestCase):
             sqs.send_message_batch.return_value = failure
             app.send_message_batch([{"segment": 0}])
         self.assertEqual(sqs.send_message_batch.call_count, 1)
+
+
+class PendingSegmentsTest(unittest.TestCase):
+    """A retried poll sends exactly the segment messages SQS did not accept."""
+
+    def setUp(self) -> None:
+        self.rejected_ids = set()
+
+    def send_batch(self, **kwargs) -> dict:
+        return {
+            "Failed": [
+                {"Id": entry["Id"], "SenderFault": False, "Code": "InternalError"}
+                for entry in kwargs["Entries"]
+                if entry["Id"] in self.rejected_ids
+            ]
+        }
+
+    def handle(self, message: dict, manifest_text: str, probes: list):
+        """Runs record_handler on a poll, returning the batches sent and the poll queued."""
+        record = SQSRecord(
+            {
+                "messageId": "1",
+                "body": json.dumps(message),
+                "messageAttributes": {
+                    "TaskToken": {"stringValue": "token", "dataType": "String"}
+                },
+            }
+        )
+        with (
+            mock.patch.object(
+                app, "get_manifest", return_value=m3u8.loads(manifest_text)
+            ),
+            mock.patch.object(app, "probe_segment", side_effect=probes),
+            mock.patch.object(app, "sfn"),
+            mock.patch.object(app, "sqs") as sqs,
+            mock.patch.object(app, "is_out_of_time", return_value=False),
+            mock.patch.object(app.time, "sleep"),
+            mock.patch.object(app.logger, "warning"),
+        ):
+            sqs.send_message_batch.side_effect = self.send_batch
+            app.record_handler(record)
+        batches = [
+            [json.loads(entry["MessageBody"]) for entry in call.kwargs["Entries"]]
+            for call in sqs.send_message_batch.call_args_list
+        ]
+        return batches, json.loads(sqs.send_message.call_args.kwargs["MessageBody"])
+
+    def test_retry_sends_the_unaccepted_records_as_first_computed(self) -> None:
+        manifest = build_manifest(12)
+        probes = [(pts(1000 * RATE + i * 6 * RATE), SEGMENT, True) for i in range(12)]
+        first_poll = {
+            "flowId": "flow",
+            "manifestLocation": "s3://bucket/path/index.m3u8",
+            "lastMediaSequence": -1,
+            "eventTimestamp": 0,
+        }
+        # SQS keeps rejecting two records of the first batch of 10
+        self.rejected_ids = {"3", "7"}
+        batches, retry = self.handle(first_poll, manifest, probes[:10])
+        self.assertEqual(len(batches), app.MAX_BATCH_SEND_ATTEMPTS)
+        first_batch = batches[0]
+        self.assertEqual(retry["pendingSegments"], [first_batch[3], first_batch[7]])
+        self.assertEqual(retry["lastMediaSequence"], 9)
+        self.assertEqual(retry["retryCount"], 1)
+        # The retry sends those two records unchanged without probing them again, then
+        # carries on from the end of the batch with the two segments after it
+        self.rejected_ids = set()
+        batches, next_poll = self.handle(retry, manifest, probes[10:])
+        self.assertEqual(batches[0], retry["pendingSegments"])
+        self.assertEqual(len(batches[1]), 2)
+        self.assertEqual(
+            TimeRange.from_str(batches[1][0]["timerange"]).start,
+            TimeRange.from_str(first_batch[9]["timerange"]).end,
+        )
+        self.assertNotIn("pendingSegments", next_poll)
+        self.assertNotIn("retryCount", next_poll)
+        self.assertEqual(next_poll["lastMediaSequence"], 11)
+
+    def test_records_still_unaccepted_stay_pending(self) -> None:
+        manifest = build_manifest(10)
+        pending = [
+            {"flowId": "flow", "timerange": "[1:0_7:0)", "uri": "s3://b/seg_3.ts"}
+        ]
+        retry = {
+            "flowId": "flow",
+            "manifestLocation": "s3://bucket/path/index.m3u8",
+            "lastMediaSequence": 9,
+            "eventTimestamp": 0,
+            "tsOffset": str(FLOW_START),
+            "lastEnd": str(FLOW_START + SEGMENT),
+            "retryCount": 1,
+            "pendingSegments": pending,
+        }
+        self.rejected_ids = {"0"}
+        _, next_retry = self.handle(retry, manifest, [])
+        self.assertEqual(next_retry["pendingSegments"], pending)
+        self.assertEqual(next_retry["retryCount"], 2)
 
 
 if __name__ == "__main__":
