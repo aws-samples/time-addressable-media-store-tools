@@ -45,14 +45,16 @@ def calculate_ffmpeg_timing(segment):
         ):
             object_timerange = TimeRange.from_str(segment.get("object_timerange", ""))
             ts_offset = Timestamp.from_str(segment.get("ts_offset", "0:0"))
-            skip = segment_timerange.start.to_unix_float() - (
-                object_timerange.start.to_unix_float() + ts_offset.to_unix_float()
-            )
+            # Exact Timestamp arithmetic: subtracting epoch-scale floats leaves rounding noise
+            # (e.g. 2.4e-07), which str() renders in exponent form that ffmpeg cannot parse.
+            skip = segment_timerange.start - (object_timerange.start + ts_offset)
+            if skip.sign < 0:
+                skip = Timestamp()
             # note: the input is a pipe. An input -ss seeks, which only works inside the bytes ffmpeg
             # probed (5 MB by default): past that, the seek fails and no video frame is output. An
             # output -ss decodes, then discards, whatever the segment size.
             output_timing = {
-                "-ss": skip,
+                "-ss": skip.to_sec_frac(),
                 "-t": input_timing.pop("-t"),
                 "-muxpreload": "0",
                 "-muxdelay": "0",
