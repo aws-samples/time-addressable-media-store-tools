@@ -37,6 +37,8 @@
 var(--omakase-scrollbarHandle);
   --omakase-time-range-selector-segment-tick-border-color: var(--omakase-scrollbarBorder);
   --omakase-time-range-selector-range-selector-duration-font-color: var(--omakase-textFill);
+  /* The marker list's built-in stylesheet colours row text from this, falling back to black */
+  --omakase-marker-list-text-color: var(--omakase-textFill);
 }
 .omakase-tams-player .omakase-player-timeline-controls-toolbar-control-panel button:disabled svg *,
 .omakase-tams-player .segmentation-button-wrapper button:disabled svg * {
