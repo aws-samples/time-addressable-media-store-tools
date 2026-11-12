@@ -20,7 +20,7 @@
     "@aws-sdk/client-sfn": "^3.1118.0",
     "@aws-sdk/client-ssm": "^3.1118.0",
     "@aws-sdk/s3-request-presigner": "^3.1118.0",
-    "@byomakase/omakase-player": "1.1.2-SNAPSHOT.1789073365",
+    "@byomakase/omakase-player": "1.3.1-SNAPSHOT.1794407380",
     "@byomakase/omakase-react-components": "2.0.0-SNAPSHOT.1789074761",
     "@cloudscape-design/collection-hooks": "^1.0.107",
     "@cloudscape-design/components": "^3.0.1352",
@@ -79,6 +79,9 @@
     "xml2js": "^0.6.2",
     "@byomakase/omakase-ttconv-ts": {
       "xmlbuilder2": "^4.0.3"
+    },
+    "@byomakase/omakase-react-components": {
+      "@byomakase/omakase-player": "$@byomakase/omakase-player"
     }
   },
   "optionalDependencies": {

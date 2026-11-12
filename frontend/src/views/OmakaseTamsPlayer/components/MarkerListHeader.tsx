@@ -1,9 +1,6 @@
 import { useState, useCallback, useSyncExternalStore } from "react";
 import { Tabs, Button } from "@cloudscape-design/components";
-import {
-  MarkerList,
-  TimedItemsTrackEventType,
-} from "@byomakase/omakase-player";
+import { TimedItemsTrackEventType } from "@byomakase/omakase-player";
 import type {
   MarkerListApi,
   MarkerTrackLane,
@@ -94,11 +91,10 @@ const MarkerListHeader = ({
 
   const handleExportModal = () => {
     if (sourceMarkerList) {
-      // Export order must follow the CUTLIST list order, which drag-reorder mutates. Only the
-      // concrete MarkerList exposes that order; MarkerListApi has no marker accessor.
+      // Export order must follow the CUTLIST list order, which drag-reorder mutates.
       setEditTimeranges(
         createEditTimeranges(
-          (sourceMarkerList as MarkerList).markers,
+          sourceMarkerList.markers,
           markerOffset,
           omakasePlayer,
         ),

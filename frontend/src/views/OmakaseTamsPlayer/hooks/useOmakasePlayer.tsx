@@ -6,6 +6,7 @@ import {
   MainMediaType,
   OmakasePlayer,
   TamsMainMedia,
+  TamsPlaybackMode,
 } from "@byomakase/omakase-player";
 import { Mode } from "@cloudscape-design/global-styles";
 import { AWS_TAMS_ENDPOINT } from "@/constants";
@@ -207,8 +208,7 @@ export const useOmakasePlayer = ({
   const subscribeToLiveUpdates = useCallback((mainMedia: TamsMainMedia) => {
     liveUpdatesRef.current?.unsubscribe();
     liveUpdatesRef.current = undefined;
-    // `TamsPlaybackMode` is not exported, hence the string comparison.
-    if (String(mainMedia.tamsMetadata?.playbackMode) === "VOD") return;
+    if (mainMedia.tamsMetadata?.playbackMode === TamsPlaybackMode.VOD) return;
 
     liveUpdatesRef.current = mainMedia.onEvent$
       .pipe(

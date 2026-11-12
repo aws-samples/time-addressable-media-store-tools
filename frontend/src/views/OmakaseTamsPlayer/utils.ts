@@ -8,6 +8,7 @@ import {
   PlayerTextType,
   ScrollbarLane,
   TextLabel,
+  TamsPlaybackMode,
   TextTrackLane,
   ThumbnailTrackLane,
   TimedItemTemporalType,
@@ -829,35 +830,16 @@ const createThumbnailLane = (mode: Mode) =>
     style: THEME[mode].thumbnailLaneStyle,
   });
 
-// TAMS registers a thumbnail track during loadMainMedia but never loads it: the registration hook
-// only adds the track to the repository, so it arrives with an empty timed-item list and nothing in
-// the library ever fetches its VTT. Loading it here is what fills the timeline lane, both hover
-// previews and the marker list's thumbnail column — they all read the same track.
-const wireThumbnailTrack = (player: OmakasePlayerApi, track: ThumbnailTrack) => {
-  // The video's own progress-bar preview holds a separate chroming-side reference, and refreshes it
-  // only on timed-item UPDATE events — never on the ADD events a first load emits. So it has to be
-  // handed the track after its thumbnails are in, not before.
-  const setChromingThumbnailTrack = () =>
-    player.chroming.setThumbnailTrack(TrackSource.fromTrack(track)).subscribe({
-      error: (err) =>
-        console.error("Error setting chroming thumbnail track:", err),
-    });
-
-  // `OpStageStatus` is `declare enum` rather than exported in omakase-player 1.1.2, so the load
-  // status is compared as a string. Loading a track that is not NOT_STARTED throws.
-  if (String(track.loadStage.status) !== "NOT_STARTED") {
-    setChromingThumbnailTrack();
-    return;
-  }
-
-  // `loadThumbnailTrack` exists on the implementation but not on the public `OmakaseTrackApi`, so
-  // the track is loaded through `load` with a track source instead — that resolves the registered
-  // track and hands it to the same thumbnail-track loader.
-  player.track.load(TrackSource.fromTrack(track)).subscribe({
-    next: setChromingThumbnailTrack,
-    error: (err) => console.error("Error loading thumbnail track:", err),
+// The library fills the TAMS thumbnail track itself, but only the app can attach it to the
+// surfaces that show it: the timeline lane, the timeline hover preview, and the video's own
+// progress-bar preview here, which holds a separate chroming-side reference.
+const attachChromingThumbnailTrack = (
+  player: OmakasePlayerApi,
+  track: ThumbnailTrack,
+) =>
+  player.chroming.setThumbnailTrack(TrackSource.fromTrack(track)).subscribe({
+    error: (err) => console.error("Error setting chroming thumbnail track:", err),
   });
-};
 
 /**
  * Moves any segmentation lane that is not at its expected row back into place, by rebuilding it there.
@@ -1002,7 +984,7 @@ export const buildLanesOnTimeline = ({
     guardSegmentationOverlap(lane, destroy$);
   }
 
-  // TAMS builds and registers the thumbnail track itself during loadMainMedia.
+  // TAMS builds, registers and fills the thumbnail track itself during loadMainMedia.
   const thumbnailTrack = player.track.findFirst(
     (track) => track.trackType === TrackType.THUMBNAIL_TRACK,
   ) as ThumbnailTrack | undefined;
@@ -1011,7 +993,7 @@ export const buildLanesOnTimeline = ({
     timeline.addTimelineLane(thumbnailLane);
     thumbnailLane.setTrack(thumbnailTrack);
     timeline.setThumbnailTrack(thumbnailTrack);
-    wireThumbnailTrack(player, thumbnailTrack);
+    attachChromingThumbnailTrack(player, thumbnailTrack);
     visualizationLaneIds.push(thumbnailLane.id);
   }
 
@@ -1064,22 +1046,6 @@ export const buildLanesOnTimeline = ({
         });
         timeline.addTimelineLane(subtitlesLane);
         subtitlesLane.setTrack(textTrack);
-        // `TextTrackLane` re-renders on timed-item UPDATE and DELETE events but not on ADD, and the
-        // TAMS cue reader delivers every cue through `addTimedItems`, which emits ADD. Cues that
-        // land before `setTrack` are picked up by the lane itself; these are the ones that stream in
-        // afterwards, which for TAMS is all of them. The reader already delivers them on media time
-        // (`TamsSegmentedVttTimedItemsFetcher` applies the window offset), so they need no moving —
-        // only drawing.
-        textTrack.onEvent$
-          .pipe(
-            filter(
-              (event) =>
-                event.type ===
-                TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_ADDED,
-            ),
-            takeUntil(destroy$),
-          )
-          .subscribe({ next: () => subtitlesLane.render() });
         visualizationLaneIds.push(subtitlesLane.id);
         const laneLabel = addLaneLabel(subtitlesLane, label, mode);
         textLabels.set(subtitlesLane.id, laneLabel);
@@ -1089,14 +1055,6 @@ export const buildLanesOnTimeline = ({
           minimized: true,
         });
         timeline.addTimelineLane(markerLane);
-        // `minimized: true` collapses the lane's row but not its markers. In 1.x marker views are
-        // drawn in a spanning group on the timeline's surface layer, clipped to the whole slot
-        // rather than to the lane's own row, and what actually hides them is an opacity fade
-        // derived from `style.height / initialStyle.height`. The config flag zeroes the row's flex
-        // height without touching `style.height`, so that ratio stays at 1 and the markers bleed
-        // over the neighbouring lane. `minimize()` sets the style height, which is what the fade
-        // reads; `maximize()` still restores the original height from `_initialStyle`.
-        markerLane.minimize();
         visualizationLaneIds.push(markerLane.id);
 
         segmentTracks.push({
@@ -1239,14 +1197,15 @@ export const calculateTimerangeFromMainMedia = (
     let loadedEndSeconds = mediaStartTime + mainMedia.duration;
 
     // In live playback the loaded window moves after load: the player rewrites
-    // `tamsMetadata.timerange` from the segments on every poll, while `duration` and the flows'
-    // own timeranges stay as they were fetched. So the window is read from the former, and the
-    // overall range is stretched to cover it — otherwise it stops at the load-time flow head.
-    // `TamsPlaybackMode` is not exported, hence the string comparison.
+    // `tamsMetadata.timerange` from the segments on every poll, while `mediaStartTime` stays at the
+    // load-time start and the flows' own timeranges stay as they were fetched. So the window is read
+    // from the former, and the overall range is stretched to cover it — otherwise it stops at the
+    // load-time flow head.
     const loaded = mainMedia.tamsMetadata?.timerange
       ? TimeRangeUtil.parseTimeRange(mainMedia.tamsMetadata.timerange)
       : undefined;
-    const isLive = String(mainMedia.tamsMetadata?.playbackMode) !== "VOD";
+    const isLive =
+      mainMedia.tamsMetadata?.playbackMode !== TamsPlaybackMode.VOD;
     if (isLive && loaded?.start && loaded.end) {
       loadedStartSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.start);
       loadedEndSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.end);

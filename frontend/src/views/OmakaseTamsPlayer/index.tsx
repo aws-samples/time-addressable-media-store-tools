@@ -24,7 +24,11 @@ import {
   reseatSegmentationLanes,
   segmentationLaneStyleFor,
 } from "./utils";
-import { MarkerListEventType, TrackSource } from "@byomakase/omakase-player";
+import {
+  MarkerListEventType,
+  MarkerListMode,
+  TrackSource,
+} from "@byomakase/omakase-player";
 import type {
   OmakasePlayerApi,
   MarkerListConfig,
@@ -221,8 +225,7 @@ const OmakaseTamsPlayer = () => {
   );
 
   // The marker list is fed by tracks now rather than by a lane: `source` became `markerTrack`,
-  // and the thumbnail VTT file became the player's thumbnail track. `MarkerListMode` is declared
-  // but not exported by omakase-player 1.1.2, hence the cast.
+  // and the thumbnail VTT file became the player's thumbnail track.
   //
   // `OmakaseMarkerListComponent` only rebuilds the list when `markerTrack` changes identity, and the
   // list resolves its thumbnail track once, at creation. Every load registers a new thumbnail track,
@@ -238,7 +241,7 @@ const OmakaseTamsPlayer = () => {
       thumbnailTrack: thumbnailTrack
         ? { source: TrackSource.fromTrack(thumbnailTrack) }
         : undefined,
-      mode: "CUTLIST" as MarkerListConfig["mode"],
+      mode: MarkerListMode.CUTLIST,
     };
   }, [currentSource, thumbnailTrack]);
 
