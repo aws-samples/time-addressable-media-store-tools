@@ -842,49 +842,6 @@ const attachChromingThumbnailTrack = (
   });
 
 /**
- * Moves any segmentation lane that is not at its expected row back into place, by rebuilding it there.
- *
- * react-components' toolbar inserts a new segmentation lane at
- * `min(segmentationLanes.length + 1, mainSlotLaneCount)`. The `+1` assumes the scrubber occupies
- * MAIN index 0, but the scrubber lives in the HEADER slot — so MAIN index 0 is already
- * `Segmentation 1` and every toolbar-created lane lands one row too low, below whichever lane follows
- * the segmentation lanes.
- *
- * omakase-player has no lane move API and `removeTimelineLane` destroys the lane, but not its track,
- * so the lane is rebuilt around the same track: the markers, their colours and the toolbar's overlap
- * guard all live on the track and carry over. The toolbar derives everything else from its
- * `segmentationLanes` / `source` props, so the caller only has to swap the new lane into its state.
- *
- * `lanes` is the app's segmentation lanes in order; lane `i` belongs at MAIN index `i`. Returns each
- * replaced lane mapped to its replacement — empty when every lane was already in place.
- */
-export const reseatSegmentationLanes = (
-  timeline: TimelineApi,
-  lanes: MarkerTrackLane[],
-  mode: Mode,
-): Map<MarkerTrackLane, MarkerTrackLane> => {
-  const replacements = new Map<MarkerTrackLane, MarkerTrackLane>();
-  lanes.forEach((lane, expectedIndex) => {
-    if (!isLaneLive(lane)) return;
-    const currentIndex = timeline
-      .getTimelineLanes()
-      .findIndex((candidate) => candidate.id === lane.id);
-    const track = laneTrack(lane);
-    if (currentIndex < 0 || currentIndex === expectedIndex || !track) return;
-
-    timeline.removeTimelineLane(lane.id);
-    const replacement = new MarkerTrackLane({
-      description: segmentationNameFor(expectedIndex),
-      style: segmentationLaneStyleFor(mode),
-    });
-    replacement.addTrack(track);
-    timeline.addTimelineLane(replacement, { index: expectedIndex });
-    replacements.set(lane, replacement);
-  });
-  return replacements;
-};
-
-/**
  * Adds the horizontal zoom scrollbar to the timeline footer, once.
  *
  * In 0.25.4 the scrollbar was part of the timeline and drawn in the footer automatically, styled

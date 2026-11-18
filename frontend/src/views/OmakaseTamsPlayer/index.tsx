@@ -21,7 +21,6 @@ import {
   applySegmentationMarkerColors,
   laneTrack,
   renumberSegmentationLanes,
-  reseatSegmentationLanes,
   segmentationLaneStyleFor,
 } from "./utils";
 import {
@@ -76,7 +75,6 @@ const OmakaseTamsPlayer = () => {
   const segmentationLanesRef = useRef(segmentationLanes);
   const currentSourceRef = useRef(currentSource);
   const selectedMarkerRef = useRef(selectedMarker);
-  const rangeSelectorWrapperRef = useRef<HTMLDivElement>(null);
 
   // Marker selection is entirely app state in omakase-player 1.x — the lane and marker list no
   // longer hold a selected marker, so there is nothing to mirror onto them. What still belongs
@@ -123,37 +121,6 @@ const OmakaseTamsPlayer = () => {
   useEffect(() => {
     renumberSegmentationLanes(segmentationLanes);
   }, [segmentationLanes]);
-
-  // The toolbar adds new segmentation lanes one row too low (see `reseatSegmentationLanes`), so the
-  // setters it is handed put the lanes back in order on the way into state. Its add button calls
-  // `setSegmentationLanes` and then `setSource` with the lane it just built, so the replacements are
-  // remembered for that second call.
-  const reseatedLanesRef = useRef(new Map<MarkerTrackLane, MarkerTrackLane>());
-  const setToolbarSegmentationLanes = useCallback<
-    React.Dispatch<React.SetStateAction<MarkerTrackLane[]>>
-  >(
-    (action) => {
-      const lanes =
-        typeof action === "function"
-          ? action(segmentationLanesRef.current)
-          : action;
-      const timeline = omakasePlayer?.timeline;
-      const replaced = timeline
-        ? reseatSegmentationLanes(timeline, lanes, mode)
-        : new Map<MarkerTrackLane, MarkerTrackLane>();
-      reseatedLanesRef.current = replaced;
-      setSegmentationLanes(lanes.map((lane) => replaced.get(lane) ?? lane));
-    },
-    [omakasePlayer, mode],
-  );
-  const setToolbarSource = useCallback<
-    React.Dispatch<React.SetStateAction<MarkerTrackLane | undefined>>
-  >((action) => {
-    setCurrentSource((prev) => {
-      const next = typeof action === "function" ? action(prev) : action;
-      return next && (reseatedLanesRef.current.get(next) ?? next);
-    });
-  }, []);
 
   // Covers lanes created by the toolbar as well as the first one built with the timeline: the
   // toolbar only sets a lane-level style, which the marker list's colour bar never sees.
@@ -261,48 +228,15 @@ const OmakaseTamsPlayer = () => {
     "--omakase-scrollbarBorder": THEME[mode].colors.scrollbarBorder,
   } as React.CSSProperties;
 
-  // A live media calls this on every poll, and each new value remounts the time range selector —
-  // see its `key` below. A remount would throw away a range the user has dragged but not yet
-  // confirmed, so updates are held back while the selector is showing its confirm / cancel buttons;
-  // the next poll after the user resolves the edit catches it up. The selector exposes no edit
-  // state, so its own button container's visibility class is the only signal available.
+  // A live media calls this on every poll. The selector follows prop changes itself, and holds them
+  // back while the user has a range dragged but not yet confirmed.
   const handleTimerangeChange = (
     currentTimerange: string | undefined,
     maxTimerangeStr: string | undefined,
   ) => {
-    const isEditingRange = !!document.querySelector(
-      ".omakase-time-range-selector-button-container:not(.omakase-time-range-selector-invisible)",
-    );
-    if (isEditingRange) return;
-    // Nothing would remount, so nothing would release the height held below.
-    if (currentTimerange === timerange && maxTimerangeStr === maxTimerange) {
-      return;
-    }
-    // The remounted component only appends its web component in a post-paint effect, so for a frame
-    // it is empty, the row above the timeline collapses and everything below jumps up and back.
-    // Holding the space at the height it last rendered at keeps the layout still.
-    const wrapper = rangeSelectorWrapperRef.current;
-    if (wrapper?.offsetHeight) {
-      wrapper.style.minHeight = `${wrapper.offsetHeight}px`;
-    }
     setTimerange(currentTimerange);
     setMaxTimerange(maxTimerangeStr);
   };
-
-  // Releases the height `handleTimerangeChange` held, as soon as the remounted selector has drawn
-  // something, so the hold only ever spans the empty frame and never pins a stale height.
-  useEffect(() => {
-    const wrapper = rangeSelectorWrapperRef.current;
-    const selector = wrapper?.firstElementChild;
-    if (!wrapper?.style.minHeight || !selector) return;
-    const observer = new ResizeObserver(() => {
-      if (!selector.clientHeight) return;
-      wrapper.style.minHeight = "";
-      observer.disconnect();
-    });
-    observer.observe(selector);
-    return () => observer.disconnect();
-  }, [timerange, maxTimerange]);
 
   // Only called for a timeline's first segmentation lane, and the view is remounted per media (see
   // the default export), so there is never an earlier lane to keep.
@@ -397,20 +331,14 @@ const OmakaseTamsPlayer = () => {
         </div>
         <Box>
           <div id="omakase-video-container" />
-          <div ref={rangeSelectorWrapperRef}>
-            {timerange && maxTimerange && (
-              // The component reads its props once, in a mount-only effect, and the web component
-              // underneath has no attribute-change handling either — so a new range only shows by
-              // remounting it. Matters for live, where both ranges grow after load.
-              <OmakaseTimeRangeSelectorComponent
-                key={`${timerange}|${maxTimerange}`}
-                {...TIME_RANGE_PICKER_CONFIG}
-                timeRange={timerange}
-                maxTimeRange={maxTimerange}
-                onCheckmarkClickCallback={handleTimeRangePickerChange}
-              />
-            )}
-          </div>
+          {timerange && maxTimerange && (
+            <OmakaseTimeRangeSelectorComponent
+              {...TIME_RANGE_PICKER_CONFIG}
+              timeRange={timerange}
+              maxTimeRange={maxTimerange}
+              onCheckmarkClickCallback={handleTimeRangePickerChange}
+            />
+          )}
         </Box>
       </Grid>
       <Box>
@@ -418,12 +346,12 @@ const OmakaseTamsPlayer = () => {
           <OmakasePlayerTimelineControlsToolbar
             selectedMarker={selectedMarker}
             omakasePlayer={omakasePlayer}
-            setSegmentationLanes={setToolbarSegmentationLanes}
+            setSegmentationLanes={setSegmentationLanes}
             setSelectedMarker={setSelectedMarkerWithSync}
             onMarkerClickCallback={setSelectedMarkerWithSync}
             segmentationLanes={segmentationLanes}
             source={currentSource}
-            setSource={setToolbarSource}
+            setSource={setCurrentSource}
             enableHotKeys={true}
             segmentationLaneStyle={segmentationLaneStyle}
             splitMarkerStyle={splitMarkerStyle}
