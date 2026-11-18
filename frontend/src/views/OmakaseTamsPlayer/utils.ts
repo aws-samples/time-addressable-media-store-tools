@@ -614,9 +614,7 @@ const createSegmentationLane = (
   timeline.addTimelineLane(lane);
 
   // Temporals are relative media seconds, so this spans whatever window is loaded at creation.
-  // Across a later timerange reload it keeps that absolute span, and is discarded if the new window
-  // cannot hold it — which, spanning a whole window as it does, is any window but this one. See
-  // `rebaseMarkers`.
+  // Across a later timerange reload it keeps that absolute span. See `rebaseMarkers`.
   track.addTimedItems({
     temporal: spanTemporal(0, player.player.getDuration()),
   });
@@ -735,13 +733,8 @@ const recreateSegmentationTrack = (
   return replacements;
 };
 
-// Floating-point slack for the containment test below. Window bounds come from segment boundaries
-// and a marker authored at exactly the window edge must not be discarded by a rounding artefact.
-const WINDOW_CONTAINMENT_EPSILON = 1e-6;
-
 /**
- * Re-anchors a segmentation track's markers to the window now loading, and discards any marker the
- * new window cannot hold in full.
+ * Re-anchors a segmentation track's markers to the window now loading.
  *
  * Marker temporals are relative media seconds — 0 is whatever the loaded window starts at
  * (`tamsMetadata.mediaStartTime`). A marker authored as 0..300 in the window starting at 414 means
@@ -755,50 +748,20 @@ const WINDOW_CONTAINMENT_EPSILON = 1e-6;
  * `TamsMainMedia`, so anything reading the app's held media at that point gets the PREVIOUS
  * window's metadata and computes a delta of zero. See `useOmakasePlayer`'s build gate.
  *
- * Markers that do not end up wholly inside `[0, duration]` are DELETED rather than kept as
- * out-of-window data, because the library cannot represent them either way:
- * - Before the window (negative relative time) is fatal. `OmakasePlayerTimelineControlsToolbar`
- *   converts the selected marker's start and end to frame counts on every playback progress event,
- *   and `TimeUtil.constrainTime` throws `Time must be positive` — an uncaught error in a React
- *   effect, so the app comes down.
- * - Past the end of the window is merely broken. `MarkerTrackLane.createMarkerViewComponents` culls
- *   any timed item failing `touchesTimeRange` against the visible range, and
- *   `handleTimedItemsUpdated` only refreshes views that already exist, so a culled marker can never
- *   get its view back.
- *
- * Deleting is therefore the one behaviour that is consistent at both ends and cannot mislead: what
- * the lane shows, what the marker list shows and what gets exported always agree.
+ * A marker the new window cannot hold — wholly or partly before it (negative relative time), or past
+ * its end — is kept as it is, so a user's segmentation survives any window change. The library copes
+ * with both: the timeline culls a marker outside the visible range and draws it again once an edit
+ * or a later window brings it back, and the toolbar and marker list handle negative times. The one
+ * place that does not is the player's own time conversion, which `createEditTimeranges` works around.
  */
 const rebaseMarkers = (
   markers: SnapshotMarker[],
   delta: number,
-  duration: number,
-): { kept: SnapshotMarker[]; discarded: string[] } => {
-  const isWithinWindow = (time: number | undefined) =>
-    time === undefined ||
-    (time >= -WINDOW_CONTAINMENT_EPSILON &&
-      time <= duration + WINDOW_CONTAINMENT_EPSILON);
-
-  // A marker kept by the epsilon can still sit a hair outside the window, and a hair below zero is
-  // as fatal to the toolbar as a whole second — so kept markers are pinned to the window exactly.
-  const clampToWindow = (seconds: number) =>
-    Math.min(Math.max(seconds, 0), duration);
-
-  const kept: SnapshotMarker[] = [];
-  const discarded: string[] = [];
-  for (const marker of markers) {
-    const temporal = mapTemporal(marker.temporal, (seconds) => seconds + delta);
-    const within =
-      isWithinWindow(TimedItemTemporalUtil.extractStartTime(temporal)) &&
-      isWithinWindow(TimedItemTemporalUtil.extractEndTime(temporal));
-    if (within) {
-      kept.push({ ...marker, temporal: mapTemporal(temporal, clampToWindow) });
-    } else {
-      discarded.push(marker.id);
-    }
-  }
-  return { kept, discarded };
-};
+): SnapshotMarker[] =>
+  markers.map((marker) => ({
+    ...marker,
+    temporal: mapTemporal(marker.temporal, (seconds) => seconds + delta),
+  }));
 
 /**
  * Reverts edits that would make a marker overlap another on the same track — the library doesn't
@@ -927,9 +890,9 @@ export const buildLanesOnTimeline = ({
   thumbnailTrack: ThumbnailTrack | undefined;
   /**
    * Set when the segmentation tracks were rebuilt: every previous marker id, mapped to its
-   * replacement, or to undefined if the new window could not hold it. See `rebaseMarkers`.
+   * replacement. See `recreateSegmentationTrack`.
    */
-  markerReplacements: Map<string, Marker | undefined> | undefined;
+  markerReplacements: Map<string, Marker> | undefined;
   /** Re-reads the live segment lists into the segment lanes. See `syncSegmentMarkers`. */
   refreshSegmentLanes: () => void;
 } => {
@@ -940,7 +903,7 @@ export const buildLanesOnTimeline = ({
   timeline.scrubberLane.setStyle(THEME[mode].scrubberLaneStyle);
   addScrollbarLane(timeline, mode);
 
-  let markerReplacements: Map<string, Marker | undefined> | undefined;
+  let markerReplacements: Map<string, Marker> | undefined;
 
   // Every segmentation lane is handled identically, whether it was created here or by the toolbar.
   // The visualisation lanes have already been destroyed by the caller at this point, so anything
@@ -956,26 +919,19 @@ export const buildLanesOnTimeline = ({
       previousMediaStartTime !== undefined && nextMediaStartTime !== undefined
         ? previousMediaStartTime - nextMediaStartTime
         : 0;
-    const duration = player.player.getDuration();
     for (const lane of segmentationLanes) {
       // A lane that still has its track has not been through a reload — nothing to rebuild.
       const snapshot = segmentationSnapshot.get(lane.id);
       if (!snapshot || laneTrack(lane)) continue;
-      const { kept, discarded } = rebaseMarkers(
-        snapshot.markers,
-        delta,
-        duration,
-      );
       markerReplacements ??= new Map();
       for (const [previousId, marker] of recreateSegmentationTrack(
         player,
         lane,
         snapshot,
-        kept,
+        rebaseMarkers(snapshot.markers, delta),
       )) {
         markerReplacements.set(previousId, marker);
       }
-      for (const id of discarded) markerReplacements.set(id, undefined);
     }
   }
   for (const lane of segmentationLanes) {
@@ -1282,16 +1238,30 @@ export const createEditTimeranges = (
 ) => {
   // Replaces 0.25.4's calculateTimeToFrame/calculateFrameToTime round-trip, which ensured a
   // marker's time lines up with the start of its frame in milliseconds.
-  const snapToFrame = (time: number) =>
+  const frameToSeconds = (frame: number) =>
     omakasePlayer.player.convertTime(
+      frame,
+      MediaTemporalFormat.FRAME_COUNT,
+      MediaTemporalFormat.SECONDS,
+    );
+  const snapNonNegative = (time: number) =>
+    frameToSeconds(
       omakasePlayer.player.convertTime(
         time,
         MediaTemporalFormat.SECONDS,
         MediaTemporalFormat.FRAME_COUNT,
       ),
-      MediaTemporalFormat.FRAME_COUNT,
-      MediaTemporalFormat.SECONDS,
     );
+  // `convertTime` throws on a negative time, and a marker kept from an earlier window can start or
+  // end before this one (see `rebaseMarkers`). Frame boundaries repeat every frame, so such a time is
+  // moved forward by whole frames, snapped there and moved back — one frame more than needed, so
+  // rounding cannot leave it a hair below zero.
+  const frameDuration = frameToSeconds(2) - frameToSeconds(1);
+  const snapToFrame = (time: number) => {
+    if (time >= 0) return snapNonNegative(time);
+    const shift = (Math.ceil(-time / frameDuration) + 1) * frameDuration;
+    return snapNonNegative(time + shift) - shift;
+  };
 
   const timeRanges = markers
     .map((marker) => {

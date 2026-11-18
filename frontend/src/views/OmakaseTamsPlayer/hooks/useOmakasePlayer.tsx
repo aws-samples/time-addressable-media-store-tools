@@ -47,12 +47,10 @@ type UseOmakasePlayerParams = {
   onMarkerClick?: (marker: Marker) => void;
   /**
    * A timerange reload rebuilt the segmentation tracks, so every marker on them has a new id. Maps
-   * each previous id to its replacement, or to undefined if the new window could not hold it. The
-   * view uses this to move the selection across, and to refresh anything holding the old tracks.
+   * each previous id to its replacement. The view uses this to move the selection across, and to
+   * refresh anything holding the old tracks.
    */
-  onSegmentationTracksRebuilt?: (
-    replacements: Map<string, Marker | undefined>,
-  ) => void;
+  onSegmentationTracksRebuilt?: (replacements: Map<string, Marker>) => void;
   onPlayerReady?: (player: OmakasePlayerApi) => void;
   /**
    * The thumbnail track the lanes were just built with. Every load registers a new one, and the

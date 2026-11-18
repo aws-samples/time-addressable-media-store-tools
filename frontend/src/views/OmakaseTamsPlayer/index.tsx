@@ -98,15 +98,13 @@ const OmakaseTamsPlayer = () => {
     setSelectedMarker(action);
   }, []);
 
-  // A timerange reload rebuilds the segmentation tracks, so every marker on them has a new id. The
-  // selection moves to its replacement, or clears if the new window could not hold the marker. The
-  // lanes are the same objects but now hold new tracks, and a fresh array is what makes the toolbar,
-  // which subscribes to each lane's track per `segmentationLanes`, pick them up.
+  // A timerange reload rebuilds the segmentation tracks, so every marker on them has a new id, and
+  // the selection moves to its replacement. The lanes are the same objects but now hold new tracks,
+  // and a fresh array is what makes the toolbar, which subscribes to each lane's track per
+  // `segmentationLanes`, pick them up.
   const handleSegmentationTracksRebuilt = useCallback(
-    (replacements: Map<string, Marker | undefined>) => {
-      setSelectedMarker((prev) =>
-        prev && replacements.has(prev.id) ? replacements.get(prev.id) : prev,
-      );
+    (replacements: Map<string, Marker>) => {
+      setSelectedMarker((prev) => (prev && replacements.get(prev.id)) ?? prev);
       setSegmentationLanes((prev) => [...prev]);
     },
     [],
