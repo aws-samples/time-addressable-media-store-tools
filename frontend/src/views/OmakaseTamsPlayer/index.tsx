@@ -98,14 +98,19 @@ const OmakaseTamsPlayer = () => {
     setSelectedMarker(action);
   }, []);
 
-  // A timerange change drops any marker the new window cannot hold in full, so a selection can
-  // outlive the marker it points at. Clearing it keeps the marker list, the lane and the toolbar's
-  // set-in/set-out buttons agreeing on what is selected.
-  const handleMarkersDiscarded = useCallback((markerIds: string[]) => {
-    setSelectedMarker((prev) =>
-      prev && markerIds.includes(prev.id) ? undefined : prev,
-    );
-  }, []);
+  // A timerange reload rebuilds the segmentation tracks, so every marker on them has a new id. The
+  // selection moves to its replacement, or clears if the new window could not hold the marker. The
+  // lanes are the same objects but now hold new tracks, and a fresh array is what makes the toolbar,
+  // which subscribes to each lane's track per `segmentationLanes`, pick them up.
+  const handleSegmentationTracksRebuilt = useCallback(
+    (replacements: Map<string, Marker | undefined>) => {
+      setSelectedMarker((prev) =>
+        prev && replacements.has(prev.id) ? replacements.get(prev.id) : prev,
+      );
+      setSegmentationLanes((prev) => [...prev]);
+    },
+    [],
+  );
 
   const handleSegmentationTabClick = useCallback((lane: MarkerTrackLane) => {
     setCurrentSource(lane);
@@ -195,22 +200,24 @@ const OmakaseTamsPlayer = () => {
   // and the thumbnail VTT file became the player's thumbnail track.
   //
   // `OmakaseMarkerListComponent` only rebuilds the list when `markerTrack` changes identity, and the
-  // list resolves its thumbnail track once, at creation. Every load registers a new thumbnail track,
-  // so `thumbnailTrack` is a dependency here: the fresh `markerTrack` object it produces is what
-  // makes a timerange reload rebuild the list against the new window's thumbnails.
+  // list resolves its tracks once, at creation. Every load registers a new thumbnail track and
+  // rebuilds the segmentation tracks, so both are dependencies here: the fresh `markerTrack` object
+  // they produce is what makes a timerange reload rebuild the list against the new tracks.
+  const currentSourceTrack = currentSource
+    ? laneTrack(currentSource)
+    : undefined;
   const markerListConfig = useMemo<MarkerListConfig>(() => {
-    const markerTrack = currentSource ? laneTrack(currentSource) : undefined;
     return {
       ...MARKER_LIST_CONFIG,
-      markerTrack: markerTrack
-        ? { source: TrackSource.fromTrack(markerTrack) }
+      markerTrack: currentSourceTrack
+        ? { source: TrackSource.fromTrack(currentSourceTrack) }
         : undefined,
       thumbnailTrack: thumbnailTrack
         ? { source: TrackSource.fromTrack(thumbnailTrack) }
         : undefined,
       mode: MarkerListMode.CUTLIST,
     };
-  }, [currentSource, thumbnailTrack]);
+  }, [currentSourceTrack, thumbnailTrack]);
 
   const timelineConfig = useMemo(
     () => ({
@@ -254,7 +261,7 @@ const OmakaseTamsPlayer = () => {
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
     onMarkerClick: setSelectedMarkerWithSync,
-    onMarkersDiscarded: handleMarkersDiscarded,
+    onSegmentationTracksRebuilt: handleSegmentationTracksRebuilt,
     onPlayerReady: setOmakasePlayer,
     onThumbnailTrackChange: setThumbnailTrack,
     onMediaStartTimeCalculated: setMediaStartTime,

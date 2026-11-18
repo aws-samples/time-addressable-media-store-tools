@@ -47,10 +47,12 @@ const MarkerListHeader = ({
   const [laneToDelete, setLaneToDelete] = useState<string | null>(null);
 
   // 1.x replaces the per-lane onMarkerCreate$/Update$/Delete$ trio with one event stream on the
-  // lane's marker track.
+  // lane's marker track. Keyed on the track rather than the lane, because a timerange reload gives
+  // the same lane a new track.
+  const sourceTrack = source ? laneTrack(source) : undefined;
   const subscribeToMarkerChanges = useCallback(
     (onChange: () => void) => {
-      const track = source ? laneTrack(source) : undefined;
+      const track = sourceTrack;
       if (!track) return () => {};
       const sub = track.onEvent$.subscribe({
         next: (event) => {
@@ -68,11 +70,11 @@ const MarkerListHeader = ({
       });
       return () => sub.unsubscribe();
     },
-    [source],
+    [sourceTrack],
   );
 
   const getHasValidMarker = useCallback(() => {
-    const track = source ? laneTrack(source) : undefined;
+    const track = sourceTrack;
     if (!track) return false;
     return track.timedItems.some(
       (marker) =>
@@ -80,7 +82,7 @@ const MarkerListHeader = ({
         markerStart(marker) != null &&
         markerEnd(marker) != null,
     );
-  }, [source]);
+  }, [sourceTrack]);
 
   const hasValidMarker = useSyncExternalStore(
     subscribeToMarkerChanges,

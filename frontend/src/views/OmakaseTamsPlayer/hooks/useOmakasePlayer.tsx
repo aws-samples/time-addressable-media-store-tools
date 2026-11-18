@@ -18,6 +18,7 @@ import {
   calculateTimerangeFromMainMedia,
   createAuthenticationConfig,
   snapshotSegmentationTracks,
+  type SegmentationSnapshot,
 } from "../utils";
 import { filter, Subject, type Subscription } from "rxjs";
 import type {
@@ -45,10 +46,13 @@ type UseOmakasePlayerParams = {
   onSegmentationLaneCreated?: (lane: MarkerTrackLane) => void;
   onMarkerClick?: (marker: Marker) => void;
   /**
-   * Markers dropped because the newly loaded window could not hold them in full. The view uses this
-   * to clear a selection that no longer exists.
+   * A timerange reload rebuilt the segmentation tracks, so every marker on them has a new id. Maps
+   * each previous id to its replacement, or to undefined if the new window could not hold it. The
+   * view uses this to move the selection across, and to refresh anything holding the old tracks.
    */
-  onMarkersDiscarded?: (markerIds: string[]) => void;
+  onSegmentationTracksRebuilt?: (
+    replacements: Map<string, Marker | undefined>,
+  ) => void;
   onPlayerReady?: (player: OmakasePlayerApi) => void;
   /**
    * The thumbnail track the lanes were just built with. Every load registers a new one, and the
@@ -68,7 +72,7 @@ export const useOmakasePlayer = ({
   onTimerangeChange,
   onSegmentationLaneCreated,
   onMarkerClick,
-  onMarkersDiscarded,
+  onSegmentationTracksRebuilt,
   onPlayerReady,
   onThumbnailTrackChange,
   onMediaStartTimeCalculated,
@@ -85,12 +89,11 @@ export const useOmakasePlayer = ({
   // Held for the same reason: by the time the next build runs, the load has detached these tracks
   // from their lanes. See `removeVisualizationLanes`.
   const segmentTracksRef = useRef<MarkerTrack[]>([]);
-  // Each segmentation lane's MarkerTrack, keyed by lane id. A timerange reload clears the track
-  // repository and detaches these tracks from their lanes — the lanes survive, their tracks do not —
-  // so they are captured just before the load and re-registered by `restoreSegmentationTrack`. The
-  // lanes themselves are read back off the timeline, which is what makes the toolbar's lanes behave
-  // the same as the one built here.
-  const segmentationTracksRef = useRef<Map<string, MarkerTrack>>(new Map());
+  // What each segmentation lane's MarkerTrack held, keyed by lane id. A timerange reload destroys
+  // these tracks — the lanes survive, their tracks do not — so their markers are captured just before
+  // the load and rebuilt into new tracks by the next build. The lanes themselves are read back off the
+  // timeline, which is what makes the toolbar's lanes behave the same as the one built here.
+  const segmentationSnapshotRef = useRef<SegmentationSnapshot>(new Map());
   // `tamsMetadata.mediaStartTime` of the media the lanes were last built for. Marker temporals are
   // relative to it, so the delta against the incoming window is what re-anchors them.
   const markerMediaStartTimeRef = useRef<number | undefined>(undefined);
@@ -106,7 +109,7 @@ export const useOmakasePlayer = ({
     onTimerangeChange,
     onSegmentationLaneCreated,
     onMarkerClick,
-    onMarkersDiscarded,
+    onSegmentationTracksRebuilt,
     onPlayerReady,
     onThumbnailTrackChange,
     onMediaStartTimeCalculated,
@@ -168,7 +171,7 @@ export const useOmakasePlayer = ({
       player,
       mode: modeRef.current,
       destroy$,
-      segmentationTracks: segmentationTracksRef.current,
+      segmentationSnapshot: segmentationSnapshotRef.current,
       previousMediaStartTime: markerMediaStartTimeRef.current,
       onSegmentationLaneCreated: callbacksRef.current.onSegmentationLaneCreated,
       onMarkerClick: callbacksRef.current.onMarkerClick,
@@ -178,8 +181,10 @@ export const useOmakasePlayer = ({
     segmentTracksRef.current = built.segmentTracks;
     refreshSegmentLanesRef.current = built.refreshSegmentLanes;
     callbacksRef.current.onThumbnailTrackChange?.(built.thumbnailTrack);
-    if (built.discardedMarkerIds.length) {
-      callbacksRef.current.onMarkersDiscarded?.(built.discardedMarkerIds);
+    if (built.markerReplacements) {
+      callbacksRef.current.onSegmentationTracksRebuilt?.(
+        built.markerReplacements,
+      );
     }
     markerMediaStartTimeRef.current = mainMedia.tamsMetadata?.mediaStartTime;
     builtForMediaIdRef.current = mainMedia.id;
@@ -235,10 +240,10 @@ export const useOmakasePlayer = ({
       liveUpdatesRef.current?.unsubscribe();
       liveUpdatesRef.current = undefined;
 
-      // Last chance to see the segmentation lanes' tracks: `loadMainMedia` unloads first, and
-      // `unloadMainMedia` clears the track repository, which detaches every track from its lane.
+      // Last chance to read the segmentation lanes' tracks: `loadMainMedia` unloads first, and
+      // `unloadMainMedia` clears the track repository, which destroys every track in it.
       if (timelineRef.current) {
-        segmentationTracksRef.current = snapshotSegmentationTracks(
+        segmentationSnapshotRef.current = snapshotSegmentationTracks(
           timelineRef.current,
         );
       }
@@ -343,7 +348,7 @@ export const useOmakasePlayer = ({
       textLabelsRef.current = new Map();
       visualizationLaneIdsRef.current = [];
       segmentTracksRef.current = [];
-      segmentationTracksRef.current = new Map();
+      segmentationSnapshotRef.current = new Map();
       markerMediaStartTimeRef.current = undefined;
       builtForMediaIdRef.current = undefined;
       liveUpdatesRef.current?.unsubscribe();
