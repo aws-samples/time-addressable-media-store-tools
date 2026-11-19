@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { OmakasePlayerApi } from "@byomakase/omakase-player";
+import { MediaTemporalFormat } from "@byomakase/omakase-player";
 
 type HotkeyBinding = {
   code: string;
@@ -16,16 +17,28 @@ type HotkeyBinding = {
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 2, 4, 8];
 const IGNORED_TAGS = ["INPUT", "TEXTAREA", "OMAKASE-MARKER-LIST"];
 
+// omakase-player 1.x has no `isPlaying()`/`isPaused()`/`getPlaybackRate()` accessors — the
+// playback state is read off the session snapshot instead.
+const playback = (p: OmakasePlayerApi) => p.player.playerSession.playback;
+
+const seekToFrame = (p: OmakasePlayerApi, frame: number) =>
+  p.player.seekTo(frame, MediaTemporalFormat.FRAME_COUNT);
+
+// Replaces 0.25.4's `seekToEnd()`, which 1.x dropped.
+const seekToEnd = (p: OmakasePlayerApi) =>
+  p.player.seekTo(100, MediaTemporalFormat.PERCENT);
+
 const HOTKEYS: HotkeyBinding[] = [
   {
     code: "Space",
     modifiers: { ctrl: false, meta: false },
-    action: (p) => p.video.togglePlayPause(),
+    action: (p) =>
+      playback(p).playing ? p.player.pause() : p.player.play(),
   },
   {
     code: "KeyS",
     modifiers: { shift: false, ctrl: false, meta: false },
-    action: (p) => p.audio.toggleAudioOutputMuteUnmute(),
+    action: (p) => p.player.audio.toggleMuted(),
   },
   {
     code: "Backslash",
@@ -33,16 +46,16 @@ const HOTKEYS: HotkeyBinding[] = [
       const delta = e.shiftKey ? 1 : -1;
       const vol = Math.min(
         100,
-        Math.max(0, p.audio.getAudioOutputVolume() * 100 + 10 * delta),
+        Math.max(0, p.player.audio.volume * 100 + 10 * delta),
       );
-      p.audio.setAudioOutputVolume(vol / 100);
+      p.player.audio.setVolume(vol / 100);
     },
   },
   {
     code: "KeyD",
     action: (p, e) => {
       if (!(e.ctrlKey && e.shiftKey && e.metaKey)) {
-        p.subtitles.toggleShowHideActiveTrack();
+        p.player.text.toggleShowHide();
       }
     },
   },
@@ -50,28 +63,28 @@ const HOTKEYS: HotkeyBinding[] = [
     code: "KeyK",
     modifiers: { shift: false, ctrl: false, meta: false },
     action: (p) => {
-      p.video.setPlaybackRate(1);
-      p.video.pause();
+      p.player.setPlaybackRate(1);
+      p.player.pause();
     },
   },
   {
     code: "KeyL",
     modifiers: { ctrl: false, meta: false },
     action: (p, e) => {
-      const currentIdx = PLAYBACK_RATES.indexOf(p.video.getPlaybackRate());
+      const currentIdx = PLAYBACK_RATES.indexOf(playback(p).playbackRate);
       const nextIdx = currentIdx + (e.shiftKey ? 1 : -1);
       const rate =
         PLAYBACK_RATES[
           Math.min(Math.max(0, nextIdx), PLAYBACK_RATES.length - 1)
         ];
-      p.video.setPlaybackRate(rate);
-      if (p.video.isPaused()) p.video.play();
+      p.player.setPlaybackRate(rate);
+      if (playback(p).paused) p.player.play();
     },
   },
   {
     code: "KeyF",
     modifiers: { shift: false, ctrl: false, meta: false },
-    action: (p) => p.video.toggleFullscreen(),
+    action: (p) => p.player.toggleFullScreen(),
   },
   {
     code: "ArrowRight",
@@ -79,8 +92,8 @@ const HOTKEYS: HotkeyBinding[] = [
     requiresVideo: true,
     action: (p, e) => {
       const frames = e.shiftKey ? 10 : 1;
-      if (p.video.isPlaying()) p.video.pause();
-      p.video.seekFromCurrentFrame(frames);
+      if (playback(p).playing) p.player.pause();
+      p.player.seekFromCurrentTime(frames, MediaTemporalFormat.FRAME_COUNT);
     },
   },
   {
@@ -89,30 +102,30 @@ const HOTKEYS: HotkeyBinding[] = [
     requiresVideo: true,
     action: (p, e) => {
       const frames = e.shiftKey ? 10 : 1;
-      if (p.video.isPlaying()) p.video.pause();
-      p.video.seekFromCurrentFrame(-frames);
+      if (playback(p).playing) p.player.pause();
+      p.player.seekFromCurrentTime(-frames, MediaTemporalFormat.FRAME_COUNT);
     },
   },
   {
     code: "Digit1",
     modifiers: { ctrl: false, meta: false, shift: false, alt: false },
     requiresVideo: true,
-    action: (p) => p.video.pause().subscribe(() => p.video.seekToFrame(0)),
+    action: (p) => p.player.pause().subscribe(() => seekToFrame(p, 0)),
   },
   {
     code: "Home",
     requiresVideo: true,
-    action: (p) => p.video.pause().subscribe(() => p.video.seekToFrame(0)),
+    action: (p) => p.player.pause().subscribe(() => seekToFrame(p, 0)),
   },
   {
     code: "Digit1",
     modifiers: { ctrl: true },
     requiresVideo: true,
     action: (p) => {
-      if (p.video.isPlaying()) {
-        p.video.pause().subscribe(() => p.video.seekToEnd());
+      if (playback(p).playing) {
+        p.player.pause().subscribe(() => seekToEnd(p));
       } else {
-        p.video.seekToEnd();
+        seekToEnd(p);
       }
     },
   },
@@ -120,10 +133,10 @@ const HOTKEYS: HotkeyBinding[] = [
     code: "End",
     requiresVideo: true,
     action: (p) => {
-      if (p.video.isPlaying()) {
-        p.video.pause().subscribe(() => p.video.seekToEnd());
+      if (playback(p).playing) {
+        p.player.pause().subscribe(() => seekToEnd(p));
       } else {
-        p.video.seekToEnd();
+        seekToEnd(p);
       }
     },
   },
@@ -158,7 +171,7 @@ export const usePlayerHotkeys = (player: OmakasePlayerApi | undefined) => {
         (h) =>
           h.code === e.code &&
           modifiersMatch(e, h.modifiers) &&
-          (!h.requiresVideo || player.video.isVideoLoaded()),
+          (!h.requiresVideo || player.player.isMainMediaLoaded),
       );
 
       if (binding) {

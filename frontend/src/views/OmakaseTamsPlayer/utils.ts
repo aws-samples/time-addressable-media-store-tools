@@ -1,17 +1,40 @@
 import {
-  PeriodMarker,
-  MarkerApi,
-  MarkerAwareApi,
-  Marker,
+  ImageButton,
+  MarkerTrack,
+  MarkerTrackLane,
+  MarkerType,
+  MediaTemporalFormat,
+  PlayerAudioType,
+  PlayerTextType,
+  ScrollbarLane,
+  TextLabel,
+  TamsPlaybackMode,
+  TextTrackLane,
+  ThumbnailTrackLane,
+  TimedItemTemporalType,
+  TimedItemTemporalUtil,
+  TimedItemsTrackEventType,
+  TimelineNodeEventType,
+  TimelineSlotType,
+  TrackSource,
+  TrackType,
 } from "@byomakase/omakase-player";
+import type {
+  Marker,
+  MarkerArgs,
+  MarkerState,
+  MarkerStyle,
+  MarkerTrackLaneStyle,
+  OmakasePlayerApi,
+  TamsMainMedia,
+  ThumbnailTrack,
+  TimedItemTemporal,
+  TimelineApi,
+} from "@byomakase/omakase-player";
+import { TimeRangeUtil } from "@byomakase/omakase-react-components";
 import {
-  TimeRangeUtil,
-  resolveAudioManifestName,
-  resolveTextManifestName,
-} from "@byomakase/omakase-react-components";
-import {
-  SEGMENT_PERIOD_MARKER_STYLE,
-  SEGMENTATION_PERIOD_MARKER_STYLE,
+  SEGMENT_MARKER_LANE_STYLE,
+  SEGMENTATION_MARKER_LANE_STYLE,
   DROPDOWN_BUTTON_CONFIG,
   CHEVRON_DOWN_SVG_SOURCE,
   CHEVRON_RIGHT_SVG_SOURCE,
@@ -25,27 +48,73 @@ import {
   LANE_LABEL_CONFIG,
 } from "./constants";
 import type { Flow, Segment } from "@/types/tams";
-import {
-  ThumbnailLane,
-  MarkerLane,
-  OmakasePlayerApi,
-  SubtitlesLane,
-  ImageButton,
-  TextLabel,
-} from "@byomakase/omakase-player";
 import { Mode } from "@cloudscape-design/global-styles";
-import { mergeVttManifest } from "./vtt-util";
-import type {
-  PeriodMarkerStyle,
-  TimelineApi,
-  TimelineStyle,
-} from "@byomakase/omakase-player";
-import { type Observable, takeUntil } from "rxjs";
-import type { OmakaseTamsPlayer as TamsPlayer } from "@byomakase/omakase-tams-player";
-import type { TamsVideo } from "@byomakase/omakase-tams-player";
-import type { Video } from "@byomakase/omakase-player/dist/video/model";
+import { filter, type Observable, takeUntil } from "rxjs";
 
-export const makeColorCycler = (colors: string[]) => {
+// omakase-react-components 2.0 dropped these helpers along with its TAMS adapter. The
+// resolution order has to stay identical, because it is how the TAMS→HLS bridge names each
+// rendition, and the rendition name is what surfaces as the player track's `label` — our only
+// join key from a TAMS flow back to its player track.
+const resolveTextManifestName = (flow: Flow) =>
+  flow.tags?.hls_name || flow.label || flow.description || "subtitles";
+
+const resolveAudioManifestName = (flow: Flow) =>
+  flow.tags?.hls_name || flow.label || flow.description || "audio";
+
+// Distinguishes TAMS segment-visualization marker tracks from the user's segmentation tracks.
+// Lane ids are library-generated uuids in 1.x, so identity lives on the track instead.
+const SEGMENT_TRACK_ATTR = "tamsSegments";
+
+const isSegmentTrack = (track: MarkerTrack) =>
+  track.customAttrs?.[SEGMENT_TRACK_ATTR] === true;
+
+// Marks a segmentation track this app built — the first lane's, and every track rebuilt after a
+// timerange reload — as opposed to one the toolbar's "add segmentation lane" button built. The
+// toolbar installs its own overlap guard on the tracks it builds, so ours goes only on the others.
+const APP_SEGMENTATION_TRACK_ATTR = "appSegmentation";
+
+export const laneTrack = (lane: MarkerTrackLane): MarkerTrack | undefined =>
+  lane.getTracks().at(0);
+
+// 1.x temporals carry seconds as strings.
+const spanTemporal = (start: number, end: number): TimedItemTemporal => ({
+  type: TimedItemTemporalType.SPAN,
+  start: String(start),
+  end: String(end),
+});
+
+// Applies `fn` to every time a temporal carries, preserving its type.
+const mapTemporal = (
+  temporal: TimedItemTemporal,
+  fn: (seconds: number) => number,
+): TimedItemTemporal => {
+  const map = (value: string) => String(fn(Number(value)));
+  switch (temporal.type) {
+    case TimedItemTemporalType.MOMENT:
+      return { ...temporal, time: map(temporal.time) };
+    case TimedItemTemporalType.SPAN:
+      return {
+        ...temporal,
+        start: map(temporal.start),
+        end: map(temporal.end),
+      };
+    case TimedItemTemporalType.SPAN_START:
+      return { ...temporal, start: map(temporal.start) };
+    case TimedItemTemporalType.SPAN_END:
+      return { ...temporal, end: map(temporal.end) };
+  }
+};
+
+export const markerStart = (marker: Marker | MarkerState) =>
+  TimedItemTemporalUtil.extractStartTime(marker.temporal);
+
+export const markerEnd = (marker: Marker | MarkerState) =>
+  TimedItemTemporalUtil.extractEndTime(marker.temporal);
+
+export const isSpanningMarker = (marker: Marker | MarkerState) =>
+  marker.markerType === MarkerType.SPANNING_MARKER;
+
+const makeColorCycler = (colors: string[]) => {
   let i = 0;
   return () => colors[i++ % colors.length];
 };
@@ -65,8 +134,7 @@ const segmentToMarker = (
   segment: Segment,
   mediaStartTime: number,
   videoDuration: number,
-  color: string,
-): PeriodMarker | null => {
+): MarkerArgs | null => {
   // Parse the segment timerange
   const timerange = TimeRangeUtil.parseTimeRange(segment.timerange);
 
@@ -107,17 +175,7 @@ const segmentToMarker = (
     return null;
   }
 
-  return new PeriodMarker({
-    timeObservation: {
-      start,
-      end,
-    },
-    editable: false,
-    style: {
-      ...SEGMENT_PERIOD_MARKER_STYLE,
-      color,
-    },
-  });
+  return { temporal: spanTemporal(start, end) };
 };
 
 const isMuxedFlow = (f: Flow) => f.format === "urn:x-nmos:format:multi"; // Multi flows are only muxed when they have segments (pre-filtered by flowsWithSegments)
@@ -126,41 +184,157 @@ const isAudioFlow = (f: Flow) => f.format === "urn:x-nmos:format:audio";
 const isSubtitleFlow = (f: Flow) =>
   f.format === "urn:x-nmos:format:data" && f.container === "text/vtt";
 
+// Markers only carry `markerColor` per instance in 1.x, and it has to go through the UI style
+// cascade as an id rule to survive marker view components being recreated on zoom and scroll.
+const applyMarkerColor = (
+  player: OmakasePlayerApi,
+  markerId: string,
+  markerColor: string,
+) => player.ui.updateStyleRule<MarkerStyle>({ id: markerId, style: { markerColor } });
+
+// `player.ui` keeps id rules for as long as the app leaves them, independent of the marker's life.
+const removeMarkerStyleRules = (
+  player: OmakasePlayerApi,
+  markerIds: Iterable<string>,
+) => {
+  const ids = new Set(markerIds);
+  if (!ids.size) return;
+  player.ui.removeStyleRules((rule) => "id" in rule && ids.has(rule.id));
+};
+
+const applySegmentMarkerColors = (
+  player: OmakasePlayerApi,
+  track: MarkerTrack,
+  mode: Mode,
+) => {
+  const nextColor = makeColorCycler(THEME[mode].markerColors);
+  for (const marker of track.timedItems) {
+    applyMarkerColor(player, marker.id, nextColor());
+  }
+};
+
+// Each segment marker remembers the TAMS timerange it was drawn from, which is what lets a live
+// update tell the segments already drawn from the ones that have just arrived or been evicted.
+const SEGMENT_TIMERANGE_ATTR = "tamsSegmentTimerange";
+
+const segmentsToMarkers = (
+  segments: Segment[],
+  mediaStartTime: number,
+  videoDuration: number,
+): MarkerArgs[] =>
+  segments.flatMap((segment) => {
+    const marker = segmentToMarker(segment, mediaStartTime, videoDuration);
+    return marker
+      ? [{ ...marker, data: { [SEGMENT_TIMERANGE_ATTR]: segment.timerange } }]
+      : [];
+  });
+
+/**
+ * Brings a segment track up to date with a live flow's current segment list.
+ *
+ * In live playback the player keeps polling the store, and appends new segments to — and, for a
+ * sliding window, evicts old ones from — the `tamsMediaData.flowsSegments` arrays in place. The
+ * markers were built from those arrays once, at load, so without this the lane stops at whatever
+ * existed then while the timeline itself grows past it.
+ */
+const syncSegmentMarkers = (
+  track: MarkerTrack,
+  segments: Segment[],
+  mediaStartTime: number,
+  mode: Mode,
+  player: OmakasePlayerApi,
+) => {
+  const current = new Set(segments.map((segment) => segment.timerange));
+  const evicted = track.timedItems
+    .filter((marker) => !current.has(marker.data?.[SEGMENT_TIMERANGE_ATTR]))
+    .map((marker) => marker.id);
+  if (evicted.length) {
+    track.deleteTimedItems(evicted);
+    // Each marker's colour is an id rule; without this a sliding window leaks one per poll.
+    removeMarkerStyleRules(player, evicted);
+  }
+
+  // At load the markers were clipped to the duration of the moment, and in live the newest segment
+  // can run past it — so it was drawn short, leaving a gap before the first segment that arrives
+  // afterwards. Restore any such marker to its segment's full length. Snapshotted first, because
+  // `updateTimedItem` re-sorts the track's live `timedItems` array.
+  const segmentsByTimerange = new Map(
+    segments.map((segment) => [segment.timerange, segment]),
+  );
+  const clipped = track.timedItems.flatMap((marker) => {
+    const segment = segmentsByTimerange.get(marker.data?.[SEGMENT_TIMERANGE_ATTR]);
+    const full = segment
+      ? segmentToMarker(segment, mediaStartTime, Number.POSITIVE_INFINITY)
+      : null;
+    if (!full) return [];
+    const fullEnd = TimedItemTemporalUtil.extractEndTime(full.temporal);
+    const end = TimedItemTemporalUtil.extractEndTime(marker.temporal);
+    return fullEnd !== undefined && end !== undefined && fullEnd > end
+      ? [{ id: marker.id, temporal: full.temporal }]
+      : [];
+  });
+  for (const { id, temporal } of clipped) {
+    track.updateTimedItem(id, { temporal });
+  }
+
+  const drawn = new Set(
+    track.timedItems.map((marker) => marker.data?.[SEGMENT_TIMERANGE_ATTR]),
+  );
+  // No clipping at the far end: the duration read at load is exactly what live has outgrown.
+  const arrived = segmentsToMarkers(
+    segments.filter((segment) => !drawn.has(segment.timerange)),
+    mediaStartTime,
+    Number.POSITIVE_INFINITY,
+  );
+  if (!arrived.length) return;
+
+  // Continue the colour cycle from the number of markers this track has EVER been given, not the
+  // number it holds now: a sliding window evicts one segment for every one that arrives, so the
+  // current count stands still and every new segment would get the same colour.
+  const colors = THEME[mode].markerColors;
+  const added = segmentMarkersAdded.get(track) ?? track.timedItems.length;
+  const before = new Set(track.timedItems.map((marker) => marker.id));
+  track.addTimedItems(arrived);
+  track.timedItems
+    .filter((marker) => !before.has(marker.id))
+    .forEach((marker, i) =>
+      applyMarkerColor(player, marker.id, colors[(added + i) % colors.length]),
+    );
+  segmentMarkersAdded.set(track, added + arrived.length);
+};
+
+// Running count of markers each live segment track has been given — see `syncSegmentMarkers`.
+const segmentMarkersAdded = new WeakMap<MarkerTrack, number>();
+
 const addSegmentMarkersToLane = (
-  lane: MarkerLane,
+  lane: MarkerTrackLane,
   segments: Segment[],
   mediaStartTime: number,
   videoDuration: number,
   mode: Mode,
-) => {
-  const nextColor = makeColorCycler(THEME[mode].markerColors);
-  for (const segment of segments) {
-    const marker = segmentToMarker(
-      segment,
-      mediaStartTime,
-      videoDuration,
-      nextColor(),
-    );
-    if (marker) lane.addMarker(marker);
-  }
-};
+  player: OmakasePlayerApi,
+): MarkerTrack => {
+  const markers = segmentsToMarkers(segments, mediaStartTime, videoDuration);
 
-const loadAndRegisterSubtitles = (
-  subtitlesLane: SubtitlesLane,
-  player: TamsPlayer,
-  textUrl: string,
-) => {
-  mergeVttManifest(textUrl, player.video.getDuration())
-    .then((vttUrl) => {
-      subtitlesLane.loadVtt(vttUrl);
-    })
-    .catch((err) => console.error("Error loading subtitle VTT:", err));
+  // 0.25.4 marked each segment marker `editable: false`; editability is a track-level concern
+  // in 1.x. Deliberately no `label` — the first track's label would become the lane description,
+  // and these lanes are labelled by their own TextLabel node.
+  const track = new MarkerTrack({
+    timedItemsLocked: true,
+    customAttrs: { [SEGMENT_TRACK_ATTR]: true },
+  });
+  player.track.add(track);
+  track.addTimedItems(markers);
+  lane.addTrack(track, { style: SEGMENT_MARKER_LANE_STYLE });
+
+  applySegmentMarkerColors(player, track, mode);
+  return track;
 };
 
 const addSubtitleLaneControls = (
-  subtitlesLane: SubtitlesLane,
-  markerLane: MarkerLane,
-  player: TamsPlayer,
+  subtitlesLane: TextTrackLane,
+  markerLane: MarkerTrackLane,
+  player: OmakasePlayerApi,
   flow: Flow,
   destroy$: Observable<void>,
 ) => {
@@ -168,14 +342,16 @@ const addSubtitleLaneControls = (
     ...DROPDOWN_BUTTON_CONFIG,
     src: CHEVRON_RIGHT_SVG_SOURCE,
   });
-  dropdownButton.onClick$.subscribe(() => {
-    markerLane.toggleMinimizeMaximize();
-    dropdownButton.setImage({
-      src: markerLane.isMinimized()
-        ? CHEVRON_RIGHT_SVG_SOURCE
-        : CHEVRON_DOWN_SVG_SOURCE,
+  dropdownButton.onEvent$
+    .pipe(filter((e) => e.type === TimelineNodeEventType.TIMELINE_NODE_CLICK))
+    .subscribe(() => {
+      markerLane.toggleMinimizeMaximize();
+      dropdownButton.setImage({
+        src: markerLane.isMinimized()
+          ? CHEVRON_RIGHT_SVG_SOURCE
+          : CHEVRON_DOWN_SVG_SOURCE,
+      });
     });
-  });
   subtitlesLane.addTimelineNode({
     width: DROPDOWN_BUTTON_CONFIG.width!,
     height: DROPDOWN_BUTTON_CONFIG.height!,
@@ -184,44 +360,52 @@ const addSubtitleLaneControls = (
     timelineNode: dropdownButton,
   });
 
+  const flowLabel = resolveTextManifestName(flow);
+  const findTrack = () =>
+    player.player.text.getTracks().find((t) => t.label === flowLabel);
+
   const subtitlesButton = new ImageButton({
     ...SUBTITLES_BUTTON_CONFIG,
     src: CHATBOX_SVG_SOURCE,
   });
-  subtitlesButton.onClick$.subscribe(() => {
-    const track = player.subtitles
-      .getTracks()
-      .find((t) => t.label === resolveTextManifestName(flow));
-    if (!track) return;
-    const active = player.subtitles.getActiveTrack();
-    if (active?.id !== track.id) {
-      player.subtitles.showTrack(track.id).subscribe({
-        error: (err) => console.error("Error showing subtitle track:", err),
-      });
-    } else if (active?.hidden) {
-      player.subtitles.showActiveTrack().subscribe();
-    } else {
-      player.subtitles.hideActiveTrack().subscribe();
+  subtitlesButton.onEvent$
+    .pipe(filter((e) => e.type === TimelineNodeEventType.TIMELINE_NODE_CLICK))
+    .subscribe(() => {
+      const track = findTrack();
+      if (!track) return;
+      const state = player.player.text.state.tracks[PlayerTextType.MAIN].find(
+        (t) => t.trackId === track.id,
+      );
+      if (!state?.active) {
+        player.player.text.switchTrack(track.id, true).subscribe({
+          error: (err) => console.error("Error showing subtitle track:", err),
+        });
+      } else if (!player.player.text.shown) {
+        player.player.text.show().subscribe();
+      } else {
+        player.player.text.hide().subscribe();
+      }
+    });
+
+  // 1.x replaces the onShow$/onHide$ pair with one event stream plus a state snapshot, so the
+  // icon is recomputed from state rather than driven off the event payload.
+  const refreshIcon = () => {
+    const track = findTrack();
+    const state = track
+      ? player.player.text.state.tracks[PlayerTextType.MAIN].find(
+          (t) => t.trackId === track.id,
+        )
+      : undefined;
+    const src =
+      state?.active && player.player.text.shown
+        ? CHATBOX_ACTIVE_SVG_SOURCE
+        : CHATBOX_SVG_SOURCE;
+    if (subtitlesButton.getImage()?.src !== src) {
+      subtitlesButton.setImage({ src });
     }
-  });
-  player.subtitles.onShow$.pipe(takeUntil(destroy$)).subscribe((event) => {
-    const track = player.subtitles
-      .getTracks()
-      .find((t) => t.label === resolveTextManifestName(flow));
-    if (event.currentTrack?.id === track?.id) {
-      subtitlesButton.setImage({ src: CHATBOX_ACTIVE_SVG_SOURCE });
-    } else if (subtitlesButton.getImage()?.src !== CHATBOX_SVG_SOURCE) {
-      subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
-    }
-  });
-  player.subtitles.onHide$.pipe(takeUntil(destroy$)).subscribe((event) => {
-    const track = player.subtitles
-      .getTracks()
-      .find((t) => t.label === resolveTextManifestName(flow));
-    if (event.currentTrack?.id === track?.id) {
-      subtitlesButton.setImage({ src: CHATBOX_SVG_SOURCE });
-    }
-  });
+  };
+  player.player.text.onEvent$.pipe(takeUntil(destroy$)).subscribe(refreshIcon);
+
   subtitlesLane.addTimelineNode({
     width: SUBTITLES_BUTTON_CONFIG.width!,
     height: SUBTITLES_BUTTON_CONFIG.height!,
@@ -232,29 +416,42 @@ const addSubtitleLaneControls = (
 };
 
 const addAudioLaneControls = (
-  markerLane: MarkerLane,
+  markerLane: MarkerTrackLane,
   flow: Flow,
-  player: TamsPlayer,
+  player: OmakasePlayerApi,
   destroy$: Observable<void>,
 ) => {
   const flowLabel = resolveAudioManifestName(flow);
-  const iconFor = (activeLabel: string | undefined) =>
-    activeLabel === flowLabel
+
+  // PlayerAudioTrackState carries only the track id, so the label has to be joined back
+  // through the track list.
+  const activeLabel = () => {
+    const active = player.player.audio.state.tracks[PlayerAudioType.MAIN].find(
+      (t) => t.active,
+    );
+    if (!active) return undefined;
+    return player.player.audio.getTracks().find((t) => t.id === active.trackId)
+      ?.label;
+  };
+  const iconFor = (label: string | undefined) =>
+    label === flowLabel
       ? SOUND_ACTIVE_BUTTON_SOURCE
       : SOUND_INACTIVE_BUTTON_SOURCE;
 
   const soundButton = new ImageButton({
     ...SOUND_BUTTON_CONFIG,
-    src: iconFor(player.audio.getActiveAudioTrack()?.label),
+    src: iconFor(activeLabel()),
   });
-  soundButton.onClick$.subscribe(() => {
-    const target = player.audio
-      .getAudioTracks()
-      .find((t) => t.label === flowLabel);
-    if (target) player.audio.setActiveAudioTrack(target.id);
-  });
-  player.audio.onAudioSwitched$.pipe(takeUntil(destroy$)).subscribe((event) => {
-    soundButton.setImage({ src: iconFor(event.activeAudioTrack.label) });
+  soundButton.onEvent$
+    .pipe(filter((e) => e.type === TimelineNodeEventType.TIMELINE_NODE_CLICK))
+    .subscribe(() => {
+      const target = player.player.audio
+        .getTracks()
+        .find((t) => t.label === flowLabel);
+      if (target) player.player.audio.switchTrack(target.id).subscribe();
+    });
+  player.player.audio.onEvent$.pipe(takeUntil(destroy$)).subscribe(() => {
+    soundButton.setImage({ src: iconFor(activeLabel()) });
   });
   markerLane.addTimelineNode({
     width: SOUND_BUTTON_CONFIG.width!,
@@ -266,7 +463,7 @@ const addAudioLaneControls = (
 };
 
 const addLaneLabel = (
-  lane: MarkerLane | SubtitlesLane,
+  lane: MarkerTrackLane | TextTrackLane,
   text: string,
   mode: Mode,
 ): TextLabel => {
@@ -311,131 +508,455 @@ const computeMaxTimerangeFromFlows = (flows: Flow[]): string | null => {
 export const segmentationNameFor = (index: number) =>
   `Segmentation ${index + 1}`;
 
-export const renumberSegmentationLanes = (lanes: MarkerLane[]) => {
+// A destroyed lane keeps its `prepared` flag but drops its Konva groups, so `updateAttrs` walks
+// into `undefined.addChild` inside the library's `createDescriptionTextLabel`. React state can
+// still be pointing at lanes from a previous player for a render or two — an HMR update or a
+// remount rebuilds the player while `segmentationLanes` still holds the old lanes — so the lane is
+// checked for a live layout group before it is written to. There is no public API for this, hence
+// the cast.
+const isLaneLive = (lane: MarkerTrackLane) =>
+  !!(lane as unknown as { mainLeftFlexGroup?: unknown }).mainLeftFlexGroup;
+
+export const renumberSegmentationLanes = (lanes: MarkerTrackLane[]) => {
   lanes.forEach((lane, index) => {
-    lane.description = segmentationNameFor(index);
+    if (!isLaneLive(lane)) return;
+    lane.updateAttrs({ description: segmentationNameFor(index) });
   });
 };
 
-// Removes segment visualization lanes but preserves segmentation lanes,
-// which hold user-created markers that must persist across timerange reloads.
-export const removeVisualizationLanes = (timeline: TimelineApi) => {
-  const ids = timeline
+export const segmentationLaneStyleFor = (
+  mode: Mode,
+): Partial<MarkerTrackLaneStyle> => ({
+  ...THEME[mode].timelineLaneStyle,
+  ...SEGMENTATION_MARKER_LANE_STYLE,
+  markerColor: THEME[mode].colors.segmentationMarker,
+});
+
+// The marker list resolves a row's colour bar through a SHORTER style cascade than the timeline
+// does: class defaults -> the marker TRACK id -> the marker id. The lane id is not in it, so a
+// lane-level `markerColor` reaches the timeline marker but leaves the list's colour bar on the
+// library default (teal). The marker track id is the only rule level both surfaces share, so
+// writing the colour there is what keeps the two in step — and it re-applies on a theme change.
+export const applySegmentationMarkerColors = (
+  player: OmakasePlayerApi,
+  lanes: MarkerTrackLane[],
+  mode: Mode,
+) => {
+  const markerColor = THEME[mode].colors.segmentationMarker;
+  for (const lane of lanes) {
+    const track = laneTrack(lane);
+    if (track) {
+      player.ui.updateStyleRule<MarkerStyle>({
+        id: track.id,
+        style: { markerColor },
+      });
+    }
+  }
+};
+
+// Removes segment visualization lanes but preserves segmentation lanes, which hold user-created
+// markers that must persist across timerange reloads. Lane ids are library-generated uuids in
+// 1.x, so the caller passes back the ids the previous build returned.
+//
+// The segment tracks are passed in too rather than read off the lanes: this runs after
+// `loadMainMedia` has cleared the track repository, which detaches every track from its lane, so
+// `lane.getTracks()` is already empty. The track objects themselves still hold their markers, and
+// those markers' colour rules live on in `player.ui` unless removed here.
+export const removeVisualizationLanes = (
+  timeline: TimelineApi,
+  laneIds: string[],
+  segmentTracks: MarkerTrack[],
+  player: OmakasePlayerApi,
+) => {
+  for (const track of segmentTracks) {
+    removeMarkerStyleRules(
+      player,
+      track.timedItems.map((marker) => marker.id),
+    );
+    player.track.delete(track.id);
+  }
+  if (laneIds.length) timeline.removeTimelineLanes(laneIds);
+};
+
+const checkMarkerOverlap = (
+  track: MarkerTrack,
+  checkedMarker: Marker,
+): boolean => {
+  const start = markerStart(checkedMarker);
+  const end = markerEnd(checkedMarker);
+  if (start == null || end == null) return false;
+
+  return track.timedItems.some((other) => {
+    if (other.id === checkedMarker.id) return false;
+    if (!isSpanningMarker(other)) return false;
+    const otherStart = markerStart(other);
+    const otherEnd = markerEnd(other);
+    if (otherStart == null || otherEnd == null) return false;
+    return start < otherEnd && end > otherStart;
+  });
+};
+
+const createSegmentationLane = (
+  timeline: TimelineApi,
+  player: OmakasePlayerApi,
+  mode: Mode,
+  onMarkerClick?: (marker: Marker) => void,
+): MarkerTrackLane => {
+  const lane = new MarkerTrackLane({
+    description: segmentationNameFor(0),
+    style: segmentationLaneStyleFor(mode),
+  });
+  const track = new MarkerTrack({
+    customAttrs: { [APP_SEGMENTATION_TRACK_ATTR]: true },
+  });
+  player.track.add(track);
+  lane.addTrack(track);
+  timeline.addTimelineLane(lane);
+
+  // Temporals are relative media seconds, so this spans whatever window is loaded at creation.
+  // Across a later timerange reload it keeps that absolute span. See `rebaseMarkers`.
+  track.addTimedItems({
+    temporal: spanTemporal(0, player.player.getDuration()),
+  });
+  const defaultMarker = track.timedItems.at(0);
+  if (defaultMarker) setTimeout(() => onMarkerClick?.(defaultMarker));
+
+  return lane;
+};
+
+/**
+ * The segmentation lanes currently on the timeline — the one built here plus any the toolbar's
+ * "add segmentation lane" button created.
+ *
+ * Discovered from the timeline rather than tracked in app state, so the toolbar's lanes are treated
+ * exactly like the first one. `MarkerTrackLane` is also the class used for the per-flow segment
+ * visualisation lanes, so those are excluded: by their track while they still have one, and
+ * otherwise by construction, because the caller destroys and rebuilds them on every lane build
+ * before this runs.
+ */
+const segmentationLanesOnTimeline = (timeline: TimelineApi): MarkerTrackLane[] =>
+  timeline
     .getTimelineLanes()
     .filter(
-      (lane) =>
-        lane.id.startsWith("marker-lane-") ||
-        lane.id.startsWith("subtitles-lane-") ||
-        lane.id === "thumbnail-lane",
-    )
-    .map((lane) => lane.id);
-  if (ids.length) timeline.removeTimelineLanes(ids);
+      (lane): lane is MarkerTrackLane =>
+        lane instanceof MarkerTrackLane &&
+        !lane.getTracks().some(isSegmentTrack),
+    );
+
+type SnapshotMarker = {
+  id: string;
+  temporal: TimedItemTemporal;
+  data: Record<string, unknown>;
+  label: string | undefined;
+};
+
+type SegmentationTrackSnapshot = {
+  trackId: string;
+  customAttrs: MarkerTrack["customAttrs"];
+  markers: SnapshotMarker[];
+};
+
+/** Each segmentation lane's track, as data, keyed by lane id. See `snapshotSegmentationTracks`. */
+export type SegmentationSnapshot = Map<string, SegmentationTrackSnapshot>;
+
+/**
+ * Records what every segmentation lane's `MarkerTrack` holds, keyed by lane id.
+ *
+ * Must be called BEFORE `player.loadMainMedia`. The load unloads first, `unloadMainMedia` clears the
+ * track repository, and the repository DESTROYS every track it removes. Each `TrackLane` drops its
+ * track in response, so the lanes survive the reload empty. byomakase's guidance is to rebuild the
+ * tracks from their timed items rather than re-add the destroyed objects, so this captures the data
+ * `recreateSegmentationTrack` rebuilds from — afterwards there is nothing left to read it from.
+ */
+export const snapshotSegmentationTracks = (
+  timeline: TimelineApi,
+): SegmentationSnapshot => {
+  const snapshot: SegmentationSnapshot = new Map();
+  for (const lane of segmentationLanesOnTimeline(timeline)) {
+    const track = laneTrack(lane);
+    if (!track) continue;
+    snapshot.set(lane.id, {
+      trackId: track.id,
+      customAttrs: { ...track.customAttrs },
+      markers: track.timedItems.map((marker) => ({
+        id: marker.id,
+        temporal: marker.temporal,
+        data: { ...marker.data },
+        label: marker.label,
+      })),
+    });
+  }
+  return snapshot;
+};
+
+/**
+ * Gives a segmentation lane a new `MarkerTrack` holding `markers`, after a timerange reload.
+ *
+ * The track keeps its previous id, which is what the per-track colour rule and the marker list's
+ * `TrackSource` are keyed on. It is tagged as app-built, because the toolbar's overlap guard went with
+ * the track it was attached to. The markers cannot keep theirs: the library assigns every timed item
+ * a fresh id. Returns each previous marker id mapped to its replacement, so the view can move a
+ * selection across.
+ */
+const recreateSegmentationTrack = (
+  player: OmakasePlayerApi,
+  lane: MarkerTrackLane,
+  snapshot: SegmentationTrackSnapshot,
+  markers: SnapshotMarker[],
+): Map<string, Marker> => {
+  const track = new MarkerTrack({
+    id: snapshot.trackId,
+    customAttrs: {
+      ...snapshot.customAttrs,
+      [APP_SEGMENTATION_TRACK_ATTR]: true,
+    },
+  });
+  player.track.add(track);
+  if (markers.length) {
+    track.addTimedItems(
+      markers.map(({ temporal, data, label }) => ({ temporal, data, label })),
+    );
+  }
+  // `timedItems` is in insertion order, so the markers just added line up with `markers`. Added
+  // before `addTrack`, so the lane's first render already draws them.
+  const replacements = new Map<string, Marker>();
+  track.timedItems.forEach((marker, index) =>
+    replacements.set(markers[index].id, marker),
+  );
+  lane.addTrack(track);
+  // Per-marker id rules (the toolbar's split highlight, the focus style) were keyed on ids that no
+  // longer exist.
+  removeMarkerStyleRules(
+    player,
+    snapshot.markers.map((marker) => marker.id),
+  );
+  return replacements;
+};
+
+/**
+ * Re-anchors a segmentation track's markers to the window now loading.
+ *
+ * Marker temporals are relative media seconds — 0 is whatever the loaded window starts at
+ * (`tamsMetadata.mediaStartTime`). A marker authored as 0..300 in the window starting at 414 means
+ * absolute 414..714. Reload the first 300 s and the same relative 0..300 would now mean absolute
+ * 0..300, silently redefining the marker. Shifting every temporal by `previousStart - nextStart`
+ * keeps the absolute span fixed, which is what the marker list, the playhead and the timerange
+ * export all assume.
+ *
+ * Caller must pass the FRESH `mediaStartTime`. The library refires the timeline-created callback
+ * from inside `_loadMainMedia`, before `loadMainMedia`'s subscriber has swapped in the new
+ * `TamsMainMedia`, so anything reading the app's held media at that point gets the PREVIOUS
+ * window's metadata and computes a delta of zero. See `useOmakasePlayer`'s build gate.
+ *
+ * A marker the new window cannot hold — wholly or partly before it (negative relative time), or past
+ * its end — is kept as it is, so a user's segmentation survives any window change. The library copes
+ * with both: the timeline culls a marker outside the visible range and draws it again once an edit
+ * or a later window brings it back, and the toolbar and marker list handle negative times. The one
+ * place that does not is the player's own time conversion, which `createEditTimeranges` works around.
+ */
+const rebaseMarkers = (
+  markers: SnapshotMarker[],
+  delta: number,
+): SnapshotMarker[] =>
+  markers.map((marker) => ({
+    ...marker,
+    temporal: mapTemporal(marker.temporal, (seconds) => seconds + delta),
+  }));
+
+/**
+ * Reverts edits that would make a marker overlap another on the same track — the library doesn't
+ * enforce non-overlap natively.
+ *
+ * Only for segmentation tracks this app built (see `APP_SEGMENTATION_TRACK_ATTR`): the toolbar guards
+ * every track it builds, for as long as it is mounted, so guarding those again would only duplicate
+ * it. Marker clicks need no wiring here either, because the toolbar subscribes to
+ * `TIMELINE_MARKER_TRACK_LANE_ITEM_CLICK` on every lane in its `segmentationLanes` prop.
+ *
+ * Called on EVERY lane build, not just at creation: a timerange reload completes the previous
+ * `destroy$`, tearing this down. Must run AFTER `recreateSegmentationTrack`, or the lane has no track
+ * to guard.
+ */
+const guardSegmentationOverlap = (
+  lane: MarkerTrackLane,
+  destroy$: Observable<void>,
+) => {
+  const track = laneTrack(lane);
+  if (track?.customAttrs?.[APP_SEGMENTATION_TRACK_ATTR] !== true) return;
+
+  // No 1.x timed-item event carries the previous value, so the last known-good temporal is cached
+  // per marker. Seeded from the markers already on the track, because on a re-wire no ADD event
+  // will ever fire again for markers created before it.
+  const lastGoodTemporal = new Map<string, TimedItemTemporal>(
+    track.timedItems.map((item) => [item.id, item.temporal]),
+  );
+  track.onEvent$.pipe(takeUntil(destroy$)).subscribe({
+    next: (event) => {
+      if (event.type === TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_ADDED) {
+        for (const item of event.data.updatedTimedItems) {
+          lastGoodTemporal.set(item.id, item.temporal);
+        }
+      } else if (
+        event.type === TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_DELETED
+      ) {
+        for (const item of event.data.updatedTimedItems) {
+          lastGoodTemporal.delete(item.id);
+        }
+      } else if (
+        event.type === TimedItemsTrackEventType.TIMED_ITEMS_TRACK_ITEMS_UPDATED
+      ) {
+        for (const item of event.data.updatedTimedItems) {
+          const marker = track.getTimedItem(item.id);
+          if (!marker) continue;
+          if (checkMarkerOverlap(track, marker)) {
+            const lastGood = lastGoodTemporal.get(item.id);
+            if (lastGood) track.updateTimedItem(item.id, { temporal: lastGood });
+          } else {
+            lastGoodTemporal.set(item.id, marker.temporal);
+          }
+        }
+      }
+    },
+  });
+};
+
+const createThumbnailLane = (mode: Mode) =>
+  new ThumbnailTrackLane({
+    description: "Thumbnails",
+    style: THEME[mode].thumbnailLaneStyle,
+  });
+
+// The library fills the TAMS thumbnail track itself, but only the app can attach it to the
+// surfaces that show it: the timeline lane, the timeline hover preview, and the video's own
+// progress-bar preview here, which holds a separate chroming-side reference.
+const attachChromingThumbnailTrack = (
+  player: OmakasePlayerApi,
+  track: ThumbnailTrack,
+) =>
+  player.chroming.setThumbnailTrack(TrackSource.fromTrack(track)).subscribe({
+    error: (err) => console.error("Error setting chroming thumbnail track:", err),
+  });
+
+/**
+ * Adds the horizontal zoom scrollbar to the timeline footer, once.
+ *
+ * In 0.25.4 the scrollbar was part of the timeline and drawn in the footer automatically, styled
+ * through `TimelineStyle`'s `scrollbar*` keys. In 1.x it is a `ScrollbarLane` the app has to add,
+ * so those keys alone did nothing and the scrollbar — with it, drag-to-pan while zoomed — went
+ * missing. It goes in the FOOTER slot, which is where the timeline used to draw it.
+ *
+ * It holds no per-load state, so unlike the visualization lanes it is created once and left alone
+ * across timerange reloads.
+ */
+const addScrollbarLane = (timeline: TimelineApi, mode: Mode) => {
+  const footerLanes = timeline.getTimelineLanes(TimelineSlotType.FOOTER);
+  if (footerLanes.some((lane) => lane instanceof ScrollbarLane)) return;
+
+  timeline.addTimelineLane(
+    new ScrollbarLane({ style: THEME[mode].scrollbarLaneStyle }),
+    { slot: TimelineSlotType.FOOTER },
+  );
 };
 
 export const buildLanesOnTimeline = ({
   timeline,
-  video,
+  mainMedia,
   player,
   mode,
   destroy$,
+  segmentationSnapshot,
+  previousMediaStartTime,
   onSegmentationLaneCreated,
   onMarkerClick,
 }: {
   timeline: TimelineApi;
-  video: TamsVideo | Video;
-  player: TamsPlayer;
+  mainMedia: TamsMainMedia;
+  player: OmakasePlayerApi;
   mode: Mode;
   destroy$: Observable<void>;
-  onSegmentationLaneCreated?: (lane: MarkerLane) => void;
+  // What each segmentation lane's track held, captured before the load destroyed it. See
+  // `snapshotSegmentationTracks`. Empty on a first build.
+  segmentationSnapshot: SegmentationSnapshot;
+  // `tamsMetadata.mediaStartTime` of the window the existing markers were authored against, so they
+  // can be re-anchored to the window now loading. See `rebaseMarkers`.
+  previousMediaStartTime: number | undefined;
+  onSegmentationLaneCreated?: (lane: MarkerTrackLane) => void;
   onMarkerClick?: (marker: Marker) => void;
-}): Map<string, TextLabel> => {
+}): {
+  textLabels: Map<string, TextLabel>;
+  visualizationLaneIds: string[];
+  /** The segment visualisation tracks, for the next build to clean up. See `removeVisualizationLanes`. */
+  segmentTracks: MarkerTrack[];
+  /** A new one per load, so anything that resolved the previous one has to be handed this. */
+  thumbnailTrack: ThumbnailTrack | undefined;
+  /**
+   * Set when the segmentation tracks were rebuilt: every previous marker id, mapped to its
+   * replacement. See `recreateSegmentationTrack`.
+   */
+  markerReplacements: Map<string, Marker> | undefined;
+  /** Re-reads the live segment lists into the segment lanes. See `syncSegmentMarkers`. */
+  refreshSegmentLanes: () => void;
+} => {
   const textLabels = new Map<string, TextLabel>();
+  const visualizationLaneIds: string[] = [];
+  const segmentTracks: { flowId: string; track: MarkerTrack }[] = [];
 
-  timeline.getScrubberLane().style = THEME[mode].scrubberLaneStyle;
+  timeline.scrubberLane.setStyle(THEME[mode].scrubberLaneStyle);
+  addScrollbarLane(timeline, mode);
 
-  // Create segmentation marker lane (only on first call — if it already exists, skip)
-  const segmentationLaneId = "segmentation";
-  let segmentationLane =
-    timeline.getTimelineLane<MarkerLane>(segmentationLaneId);
-  const isFirstBuild = !segmentationLane;
+  let markerReplacements: Map<string, Marker> | undefined;
 
-  if (isFirstBuild) {
-    segmentationLane = new MarkerLane({
-      id: segmentationLaneId,
-      description: segmentationNameFor(0),
-      style: THEME[mode].timelineLaneStyle,
-    });
-    timeline.addTimelineLane(segmentationLane);
-
-    const checkMarkerOverlap = (
-      lane: MarkerLane,
-      checkedMarker: PeriodMarker,
-    ): boolean =>
-      lane.getMarkers().some((m) => {
-        if (m.id === checkedMarker.id) return false;
-        if (!(m instanceof PeriodMarker)) return false;
-        const aS = m.timeObservation.start;
-        const aE = m.timeObservation.end;
-        const bS = checkedMarker.timeObservation.start;
-        const bE = checkedMarker.timeObservation.end;
-        if (aS == null || aE == null || bS == null || bE == null) {
-          return false;
-        }
-        return bS < aE && bE > aS;
-      });
-
-    const segMarkerColor = THEME[mode].colors.segmentationMarker;
-
-    const defaultMarker = new PeriodMarker({
-      timeObservation: { start: 0, end: player.video.getDuration() },
-      editable: true,
-      style: {
-        ...SEGMENTATION_PERIOD_MARKER_STYLE,
-        color: segMarkerColor,
-      },
-    });
-    defaultMarker.onClick$
-      .pipe(takeUntil(destroy$))
-      .subscribe({ next: () => onMarkerClick?.(defaultMarker) });
-    segmentationLane.addMarker(defaultMarker);
-
-    // Revert marker edits that would overlap another marker — the library
-    // doesn't enforce non-overlap constraints natively.
-    segmentationLane.onMarkerUpdate$.pipe(takeUntil(destroy$)).subscribe({
-      next: (markerUpdateEvent) => {
-        if (
-          checkMarkerOverlap(
-            segmentationLane!,
-            markerUpdateEvent.marker as PeriodMarker,
-          )
-        ) {
-          markerUpdateEvent.marker.timeObservation =
-            markerUpdateEvent.oldValue.timeObservation;
-        }
-      },
-    });
-
-    setTimeout(() => onMarkerClick?.(defaultMarker));
-    onSegmentationLaneCreated?.(segmentationLane);
+  // Every segmentation lane is handled identically, whether it was created here or by the toolbar.
+  // The visualisation lanes have already been destroyed by the caller at this point, so anything
+  // `segmentationLanesOnTimeline` returns is a segmentation lane that survived the reload.
+  const segmentationLanes = segmentationLanesOnTimeline(timeline);
+  if (!segmentationLanes.length) {
+    const lane = createSegmentationLane(timeline, player, mode, onMarkerClick);
+    onSegmentationLaneCreated?.(lane);
+    segmentationLanes.push(lane);
+  } else {
+    const nextMediaStartTime = mainMedia.tamsMetadata?.mediaStartTime;
+    const delta =
+      previousMediaStartTime !== undefined && nextMediaStartTime !== undefined
+        ? previousMediaStartTime - nextMediaStartTime
+        : 0;
+    for (const lane of segmentationLanes) {
+      // A lane that still has its track has not been through a reload — nothing to rebuild.
+      const snapshot = segmentationSnapshot.get(lane.id);
+      if (!snapshot || laneTrack(lane)) continue;
+      markerReplacements ??= new Map();
+      for (const [previousId, marker] of recreateSegmentationTrack(
+        player,
+        lane,
+        snapshot,
+        rebaseMarkers(snapshot.markers, delta),
+      )) {
+        markerReplacements.set(previousId, marker);
+      }
+    }
+  }
+  for (const lane of segmentationLanes) {
+    guardSegmentationOverlap(lane, destroy$);
   }
 
-  // Add thumbnail lane if available (only on TamsVideo)
-  if ("thumbnailVttTrackUrl" in video && video.thumbnailVttTrackUrl) {
-    const thumbnailLane = new ThumbnailLane({
-      id: "thumbnail-lane",
-      description: "Thumbnails",
-      vttUrl: video.thumbnailVttTrackUrl,
-      style: THEME[mode].thumbnailLaneStyle,
-    });
+  // TAMS builds, registers and fills the thumbnail track itself during loadMainMedia.
+  const thumbnailTrack = player.track.findFirst(
+    (track) => track.trackType === TrackType.THUMBNAIL_TRACK,
+  ) as ThumbnailTrack | undefined;
+  if (thumbnailTrack) {
+    const thumbnailLane = createThumbnailLane(mode);
     timeline.addTimelineLane(thumbnailLane);
-    timeline.loadThumbnailVttFileFromUrl(video.thumbnailVttTrackUrl);
+    thumbnailLane.setTrack(thumbnailTrack);
+    timeline.setThumbnailTrack(thumbnailTrack);
+    attachChromingThumbnailTrack(player, thumbnailTrack);
+    visualizationLaneIds.push(thumbnailLane.id);
   }
 
   // Add segment visualization lanes for any flow that has segments
-  if ("tamsMediaData" in video && video.tamsMediaData?.flowsSegments) {
-    const flowsSegmentsMap = video.tamsMediaData.flowsSegments;
-    const primaryFlow = video.tamsMediaData.flow;
-    const subflows = [...(video.tamsMediaData.subflows ?? [])]
+  const tamsMediaData = mainMedia.tamsMediaData;
+  if (tamsMediaData?.flowsSegments) {
+    const flowsSegmentsMap = tamsMediaData.flowsSegments;
+    const primaryFlow = tamsMediaData.flow as Flow;
+    const subflows = [...((tamsMediaData.subflows ?? []) as Flow[])]
       .sort((a, b) => (a.avg_bit_rate || 0) - (b.avg_bit_rate || 0))
       .reverse();
     const flowsWithSegments = [primaryFlow, ...subflows].filter(
@@ -443,8 +964,8 @@ export const buildLanesOnTimeline = ({
     );
 
     const sortedFlows = [...flowsWithSegments].sort(flowFormatSorting);
-    const mediaStartTime = video.mediaStartTime;
-    const videoDuration = player.video.getDuration();
+    const mediaStartTime = mainMedia.tamsMetadata?.mediaStartTime ?? 0;
+    const videoDuration = player.player.getDuration();
 
     sortedFlows.forEach((flow: Flow) => {
       if (
@@ -458,36 +979,49 @@ export const buildLanesOnTimeline = ({
 
       const segments = flowsSegmentsMap.get(flow.id)!;
       const label = flow.description || flow.label || `Flow ${flow.id}`;
-      const textUrl =
-        isSubtitleFlow(flow) && "textUrls" in video
-          ? video.textUrls?.get(flow.id)
-          : undefined;
 
-      if (textUrl) {
-        const subtitlesLaneId = `subtitles-lane-${flow.id}`;
-        const subtitlesLane = new SubtitlesLane({
-          id: subtitlesLaneId,
-          style: THEME[mode].subtitlesLaneStyle,
+      // The TAMS→HLS bridge turns each subtitle flow into a text track named after the flow, so
+      // the flow's manifest name is the join key. TAMS skips the preload path — cues stream into
+      // the lane in the background once the raw track is set.
+      const textTrack = isSubtitleFlow(flow)
+        ? player.player.text
+            .getTracks()
+            .find((t) => t.label === resolveTextManifestName(flow))
+        : undefined;
+
+      if (textTrack) {
+        // An empty description is deliberate, not an omission: `BaseTrackLane.tryUpdateDescription`
+        // writes the track's own label — the HLS rendition name shown in the video's subtitle
+        // picker — into the lane description whenever no description was configured, which would
+        // draw it on top of the app's own flow label below. Any non-null value suppresses that.
+        const subtitlesLane = new TextTrackLane({
+          description: "",
+          style: THEME[mode].textTrackLaneStyle,
         });
         timeline.addTimelineLane(subtitlesLane);
+        subtitlesLane.setTrack(textTrack);
+        visualizationLaneIds.push(subtitlesLane.id);
         const laneLabel = addLaneLabel(subtitlesLane, label, mode);
-        textLabels.set(subtitlesLaneId, laneLabel);
+        textLabels.set(subtitlesLane.id, laneLabel);
 
-        const markerLane = new MarkerLane({
-          id: `marker-lane-${flow.id}`,
+        const markerLane = new MarkerTrackLane({
           style: THEME[mode].timelineLaneStyle,
           minimized: true,
         });
         timeline.addTimelineLane(markerLane);
+        visualizationLaneIds.push(markerLane.id);
 
-        addSegmentMarkersToLane(
-          markerLane,
-          segments,
-          mediaStartTime,
-          videoDuration,
-          mode,
-        );
-        loadAndRegisterSubtitles(subtitlesLane, player, textUrl);
+        segmentTracks.push({
+          flowId: flow.id,
+          track: addSegmentMarkersToLane(
+            markerLane,
+            segments,
+            mediaStartTime,
+            videoDuration,
+            mode,
+            player,
+          ),
+        });
         addSubtitleLaneControls(
           subtitlesLane,
           markerLane,
@@ -498,63 +1032,92 @@ export const buildLanesOnTimeline = ({
         return;
       }
 
-      const markerLane = new MarkerLane({
-        id: `marker-lane-${flow.id}`,
+      const markerLane = new MarkerTrackLane({
         style: THEME[mode].timelineLaneStyle,
       });
       timeline.addTimelineLane(markerLane);
+      visualizationLaneIds.push(markerLane.id);
       const laneLabel = addLaneLabel(markerLane, label, mode);
       textLabels.set(markerLane.id, laneLabel);
 
-      addSegmentMarkersToLane(
-        markerLane,
-        segments,
-        mediaStartTime,
-        videoDuration,
-        mode,
-      );
+      segmentTracks.push({
+        flowId: flow.id,
+        track: addSegmentMarkersToLane(
+          markerLane,
+          segments,
+          mediaStartTime,
+          videoDuration,
+          mode,
+          player,
+        ),
+      });
       if (isAudioFlow(flow)) {
         addAudioLaneControls(markerLane, flow, player, destroy$);
       }
     });
   }
 
-  return textLabels;
+  const refreshSegmentLanes = () => {
+    const flowsSegments = mainMedia.tamsMediaData?.flowsSegments;
+    if (!flowsSegments) return;
+    const mediaStartTime = mainMedia.tamsMetadata?.mediaStartTime ?? 0;
+    for (const { flowId, track } of segmentTracks) {
+      const segments = flowsSegments.get(flowId);
+      if (segments) {
+        syncSegmentMarkers(track, segments, mediaStartTime, mode, player);
+      }
+    }
+  };
+
+  return {
+    textLabels,
+    visualizationLaneIds,
+    segmentTracks: segmentTracks.map(({ track }) => track),
+    thumbnailTrack,
+    markerReplacements,
+    refreshSegmentLanes,
+  };
 };
 
 export const updateTimelineStyles = (
   timeline: TimelineApi,
   mode: Mode,
   textLabels: Map<string, TextLabel>,
+  player: OmakasePlayerApi,
 ) => {
-  timeline.style = THEME[mode].timelineStyle as TimelineStyle;
-  timeline.getScrubberLane().style = THEME[mode].scrubberLaneStyle;
+  timeline.setStyle(THEME[mode].timelineStyle);
+  timeline.scrubberLane.setStyle(THEME[mode].scrubberLaneStyle);
 
   for (const lane of timeline.getTimelineLanes()) {
-    if (lane instanceof ThumbnailLane) {
-      lane.style = THEME[mode].thumbnailLaneStyle;
-    } else if (lane instanceof SubtitlesLane) {
-      lane.style = THEME[mode].subtitlesLaneStyle;
-    } else if (lane instanceof MarkerLane) {
-      lane.style = THEME[mode].timelineLaneStyle;
-
-      if (lane.id === "segmentation" || !lane.id.startsWith("marker-lane-")) {
-        const segColor = THEME[mode].colors.segmentationMarker;
-        for (const marker of lane.getMarkers()) {
-          marker.style = {
-            ...SEGMENTATION_PERIOD_MARKER_STYLE,
-            color: segColor,
-          } as PeriodMarkerStyle;
+    // Every theme style carries a `height`, which for a collapsed lane would undo the collapse —
+    // it is the lane's own style height that keeps a minimized lane hidden (see the nested segment
+    // lanes in `buildLanesOnTimeline`). So the collapsed state is re-applied after the restyle.
+    const wasMinimized = lane.isMinimized();
+    if (lane instanceof ThumbnailTrackLane) {
+      lane.setStyle(THEME[mode].thumbnailLaneStyle);
+    } else if (lane instanceof TextTrackLane) {
+      lane.setStyle(THEME[mode].textTrackLaneStyle);
+    } else if (lane instanceof MarkerTrackLane) {
+      const segmentTracks = lane.getTracks().filter(isSegmentTrack);
+      if (segmentTracks.length) {
+        lane.setStyle({
+          ...THEME[mode].timelineLaneStyle,
+          ...SEGMENT_MARKER_LANE_STYLE,
+        });
+        for (const track of segmentTracks) {
+          applySegmentMarkerColors(player, track, mode);
         }
       } else {
-        const nextColor = makeColorCycler(THEME[mode].markerColors);
-        for (const marker of lane.getMarkers()) {
-          marker.style = {
-            ...SEGMENT_PERIOD_MARKER_STYLE,
-            color: nextColor(),
-          } as PeriodMarkerStyle;
-        }
+        lane.setStyle(segmentationLaneStyleFor(mode));
       }
+    }
+    if (wasMinimized && !lane.isMinimized()) lane.minimize();
+  }
+
+  // The scrollbar lane lives in the footer slot, which `getTimelineLanes()` does not return.
+  for (const lane of timeline.getTimelineLanes(TimelineSlotType.FOOTER)) {
+    if (lane instanceof ScrollbarLane) {
+      lane.setStyle(THEME[mode].scrollbarLaneStyle);
     }
   }
 
@@ -563,34 +1126,57 @@ export const updateTimelineStyles = (
   }
 };
 
-export const calculateTimerangeFromVideo = (
-  video: TamsVideo | Video,
+export const calculateTimerangeFromMainMedia = (
+  mainMedia: TamsMainMedia,
 ): { timerange: string; maxTimerange: string } | null => {
-  if (!("tamsMediaData" in video) || !video.tamsMediaData) {
-    return null;
-  }
-  if (
-    !video.duration ||
-    !("mediaStartTime" in video) ||
-    video.mediaStartTime === undefined
-  ) {
+  const tamsMediaData = mainMedia.tamsMediaData;
+  const mediaStartTime = mainMedia.tamsMetadata?.mediaStartTime;
+  if (!tamsMediaData || !mainMedia.duration || mediaStartTime === undefined) {
     return null;
   }
 
-  const primaryFlow = video.tamsMediaData.flow;
-  const subflows = video.tamsMediaData.subflows ?? [];
+  const primaryFlow = tamsMediaData.flow as Flow;
+  const subflows = (tamsMediaData.subflows ?? []) as Flow[];
   const allFlows = [primaryFlow, ...subflows].filter(
     (f): f is Flow => !!f && !!f.timerange,
   );
 
-  const maxTimerange = computeMaxTimerangeFromFlows(allFlows);
-  if (!maxTimerange) {
+  const flowsTimerange = computeMaxTimerangeFromFlows(allFlows);
+  if (!flowsTimerange) {
     return null;
   }
 
   try {
-    const loadedStartSeconds = video.mediaStartTime;
-    const loadedEndSeconds = video.mediaStartTime + video.duration;
+    let loadedStartSeconds = mediaStartTime;
+    let loadedEndSeconds = mediaStartTime + mainMedia.duration;
+
+    // In live playback the loaded window moves after load: the player rewrites
+    // `tamsMetadata.timerange` from the segments on every poll, while `mediaStartTime` stays at the
+    // load-time start and the flows' own timeranges stay as they were fetched. So the window is read
+    // from the former, and the overall range is stretched to cover it — otherwise it stops at the
+    // load-time flow head.
+    const loaded = mainMedia.tamsMetadata?.timerange
+      ? TimeRangeUtil.parseTimeRange(mainMedia.tamsMetadata.timerange)
+      : undefined;
+    const isLive =
+      mainMedia.tamsMetadata?.playbackMode !== TamsPlaybackMode.VOD;
+    if (isLive && loaded?.start && loaded.end) {
+      loadedStartSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.start);
+      loadedEndSeconds = TimeRangeUtil.timeMomentToSeconds(loaded.end);
+    }
+
+    const flowsRange = TimeRangeUtil.parseTimeRange(flowsTimerange);
+    const maxTimerange =
+      loadedEndSeconds > TimeRangeUtil.timeMomentToSeconds(flowsRange.end!)
+        ? TimeRangeUtil.formatTimeRangeExpr(
+            TimeRangeUtil.toTimeRange(
+              flowsRange.start!,
+              TimeRangeUtil.secondsToTimeMoment(loadedEndSeconds),
+              true,
+              true,
+            ),
+          )
+        : flowsTimerange;
 
     const startMoment = TimeRangeUtil.secondsToTimeMoment(loadedStartSeconds);
     const endMoment = TimeRangeUtil.secondsToTimeMoment(loadedEndSeconds);
@@ -646,36 +1232,53 @@ export const createAuthenticationConfig = (accessToken: string) => {
 };
 
 export const createEditTimeranges = (
-  source: MarkerAwareApi,
+  markers: (Marker | MarkerState)[],
   markerOffset: number,
   omakasePlayer: OmakasePlayerApi,
 ) => {
-  const timeRanges = source
-    .getMarkers()
-    .map((marker: MarkerApi) => {
-      if ("time" in marker.timeObservation) {
-        return undefined;
-      }
-      if (
-        marker.timeObservation.start == undefined ||
-        marker.timeObservation.end == undefined
-      ) {
-        return undefined;
-      }
+  // Replaces 0.25.4's calculateTimeToFrame/calculateFrameToTime round-trip, which ensured a
+  // marker's time lines up with the start of its frame in milliseconds.
+  const frameToSeconds = (frame: number) =>
+    omakasePlayer.player.convertTime(
+      frame,
+      MediaTemporalFormat.FRAME_COUNT,
+      MediaTemporalFormat.SECONDS,
+    );
+  const snapNonNegative = (time: number) =>
+    frameToSeconds(
+      omakasePlayer.player.convertTime(
+        time,
+        MediaTemporalFormat.SECONDS,
+        MediaTemporalFormat.FRAME_COUNT,
+      ),
+    );
+  // `convertTime` throws on a negative time, and a marker kept from an earlier window can start or
+  // end before this one (see `rebaseMarkers`). Frame boundaries repeat every frame, so such a time is
+  // moved forward by whole frames, snapped there and moved back — one frame more than needed, so
+  // rounding cannot leave it a hair below zero.
+  const frameDuration = frameToSeconds(2) - frameToSeconds(1);
+  const snapToFrame = (time: number) => {
+    if (time >= 0) return snapNonNegative(time);
+    const shift = (Math.ceil(-time / frameDuration) + 1) * frameDuration;
+    return snapNonNegative(time + shift) - shift;
+  };
 
-      // ensures marker start time lines up with start of the frame in milliseconds
-      const startTime = omakasePlayer.video.calculateFrameToTime(
-        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.start),
-      );
-      const endTime = omakasePlayer.video.calculateFrameToTime(
-        omakasePlayer.video.calculateTimeToFrame(marker.timeObservation.end),
-      );
+  const timeRanges = markers
+    .map((marker) => {
+      if (!isSpanningMarker(marker)) {
+        return undefined;
+      }
+      const start = markerStart(marker);
+      const end = markerEnd(marker);
+      if (start == null || end == null) {
+        return undefined;
+      }
 
       const startMoment = TimeRangeUtil.secondsToTimeMoment(
-        startTime + markerOffset,
+        snapToFrame(start) + markerOffset,
       );
       const endMoment = TimeRangeUtil.secondsToTimeMoment(
-        endTime + markerOffset,
+        snapToFrame(end) + markerOffset,
       );
       const timeRange = TimeRangeUtil.toTimeRange(
         startMoment,

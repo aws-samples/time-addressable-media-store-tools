@@ -1,4 +1,4 @@
-import "@byomakase/omakase-player/dist/style.css";
+import "@byomakase/omakase-player/dist/omakase-player.css";
 import "@byomakase/omakase-react-components/dist/omakase-react-components.css";
 import "./style.css";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -13,19 +13,32 @@ import {
   OmakaseTimeRangeSelectorComponent,
 } from "@byomakase/omakase-react-components";
 import usePreferencesStore from "@/stores/usePreferencesStore";
+import { useMarkerFocusStyles } from "./hooks/useMarkerFocusStyles";
 import { useOmakasePlayer } from "./hooks/useOmakasePlayer";
 import { usePlayerHotkeys } from "./hooks/usePlayerHotkeys";
 import MarkerListHeader from "./components/MarkerListHeader";
-import { renumberSegmentationLanes } from "./utils";
+import {
+  applySegmentationMarkerColors,
+  laneTrack,
+  renumberSegmentationLanes,
+  segmentationLaneStyleFor,
+} from "./utils";
+import {
+  MarkerListEventType,
+  MarkerListMode,
+  TrackSource,
+} from "@byomakase/omakase-player";
 import type {
   OmakasePlayerApi,
-  MarkerLane,
+  MarkerListConfig,
+  MarkerTrackLane,
   Marker,
   MarkerListApi,
+  ThumbnailTrack,
 } from "@byomakase/omakase-player";
 import type { Flow } from "@/types/tams";
 import {
-  SEGMENTATION_PERIOD_MARKER_STYLE,
+  SEGMENTATION_MARKER_SHAPE,
   THEME,
   MARKER_LIST_CONFIG,
   ROW_TEMPLATE_HTML,
@@ -44,55 +57,60 @@ const OmakaseTamsPlayer = () => {
   const [omakasePlayer, setOmakasePlayer] = useState<
     OmakasePlayerApi | undefined
   >();
-  const [segmentationLanes, setSegmentationLanes] = useState<MarkerLane[]>([]);
+  const [segmentationLanes, setSegmentationLanes] = useState<MarkerTrackLane[]>(
+    [],
+  );
   const [selectedMarker, setSelectedMarker] = useState<Marker | undefined>();
   const [sourceMarkerList, setSourceMarkerList] = useState<
     MarkerListApi | undefined
   >();
-  const [currentSource, setCurrentSource] = useState<MarkerLane | undefined>();
+  const [currentSource, setCurrentSource] = useState<
+    MarkerTrackLane | undefined
+  >();
   const [mediaStartTime, setMediaStartTime] = useState<number>(0);
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [thumbnailTrack, setThumbnailTrack] = useState<
+    ThumbnailTrack | undefined
+  >();
   const segmentationLanesRef = useRef(segmentationLanes);
   const currentSourceRef = useRef(currentSource);
+  const selectedMarkerRef = useRef(selectedMarker);
 
+  // Marker selection is entirely app state in omakase-player 1.x — the lane and marker list no
+  // longer hold a selected marker, so there is nothing to mirror onto them. What still belongs
+  // here is the app's own behaviour: re-clicking the selected marker deselects it, and clicking a
+  // marker in another segmentation lane switches the active tab to that lane.
   const setSelectedMarkerWithSync = useCallback<
     React.Dispatch<React.SetStateAction<Marker | undefined>>
   >((action) => {
-    // Function-form actions (used by the toolbar to clear selection on marker
-    // delete) skip the lane/source sync — clearing doesn't need a tab switch
-    // and the dispatch path doesn't have the new marker to look up.
     if (typeof action !== "function" && action) {
-      // If clicking the already-selected marker, deselect it
-      if (
-        segmentationLanesRef.current.some(
-          (l) => l.getSelectedMarker()?.id === action.id,
-        )
-      ) {
-        const owning = segmentationLanesRef.current.find((l) =>
-          l.getMarker(action.id),
-        );
-        if (owning?.getSelectedMarker()?.id === action.id) {
-          owning.toggleMarker(action.id);
-        }
+      if (selectedMarkerRef.current?.id === action.id) {
         setSelectedMarker(undefined);
         return;
       }
-      const owning = segmentationLanesRef.current.find((l) =>
-        l.getMarker(action.id),
+      const owning = segmentationLanesRef.current.find((lane) =>
+        laneTrack(lane)?.getTimedItem(action.id),
       );
-      if (owning) {
-        if (owning.getSelectedMarker()?.id !== action.id) {
-          owning.toggleMarker(action.id);
-        }
-        if (currentSourceRef.current?.id !== owning.id) {
-          setCurrentSource(owning);
-        }
+      if (owning && currentSourceRef.current?.id !== owning.id) {
+        setCurrentSource(owning);
       }
     }
     setSelectedMarker(action);
   }, []);
 
-  const handleSegmentationTabClick = useCallback((lane: MarkerLane) => {
+  // A timerange reload rebuilds the segmentation tracks, so every marker on them has a new id, and
+  // the selection moves to its replacement. The lanes are the same objects but now hold new tracks,
+  // and a fresh array is what makes the toolbar, which subscribes to each lane's track per
+  // `segmentationLanes`, pick them up.
+  const handleSegmentationTracksRebuilt = useCallback(
+    (replacements: Map<string, Marker>) => {
+      setSelectedMarker((prev) => (prev && replacements.get(prev.id)) ?? prev);
+      setSegmentationLanes((prev) => [...prev]);
+    },
+    [],
+  );
+
+  const handleSegmentationTabClick = useCallback((lane: MarkerTrackLane) => {
     setCurrentSource(lane);
     setSelectedMarker(undefined);
   }, []);
@@ -100,54 +118,29 @@ const OmakaseTamsPlayer = () => {
   useEffect(() => {
     segmentationLanesRef.current = segmentationLanes;
     currentSourceRef.current = currentSource;
-  }, [segmentationLanes, currentSource]);
+    selectedMarkerRef.current = selectedMarker;
+  }, [segmentationLanes, currentSource, selectedMarker]);
 
   useEffect(() => {
     renumberSegmentationLanes(segmentationLanes);
   }, [segmentationLanes]);
 
+  // Covers lanes created by the toolbar as well as the first one built with the timeline: the
+  // toolbar only sets a lane-level style, which the marker list's colour bar never sees.
   useEffect(() => {
-    // Mirror selectedMarker onto external player state. The wrapper handles
-    // user-driven clicks at the click site, but selections that originate
-    // outside the wrapper (e.g. the initial default marker created during
-    // timeline construction) need this fallback because the wrapper can't
-    // toggle the lane until segmentationLanes state reflects it.
-    segmentationLanes.forEach((lane) => {
-      const laneSelected = lane.getSelectedMarker();
-      if (laneSelected && laneSelected.id !== selectedMarker?.id) {
-        lane.toggleMarker(laneSelected.id);
-      }
-    });
-
-    if (selectedMarker) {
-      const owningLane = segmentationLanes.find((l) =>
-        l.getMarker(selectedMarker.id),
-      );
-      if (
-        owningLane &&
-        owningLane.getSelectedMarker()?.id !== selectedMarker.id
-      ) {
-        owningLane.toggleMarker(selectedMarker.id);
-      }
-    }
-
-    if (sourceMarkerList) {
-      const wantId =
-        selectedMarker && currentSource?.getMarker(selectedMarker.id)
-          ? selectedMarker.id
-          : undefined;
-      const listSelected = sourceMarkerList.getSelectedMarker();
-      if (listSelected && listSelected.id !== wantId) {
-        sourceMarkerList.toggleMarker(listSelected.id);
-      }
-    }
-  }, [selectedMarker, segmentationLanes, sourceMarkerList, currentSource]);
+    if (!omakasePlayer) return;
+    applySegmentationMarkerColors(omakasePlayer, segmentationLanes, mode);
+  }, [omakasePlayer, segmentationLanes, mode]);
 
   useEffect(() => {
     if (!sourceMarkerList) return;
-    const sub = sourceMarkerList.onMarkerClick$.subscribe({
+    const sub = sourceMarkerList.onEvent$.subscribe({
       next: (event) => {
-        const marker = currentSourceRef.current?.getMarker(event.marker.id);
+        if (event.type !== MarkerListEventType.MARKER_LIST_ITEM_CLICK) return;
+        const source = currentSourceRef.current;
+        const marker = source
+          ? laneTrack(source)?.getTimedItem(event.data.item.id)
+          : undefined;
         if (marker) setSelectedMarkerWithSync(marker);
       },
     });
@@ -181,25 +174,52 @@ const OmakaseTamsPlayer = () => {
     });
   }, [omakasePlayer, sourceMarkerList, currentSource]);
 
-  const toolbarConstants = useMemo(
+  // The toolbar's old `constants` bag became two flat style props. Marker shape and colour now
+  // live on the lane style (MarkerTrackLaneStyle extends MarkerOnMarkerTrackLaneStyle), so the
+  // lane style carries what PERIOD_MARKER_STYLE used to, and splitMarkerStyle replaces
+  // HIGHLIGHTED_PERIOD_MARKER_STYLE as the per-marker id rule for the second half of a split.
+  const segmentationLaneStyle = useMemo(
+    () => segmentationLaneStyleFor(mode),
+    [mode],
+  );
+
+  // Shape without `markerRenderType`: the toolbar writes this as a marker-id rule, the same cascade
+  // level `useMarkerFocusStyles` writes to, so carrying it would let a split clobber the selected
+  // marker's `spanning-over-all-lanes` band. The lane style already supplies `default`.
+  const splitMarkerStyle = useMemo(
     () => ({
-      PERIOD_MARKER_STYLE: {
-        ...SEGMENTATION_PERIOD_MARKER_STYLE,
-        color: THEME[mode].colors.segmentationMarker,
-      },
-      HIGHLIGHTED_PERIOD_MARKER_STYLE: {
-        ...SEGMENTATION_PERIOD_MARKER_STYLE,
-        color: THEME[mode].colors.segmentationMarkerHighlighted,
-      },
-      TIMELINE_LANE_STYLE: THEME[mode].timelineLaneStyle,
-      MARKER_LANE_TEXT_LABEL_STYLE: THEME[mode].markerLaneTextLabelStyle,
+      ...SEGMENTATION_MARKER_SHAPE,
+      markerColor: THEME[mode].colors.segmentationMarkerHighlighted,
     }),
     [mode],
   );
 
+  // The marker list is fed by tracks now rather than by a lane: `source` became `markerTrack`,
+  // and the thumbnail VTT file became the player's thumbnail track.
+  //
+  // `OmakaseMarkerListComponent` only rebuilds the list when `markerTrack` changes identity, and the
+  // list resolves its tracks once, at creation. Every load registers a new thumbnail track and
+  // rebuilds the segmentation tracks, so both are dependencies here: the fresh `markerTrack` object
+  // they produce is what makes a timerange reload rebuild the list against the new tracks.
+  const currentSourceTrack = currentSource
+    ? laneTrack(currentSource)
+    : undefined;
+  const markerListConfig = useMemo<MarkerListConfig>(() => {
+    return {
+      ...MARKER_LIST_CONFIG,
+      markerTrack: currentSourceTrack
+        ? { source: TrackSource.fromTrack(currentSourceTrack) }
+        : undefined,
+      thumbnailTrack: thumbnailTrack
+        ? { source: TrackSource.fromTrack(thumbnailTrack) }
+        : undefined,
+      mode: MarkerListMode.CUTLIST,
+    };
+  }, [currentSourceTrack, thumbnailTrack]);
+
   const timelineConfig = useMemo(
     () => ({
-      timelineHTMLElementId: "omakase-timeline",
+      htmlElementId: "omakase-timeline",
       style: THEME[mode].timelineStyle,
     }),
     [mode],
@@ -213,6 +233,8 @@ const OmakaseTamsPlayer = () => {
     "--omakase-scrollbarBorder": THEME[mode].colors.scrollbarBorder,
   } as React.CSSProperties;
 
+  // A live media calls this on every poll. The selector follows prop changes itself, and holds them
+  // back while the user has a range dragged but not yet confirmed.
   const handleTimerangeChange = (
     currentTimerange: string | undefined,
     maxTimerangeStr: string | undefined,
@@ -221,19 +243,11 @@ const OmakaseTamsPlayer = () => {
     setMaxTimerange(maxTimerangeStr);
   };
 
-  const handleSegmentationLaneCreated = (lane: MarkerLane) => {
-    setSegmentationLanes((prev) => {
-      const idx = prev.findIndex((l) => l.id === lane.id);
-      if (idx < 0) return [...prev, lane];
-      const next = [...prev];
-      next[idx] = lane;
-      return next;
-    });
-    setCurrentSource((prev) => {
-      if (!prev || prev.id === lane.id) return lane;
-      if (lane.id === "segmentation") return lane;
-      return prev;
-    });
+  // Only called for a timeline's first segmentation lane, and the view is remounted per media (see
+  // the default export), so there is never an earlier lane to keep.
+  const handleSegmentationLaneCreated = (lane: MarkerTrackLane) => {
+    setSegmentationLanes([lane]);
+    setCurrentSource(lane);
   };
 
   const { reloadWithTimerange, handleTimelineCreated } = useOmakasePlayer({
@@ -245,12 +259,15 @@ const OmakaseTamsPlayer = () => {
     onTimerangeChange: handleTimerangeChange,
     onSegmentationLaneCreated: handleSegmentationLaneCreated,
     onMarkerClick: setSelectedMarkerWithSync,
+    onSegmentationTracksRebuilt: handleSegmentationTracksRebuilt,
     onPlayerReady: setOmakasePlayer,
+    onThumbnailTrackChange: setThumbnailTrack,
     onMediaStartTimeCalculated: setMediaStartTime,
     onFlowsCalculated: setFlows,
   });
 
   usePlayerHotkeys(omakasePlayer);
+  useMarkerFocusStyles(omakasePlayer, selectedMarker);
 
   const handleTimeRangePickerChange = (start: number, end: number) => {
     const startMoment = TimeRangeUtil.secondsToTimeMoment(start);
@@ -311,12 +328,7 @@ const OmakaseTamsPlayer = () => {
               />
               <OmakaseMarkerListComponent
                 omakasePlayer={omakasePlayer}
-                config={{
-                  ...MARKER_LIST_CONFIG,
-                  source: currentSource,
-                  mode: "CUTLIST",
-                  thumbnailVttFile: omakasePlayer.timeline?.thumbnailVttFile,
-                }}
+                config={markerListConfig}
                 onCreateMarkerListCallback={setSourceMarkerList}
               />
             </>
@@ -346,7 +358,8 @@ const OmakaseTamsPlayer = () => {
             source={currentSource}
             setSource={setCurrentSource}
             enableHotKeys={true}
-            constants={toolbarConstants}
+            segmentationLaneStyle={segmentationLaneStyle}
+            splitMarkerStyle={splitMarkerStyle}
           />
         )}
       </Box>
@@ -362,4 +375,13 @@ const OmakaseTamsPlayer = () => {
   );
 };
 
-export default OmakaseTamsPlayer;
+// Keyed by media so that navigating from one flow or source to another starts from fresh state.
+// The route element is otherwise reused, and every piece of state above — lanes, selection, marker
+// list, ranges — would carry over from a player that has just been destroyed. Lane ids are uuids in
+// 1.x, so nothing downstream can tell the old lanes from the new ones.
+const OmakaseTamsPlayerRoute = () => {
+  const { type, id } = useParams();
+  return <OmakaseTamsPlayer key={`${type}/${id}`} />;
+};
+
+export default OmakaseTamsPlayerRoute;
