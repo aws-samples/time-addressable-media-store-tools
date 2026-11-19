@@ -10,7 +10,7 @@ import type {
 
 // The three style bags that carry a "this marker is selected" key, one per renderer:
 // `active` on the chroming marker bar, `highlightMarker` in the marker list, and
-// `markerRenderType` on the timeline lane (the band that spans up into the scrubber header).
+// `markerRenderType` on the timeline lane (the band across every lane, stopping below the scrubber).
 type MarkerFocusStyle = MarkerOnChromingStyle &
   MarkerOnMarkerListStyle &
   MarkerOnMarkerTrackLaneStyle;

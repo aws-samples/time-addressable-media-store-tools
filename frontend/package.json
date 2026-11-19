@@ -75,12 +75,6 @@
     "typescript-eslint": "^8.68.0",
     "vite": "^8.3.5"
   },
-  "overrides": {
-    "xml2js": "^0.6.2",
-    "@byomakase/omakase-ttconv-ts": {
-      "xmlbuilder2": "^4.0.3"
-    }
-  },
   "optionalDependencies": {
     "@esbuild/darwin-arm64": "^0.28.2",
     "@esbuild/linux-x64": "^0.28.2",
